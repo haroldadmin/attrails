@@ -4,9 +4,13 @@ output {
     cargo-toml "crates/lexicons/Cargo.toml"
 }
 
-source bluesky type=git priority=101 {
+source bluesky type=git {
     repo "https://github.com/bluesky-social/atproto"
     ref permissioned-data
     pattern "lexicons/**/*.json"
+}
+
+source attrails type=jsonfile {
+    path "crates/lexicons/sources/attrails.json"
 }
 

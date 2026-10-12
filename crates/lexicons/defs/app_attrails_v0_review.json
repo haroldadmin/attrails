@@ -1,0 +1,54 @@
+{
+  "lexicon": 1,
+  "id": "app.attrails.v0.review",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A review of a route: a 1-5 rating, optional text, and optional photos. Activity-neutral. The AppView treats the most recent review per (author, subject) as canonical.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "subject",
+          "rating",
+          "createdAt"
+        ],
+        "properties": {
+          "completedAt": {
+            "type": "string",
+            "description": "When the reviewer last did the route (rode, ran, hiked), if they want to say.",
+            "format": "datetime"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "app.attrails.v0.defs#image"
+            },
+            "maxLength": 10
+          },
+          "rating": {
+            "type": "integer",
+            "description": "Star rating from 1 (worst) to 5 (best).",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "subject": {
+            "type": "ref",
+            "description": "Strong reference to an app.attrails.v0.route record. The AppView rejects reviews whose subject is not a route (lexicon cannot constrain the URI collection in-schema).",
+            "ref": "com.atproto.repo.strongRef"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 30000,
+            "maxGraphemes": 3000
+          }
+        }
+      }
+    }
+  }
+}

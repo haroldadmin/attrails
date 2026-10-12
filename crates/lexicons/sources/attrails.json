@@ -1,0 +1,351 @@
+{
+  "records": [
+    {
+      "value": {
+        "lexicon": 1,
+        "id": "app.attrails.v0.defs",
+        "defs": {
+          "image": {
+            "type": "object",
+            "description": "A photo attached to a route or review.",
+            "required": [
+              "image",
+              "alt"
+            ],
+            "properties": {
+              "image": {
+                "type": "blob",
+                "accept": [
+                  "image/*"
+                ],
+                "maxSize": 1000000
+              },
+              "alt": {
+                "type": "string",
+                "description": "Alt text for accessibility. May be empty.",
+                "maxGraphemes": 2000,
+                "maxLength": 20000
+              },
+              "aspectRatio": {
+                "type": "ref",
+                "ref": "#aspectRatio"
+              }
+            }
+          },
+          "aspectRatio": {
+            "type": "object",
+            "description": "Width:height ratio so clients can lay out before the image loads.",
+            "required": [
+              "width",
+              "height"
+            ],
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "cycling": {
+            "type": "token",
+            "description": "Cycling of any kind."
+          },
+          "running": {
+            "type": "token",
+            "description": "Running or jogging."
+          },
+          "hiking": {
+            "type": "token",
+            "description": "Hiking or trekking."
+          },
+          "walking": {
+            "type": "token",
+            "description": "Walking."
+          },
+          "other": {
+            "type": "token",
+            "description": "Any other activity."
+          },
+          "paved": {
+            "type": "token",
+            "description": "Entirely paved."
+          },
+          "gravel": {
+            "type": "token",
+            "description": "Mostly gravel / unpaved roads."
+          },
+          "trail": {
+            "type": "token",
+            "description": "Singletrack, footpath or trail."
+          },
+          "mixed": {
+            "type": "token",
+            "description": "Mix of surfaces."
+          },
+          "easy": {
+            "type": "token",
+            "description": "Easy for the stated activity."
+          },
+          "moderate": {
+            "type": "token",
+            "description": "Moderate for the stated activity."
+          },
+          "hard": {
+            "type": "token",
+            "description": "Hard for the stated activity."
+          },
+          "extreme": {
+            "type": "token",
+            "description": "Extreme for the stated activity."
+          }
+        }
+      }
+    },
+    {
+      "value": {
+        "lexicon": 1,
+        "id": "app.attrails.v0.route",
+        "defs": {
+          "main": {
+            "type": "record",
+            "description": "A route for a human-powered activity (cycling, running, hiking, ...) shared by a user. The GPX track is stored as a blob; all geographic statistics are derived by the AppView from the blob and are not part of this record.",
+            "key": "tid",
+            "record": {
+              "type": "object",
+              "required": [
+                "name",
+                "activity",
+                "gpx",
+                "createdAt"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name of the route. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).",
+                  "maxGraphemes": 100,
+                  "maxLength": 1000
+                },
+                "description": {
+                  "type": "string",
+                  "maxGraphemes": 3000,
+                  "maxLength": 30000
+                },
+                "gpx": {
+                  "type": "blob",
+                  "description": "GPX 1.1 track. Upload with Content-Type application/gpx+xml. maxSize matches the default Bluesky PDS blob limit (976.5625KB); larger routes must be simplified or compressed to fit.",
+                  "accept": [
+                    "application/gpx+xml",
+                    "application/xml",
+                    "text/xml"
+                  ],
+                  "maxSize": 976563
+                },
+                "activity": {
+                  "type": "string",
+                  "description": "The activity this route is intended for. Open enum; unknown values are allowed.",
+                  "knownValues": [
+                    "app.attrails.v0.defs#cycling",
+                    "app.attrails.v0.defs#running",
+                    "app.attrails.v0.defs#hiking",
+                    "app.attrails.v0.defs#walking",
+                    "app.attrails.v0.defs#other"
+                  ]
+                },
+                "surface": {
+                  "type": "string",
+                  "description": "Predominant surface. Activity-neutral.",
+                  "knownValues": [
+                    "app.attrails.v0.defs#paved",
+                    "app.attrails.v0.defs#gravel",
+                    "app.attrails.v0.defs#trail",
+                    "app.attrails.v0.defs#mixed"
+                  ]
+                },
+                "difficulty": {
+                  "type": "string",
+                  "description": "Author's subjective difficulty for the stated activity.",
+                  "knownValues": [
+                    "app.attrails.v0.defs#easy",
+                    "app.attrails.v0.defs#moderate",
+                    "app.attrails.v0.defs#hard",
+                    "app.attrails.v0.defs#extreme"
+                  ]
+                },
+                "details": {
+                  "type": "union",
+                  "description": "Activity-specific attributes. Open union: new activity detail types can be added later without breaking existing clients.",
+                  "refs": [
+                    "app.attrails.v0.route#cyclingDetails"
+                  ]
+                },
+                "tags": {
+                  "type": "array",
+                  "maxLength": 20,
+                  "items": {
+                    "type": "string",
+                    "maxGraphemes": 64,
+                    "maxLength": 640
+                  }
+                },
+                "images": {
+                  "type": "array",
+                  "maxLength": 10,
+                  "items": {
+                    "type": "ref",
+                    "ref": "app.attrails.v0.defs#image"
+                  }
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "datetime"
+                }
+              }
+            }
+          },
+          "cyclingDetails": {
+            "type": "object",
+            "description": "Cycling-specific attributes of a route.",
+            "properties": {
+              "discipline": {
+                "type": "string",
+                "knownValues": [
+                  "app.attrails.v0.route#road",
+                  "app.attrails.v0.route#gravelBike",
+                  "app.attrails.v0.route#mtb",
+                  "app.attrails.v0.route#touring",
+                  "app.attrails.v0.route#commute"
+                ]
+              }
+            }
+          },
+          "road": {
+            "type": "token",
+            "description": "Road cycling."
+          },
+          "gravelBike": {
+            "type": "token",
+            "description": "Gravel / adventure cycling."
+          },
+          "mtb": {
+            "type": "token",
+            "description": "Mountain biking."
+          },
+          "touring": {
+            "type": "token",
+            "description": "Multi-day touring / bikepacking."
+          },
+          "commute": {
+            "type": "token",
+            "description": "Utility / commuting."
+          }
+        }
+      }
+    },
+    {
+      "value": {
+        "lexicon": 1,
+        "id": "app.attrails.v0.review",
+        "defs": {
+          "main": {
+            "type": "record",
+            "description": "A review of a route: a 1-5 rating, optional text, and optional photos. Activity-neutral. The AppView treats the most recent review per (author, subject) as canonical.",
+            "key": "tid",
+            "record": {
+              "type": "object",
+              "required": [
+                "subject",
+                "rating",
+                "createdAt"
+              ],
+              "properties": {
+                "subject": {
+                  "type": "ref",
+                  "description": "Strong reference to an app.attrails.v0.route record. The AppView rejects reviews whose subject is not a route (lexicon cannot constrain the URI collection in-schema).",
+                  "ref": "com.atproto.repo.strongRef"
+                },
+                "rating": {
+                  "type": "integer",
+                  "description": "Star rating from 1 (worst) to 5 (best).",
+                  "minimum": 1,
+                  "maximum": 5
+                },
+                "text": {
+                  "type": "string",
+                  "maxGraphemes": 3000,
+                  "maxLength": 30000
+                },
+                "images": {
+                  "type": "array",
+                  "maxLength": 10,
+                  "items": {
+                    "type": "ref",
+                    "ref": "app.attrails.v0.defs#image"
+                  }
+                },
+                "completedAt": {
+                  "type": "string",
+                  "description": "When the reviewer last did the route (rode, ran, hiked), if they want to say.",
+                  "format": "datetime"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "datetime"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "value": {
+        "lexicon": 1,
+        "id": "app.attrails.actor.profile",
+        "defs": {
+          "main": {
+            "type": "record",
+            "description": "A user's ATTrails profile. Unlike the throwaway app.attrails.v0.* records, this NSID is unversioned and durable; the existence of this record is the signal that an account is an ATTrails user.",
+            "key": "literal:self",
+            "record": {
+              "type": "object",
+              "required": [
+                "name",
+                "createdAt"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Display name. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).",
+                  "maxGraphemes": 100,
+                  "maxLength": 1000
+                },
+                "bio": {
+                  "type": "string",
+                  "description": "Short free-text biography.",
+                  "maxGraphemes": 3000,
+                  "maxLength": 30000
+                },
+                "profilePicture": {
+                  "type": "blob",
+                  "description": "Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.v0.defs#image (1MB).",
+                  "accept": [
+                    "image/*"
+                  ],
+                  "maxSize": 1000000
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "datetime"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

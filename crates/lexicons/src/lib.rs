@@ -5,6 +5,10 @@
 
 extern crate alloc;
 
+#[cfg(feature = "app_attrails")]
+pub mod app_attrails;
+
+
 #[cfg(feature = "app_bsky")]
 pub mod app_bsky;
 pub mod builder_types;

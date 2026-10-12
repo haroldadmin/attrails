@@ -1,0 +1,44 @@
+{
+  "lexicon": 1,
+  "id": "app.attrails.actor.profile",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A user's ATTrails profile. Unlike the throwaway app.attrails.v0.* records, this NSID is unversioned and durable; the existence of this record is the signal that an account is an ATTrails user.",
+      "key": "literal:self",
+      "record": {
+        "type": "object",
+        "required": [
+          "name",
+          "createdAt"
+        ],
+        "properties": {
+          "bio": {
+            "type": "string",
+            "description": "Short free-text biography.",
+            "maxLength": 30000,
+            "maxGraphemes": 3000
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).",
+            "maxLength": 1000,
+            "maxGraphemes": 100
+          },
+          "profilePicture": {
+            "type": "blob",
+            "description": "Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.v0.defs#image (1MB).",
+            "accept": [
+              "image/*"
+            ],
+            "maxSize": 1000000
+          }
+        }
+      }
+    }
+  }
+}

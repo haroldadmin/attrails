@@ -1,0 +1,103 @@
+{
+  "lexicon": 1,
+  "id": "app.attrails.v0.defs",
+  "defs": {
+    "aspectRatio": {
+      "type": "object",
+      "description": "Width:height ratio so clients can lay out before the image loads.",
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "cycling": {
+      "type": "token",
+      "description": "Cycling of any kind."
+    },
+    "easy": {
+      "type": "token",
+      "description": "Easy for the stated activity."
+    },
+    "extreme": {
+      "type": "token",
+      "description": "Extreme for the stated activity."
+    },
+    "gravel": {
+      "type": "token",
+      "description": "Mostly gravel / unpaved roads."
+    },
+    "hard": {
+      "type": "token",
+      "description": "Hard for the stated activity."
+    },
+    "hiking": {
+      "type": "token",
+      "description": "Hiking or trekking."
+    },
+    "image": {
+      "type": "object",
+      "description": "A photo attached to a route or review.",
+      "required": [
+        "image",
+        "alt"
+      ],
+      "properties": {
+        "alt": {
+          "type": "string",
+          "description": "Alt text for accessibility. May be empty.",
+          "maxLength": 20000,
+          "maxGraphemes": 2000
+        },
+        "aspectRatio": {
+          "type": "ref",
+          "ref": "#aspectRatio"
+        },
+        "image": {
+          "type": "blob",
+          "accept": [
+            "image/*"
+          ],
+          "maxSize": 1000000
+        }
+      }
+    },
+    "mixed": {
+      "type": "token",
+      "description": "Mix of surfaces."
+    },
+    "moderate": {
+      "type": "token",
+      "description": "Moderate for the stated activity."
+    },
+    "other": {
+      "type": "token",
+      "description": "Any other activity."
+    },
+    "paved": {
+      "type": "token",
+      "description": "Entirely paved."
+    },
+    "running": {
+      "type": "token",
+      "description": "Running or jogging."
+    },
+    "trail": {
+      "type": "token",
+      "description": "Singletrack, footpath or trail."
+    },
+    "walking": {
+      "type": "token",
+      "description": "Walking."
+    }
+  }
+}

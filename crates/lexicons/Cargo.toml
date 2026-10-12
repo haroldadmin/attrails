@@ -17,11 +17,12 @@ non_snake_case = "allow"
 unused_imports = "allow"
 
 [features]
-default = ["com_atproto"]
+default = ["com_atproto", "app_attrails"]
 streaming = ["jacquard-common/websocket"]
 
 # --- generated ---
 # Generated namespace features
+app_attrails = ["com_atproto"]
 app_bsky = ["com_atproto"]
 chat_bsky = ["app_bsky"]
 com_atproto = []
