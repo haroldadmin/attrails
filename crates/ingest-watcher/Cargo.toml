@@ -14,3 +14,5 @@ tokio = { version = "1.53.2", features = ["full"] }
 tokio-stream = "0.1.19"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+lexicons = { path = "../lexicons" }
+serde_json = "1.0.154"

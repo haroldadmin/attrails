@@ -1,0 +1,30 @@
+name: attrails
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.2-management
+    environment:
+      RABBITMQ_DEFAULT_USER: app
+      RABBITMQ_DEFAULT_PASS: app
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  tap:
+    image: ghcr.io/bluesky-social/indigo/tap:latest
+    environment:
+      TAP_SIGNAL_COLLECTION: app.attrails.actor.profile
+      TAP_COLLECTION_FILTERS: app.attrails.*
+      TAP_LOG_LEVEL: info
+    ports:
+      - "2480:2480"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:2480"]
+      interval: 10s
+      timeout: 5s
+      retries: 10

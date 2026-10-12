@@ -1,34 +1,66 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Display};
 
 use anyhow::Result;
 use lapin::{
-    Channel, Connection, ConnectionProperties, ExchangeKind, Queue,
-    options::{ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions},
+    Channel, Connection, ConnectionProperties, ExchangeKind,
+    options::{BasicPublishOptions, ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions},
+    protocol::basic::AMQPProperties,
     types::{AMQPValue, FieldTable, ShortString},
 };
 use tracing::info;
 
-const EXCHANGE_NAME: &str = "tap-events-dlx";
+pub const EXCHANGE: &str = "tap-events-dlx";
 
-const ROUTES_QUEUE_NAME: &str = "tap-events-routes";
-const ROUTES_DLQ_NAME: &str = "tap-events-routes.dlq";
-const ROUTES_DLQ_ROUTING_KEY: &str = "tap-events-routes";
+#[derive(Debug)]
+pub enum Queue {
+    Routes,
+    RoutesDlq,
+    Reviews,
+    ReviewsDlq,
+    Profiles,
+    ProfilesDlq,
+    Blobs,
+    BlobsDlq,
+}
 
-const REVIEWS_QUEUE_NAME: &str = "tap-events-reviews";
-const REVIEWS_DLQ_NAME: &str = "tap-events-reviews.dlq";
-const REVIEWS_DLQ_ROUTING_KEY: &str = "tap-events-reviews";
+impl Queue {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Queue::Routes => "tap-events-routes",
+            Queue::RoutesDlq => "tap-events-routes.dlq",
+            Queue::Reviews => "tap-events-reviews",
+            Queue::ReviewsDlq => "tap-events-reviews.dlq",
+            Queue::Profiles => "tap-events-profiles",
+            Queue::ProfilesDlq => "tap-events-profiles.dlq",
+            Queue::Blobs => "tap-events-blobs",
+            Queue::BlobsDlq => "tap-events-blobs.dlq",
+        }
+    }
 
-const PROFILES_QUEUE_NAME: &str = "tap-events-profiles";
-const PROFILES_DLQ_NAME: &str = "tap-events-profiles.dlq";
-const PROFILES_DLQ_ROUTING_KEY: &str = "tap-events-profiles";
+    pub async fn publish(&self, value: &serde_json::Value, channel: &Channel) -> Result<()> {
+        let payload = serde_json::to_vec(value)?;
+        channel
+            .basic_publish(
+                EXCHANGE.into(),
+                self.name().into(),
+                BasicPublishOptions::default(),
+                &payload,
+                AMQPProperties::default()
+                    .with_content_type("application/json".into())
+                    .with_delivery_mode(2),
+            )
+            .await?;
+        Ok(())
+    }
+}
 
-const BLOBS_QUEUE_NAME: &str = "tap-events-blobs";
-const BLOBS_DLQ_NAME: &str = "tap-events-blobs.dlq";
-const BLOBS_DLQ_ROUTING_KEY: &str = "tap-events-blobs";
+impl Display for Queue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name())
+    }
+}
 
 pub async fn amqp_connect(rabbitmq_uri: &str) -> Result<Channel> {
-    info!("connecting to rabbitmq");
-
     let conn = Connection::connect(
         rabbitmq_uri,
         ConnectionProperties::default().enable_auto_recover(),
@@ -36,99 +68,43 @@ pub async fn amqp_connect(rabbitmq_uri: &str) -> Result<Channel> {
     .await?;
     let channel = conn.create_channel().await?;
 
-    info!("rabbitmq connected");
-
     Ok(channel)
 }
 
-pub struct Topology {
-    pub routes_queue: Queue,
-    pub routes_dlq: Queue,
-    pub reviews_queue: Queue,
-    pub reviews_dlq: Queue,
-    pub profiles_queue: Queue,
-    pub profiles_dlq: Queue,
-    pub blobs_queue: Queue,
-    pub blobs_dlq: Queue,
-}
+pub async fn declare_topology(channel: &Channel) -> Result<()> {
+    let exchange_name: ShortString = EXCHANGE.into();
 
-impl Topology {
-    pub async fn declare(channel: &Channel) -> Result<Self> {
-        let exchange_name: ShortString = "tap-events-dlx".into();
-
-        channel
-            .exchange_declare(
-                exchange_name,
-                ExchangeKind::Direct,
-                ExchangeDeclareOptions {
-                    durable: true,
-                    ..Default::default()
-                },
-                FieldTable::default(),
-            )
-            .await?;
-
-        let (routes_queue, routes_dlq) = declare_queue(
-            ROUTES_QUEUE_NAME,
-            ROUTES_DLQ_NAME,
-            ROUTES_DLQ_ROUTING_KEY,
-            EXCHANGE_NAME,
-            channel,
+    channel
+        .exchange_declare(
+            exchange_name,
+            ExchangeKind::Direct,
+            ExchangeDeclareOptions {
+                durable: true,
+                ..Default::default()
+            },
+            FieldTable::default(),
         )
         .await?;
 
-        let (reviews_queue, reviews_dlq) = declare_queue(
-            REVIEWS_QUEUE_NAME,
-            REVIEWS_DLQ_NAME,
-            REVIEWS_DLQ_ROUTING_KEY,
-            EXCHANGE_NAME,
-            channel,
-        )
-        .await?;
+    declare_queue(&Queue::Routes, &Queue::RoutesDlq, EXCHANGE, channel).await?;
+    declare_queue(&Queue::Reviews, &Queue::ReviewsDlq, EXCHANGE, channel).await?;
+    declare_queue(&Queue::Blobs, &Queue::BlobsDlq, EXCHANGE, channel).await?;
+    declare_queue(&Queue::Profiles, &Queue::ProfilesDlq, EXCHANGE, channel).await?;
 
-        let (profiles_queue, profiles_dlq) = declare_queue(
-            PROFILES_QUEUE_NAME,
-            PROFILES_DLQ_NAME,
-            PROFILES_DLQ_ROUTING_KEY,
-            EXCHANGE_NAME,
-            channel,
-        )
-        .await?;
+    info!("RabbitMQ topology asserted");
 
-        let (blobs_queue, blobs_dlq) = declare_queue(
-            BLOBS_QUEUE_NAME,
-            BLOBS_DLQ_NAME,
-            BLOBS_DLQ_ROUTING_KEY,
-            EXCHANGE_NAME,
-            channel,
-        )
-        .await?;
-
-        info!("rabbitmq topology declared");
-
-        Ok(Self {
-            routes_queue,
-            routes_dlq,
-            reviews_queue,
-            reviews_dlq,
-            profiles_queue,
-            profiles_dlq,
-            blobs_queue,
-            blobs_dlq,
-        })
-    }
+    Ok(())
 }
 
 async fn declare_queue(
-    queue_name: &str,
-    dlq_name: &str,
-    dlq_routing_key: &str,
+    queue: &Queue,
+    dlq: &Queue,
     exchange_name: &str,
     channel: &Channel,
-) -> Result<(Queue, Queue)> {
-    let queue = channel
+) -> Result<()> {
+    channel
         .queue_declare(
-            queue_name.into(),
+            queue.name().into(),
             QueueDeclareOptions::durable(),
             BTreeMap::from([
                 (
@@ -142,16 +118,16 @@ async fn declare_queue(
                 ),
                 (
                     ShortString::from("x-dead-letter-routing-key"),
-                    AMQPValue::LongString(dlq_routing_key.into()),
+                    AMQPValue::LongString(queue.name().into()),
                 ),
             ])
             .into(),
         )
         .await?;
 
-    let dlq = channel
+    channel
         .queue_declare(
-            dlq_name.into(),
+            dlq.name().into(),
             QueueDeclareOptions::durable(),
             BTreeMap::from([(
                 ShortString::from("x-queue-type"),
@@ -163,13 +139,13 @@ async fn declare_queue(
 
     channel
         .queue_bind(
-            dlq_name.into(),
+            dlq.name().into(),
             exchange_name.into(),
-            dlq_routing_key.into(),
+            queue.name().into(),
             QueueBindOptions::default(),
             FieldTable::default(),
         )
         .await?;
 
-    Ok((queue, dlq))
+    Ok(())
 }
