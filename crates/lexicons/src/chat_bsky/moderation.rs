@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `chat.bsky.moderation` Lexicon namespace/module.
 pub mod get_actor_metadata;
 pub mod get_convo;
 pub mod get_convo_members;
@@ -22,12 +23,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Datetime;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -39,62 +42,61 @@ use crate::chat_bsky::group::JoinLinkView;
 use crate::chat_bsky::moderation;
 /// A view of a conversation for moderation purposes. Unlike chat.bsky.convo.defs#convoView, it does not include viewer-specific data (such as muted, unreadCount, status, lastMessage, lastReaction), since the requester is a moderator and not a member of the conversation. The member list is not included; use chat.bsky.moderation.getConvoMembers to list members.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ConvoView<'a> {
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ConvoView<S: BosStr = DefaultStr> {
+    pub id: S,
     ///Union field that has data specific to different kinds of convos.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub kind: Option<ConvoViewKind<'a>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub kind: Option<ConvoViewKind<S>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ConvoViewKind<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ConvoViewKind<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.moderation.defs#directConvo")]
-    DirectConvo(Box<moderation::DirectConvo<'a>>),
+    DirectConvo(Box<moderation::DirectConvo<S>>),
     #[serde(rename = "chat.bsky.moderation.defs#groupConvo")]
-    GroupConvo(Box<moderation::GroupConvo<'a>>),
+    GroupConvo(Box<moderation::GroupConvo<S>>),
 }
 
 /// Data specific to a direct conversation, for moderation purposes.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DirectConvo<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DirectConvo<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
 /// Data specific to a group conversation, for moderation purposes. Unlike chat.bsky.convo.defs#groupConvo, it does not include viewer-specific data (such as unreadJoinRequestCount), since the requester is a moderator and not a member of the conversation.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GroupConvo<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GroupConvo<S: BosStr = DefaultStr> {
     pub created_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub join_link: Option<JoinLinkView<'a>>,
+    pub join_link: Option<JoinLinkView<S>>,
     ///The total number of pending join requests for the group conversation. This information is only visible to the owner and to moderators. Capped at 21.
     pub join_request_count: i64,
     ///The lock status of the conversation.
-    #[serde(borrow)]
-    pub lock_status: ConvoLockStatus<'a>,
+    pub lock_status: ConvoLockStatus<S>,
     ///The total number of members in the group conversation.
     pub member_count: i64,
     ///The maximum number of members allowed in the group conversation.
     pub member_limit: i64,
     ///The display name of the group conversation.
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    pub name: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for ConvoView<'a> {
+impl<S: BosStr> LexiconSchema for ConvoView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.moderation.defs"
     }
@@ -109,7 +111,7 @@ impl<'a> LexiconSchema for ConvoView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DirectConvo<'a> {
+impl<S: BosStr> LexiconSchema for DirectConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.moderation.defs"
     }
@@ -124,7 +126,7 @@ impl<'a> LexiconSchema for DirectConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for GroupConvo<'a> {
+impl<S: BosStr> LexiconSchema for GroupConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.moderation.defs"
     }
@@ -329,280 +331,298 @@ pub mod group_convo_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type MemberLimit;
-        type Name;
         type CreatedAt;
         type JoinRequestCount;
-        type MemberCount;
         type LockStatus;
+        type MemberCount;
+        type MemberLimit;
+        type Name;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type MemberLimit = Unset;
-        type Name = Unset;
         type CreatedAt = Unset;
         type JoinRequestCount = Unset;
-        type MemberCount = Unset;
         type LockStatus = Unset;
-    }
-    ///State transition - sets the `member_limit` field to Set
-    pub struct SetMemberLimit<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMemberLimit<S> {}
-    impl<S: State> State for SetMemberLimit<S> {
-        type MemberLimit = Set<members::member_limit>;
-        type Name = S::Name;
-        type CreatedAt = S::CreatedAt;
-        type JoinRequestCount = S::JoinRequestCount;
-        type MemberCount = S::MemberCount;
-        type LockStatus = S::LockStatus;
-    }
-    ///State transition - sets the `name` field to Set
-    pub struct SetName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetName<S> {}
-    impl<S: State> State for SetName<S> {
-        type MemberLimit = S::MemberLimit;
-        type Name = Set<members::name>;
-        type CreatedAt = S::CreatedAt;
-        type JoinRequestCount = S::JoinRequestCount;
-        type MemberCount = S::MemberCount;
-        type LockStatus = S::LockStatus;
+        type MemberCount = Unset;
+        type MemberLimit = Unset;
+        type Name = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type MemberLimit = S::MemberLimit;
-        type Name = S::Name;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
-        type JoinRequestCount = S::JoinRequestCount;
-        type MemberCount = S::MemberCount;
-        type LockStatus = S::LockStatus;
+        type JoinRequestCount = St::JoinRequestCount;
+        type LockStatus = St::LockStatus;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
     }
     ///State transition - sets the `join_request_count` field to Set
-    pub struct SetJoinRequestCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetJoinRequestCount<S> {}
-    impl<S: State> State for SetJoinRequestCount<S> {
-        type MemberLimit = S::MemberLimit;
-        type Name = S::Name;
-        type CreatedAt = S::CreatedAt;
+    pub struct SetJoinRequestCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetJoinRequestCount<St> {}
+    impl<St: State> State for SetJoinRequestCount<St> {
+        type CreatedAt = St::CreatedAt;
         type JoinRequestCount = Set<members::join_request_count>;
-        type MemberCount = S::MemberCount;
-        type LockStatus = S::LockStatus;
-    }
-    ///State transition - sets the `member_count` field to Set
-    pub struct SetMemberCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMemberCount<S> {}
-    impl<S: State> State for SetMemberCount<S> {
-        type MemberLimit = S::MemberLimit;
-        type Name = S::Name;
-        type CreatedAt = S::CreatedAt;
-        type JoinRequestCount = S::JoinRequestCount;
-        type MemberCount = Set<members::member_count>;
-        type LockStatus = S::LockStatus;
+        type LockStatus = St::LockStatus;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
     }
     ///State transition - sets the `lock_status` field to Set
-    pub struct SetLockStatus<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLockStatus<S> {}
-    impl<S: State> State for SetLockStatus<S> {
-        type MemberLimit = S::MemberLimit;
-        type Name = S::Name;
-        type CreatedAt = S::CreatedAt;
-        type JoinRequestCount = S::JoinRequestCount;
-        type MemberCount = S::MemberCount;
+    pub struct SetLockStatus<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLockStatus<St> {}
+    impl<St: State> State for SetLockStatus<St> {
+        type CreatedAt = St::CreatedAt;
+        type JoinRequestCount = St::JoinRequestCount;
         type LockStatus = Set<members::lock_status>;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+    }
+    ///State transition - sets the `member_count` field to Set
+    pub struct SetMemberCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMemberCount<St> {}
+    impl<St: State> State for SetMemberCount<St> {
+        type CreatedAt = St::CreatedAt;
+        type JoinRequestCount = St::JoinRequestCount;
+        type LockStatus = St::LockStatus;
+        type MemberCount = Set<members::member_count>;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+    }
+    ///State transition - sets the `member_limit` field to Set
+    pub struct SetMemberLimit<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMemberLimit<St> {}
+    impl<St: State> State for SetMemberLimit<St> {
+        type CreatedAt = St::CreatedAt;
+        type JoinRequestCount = St::JoinRequestCount;
+        type LockStatus = St::LockStatus;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = Set<members::member_limit>;
+        type Name = St::Name;
+    }
+    ///State transition - sets the `name` field to Set
+    pub struct SetName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetName<St> {}
+    impl<St: State> State for SetName<St> {
+        type CreatedAt = St::CreatedAt;
+        type JoinRequestCount = St::JoinRequestCount;
+        type LockStatus = St::LockStatus;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = Set<members::name>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `member_limit` field
-        pub struct member_limit(());
-        ///Marker type for the `name` field
-        pub struct name(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
         ///Marker type for the `join_request_count` field
         pub struct join_request_count(());
-        ///Marker type for the `member_count` field
-        pub struct member_count(());
         ///Marker type for the `lock_status` field
         pub struct lock_status(());
+        ///Marker type for the `member_count` field
+        pub struct member_count(());
+        ///Marker type for the `member_limit` field
+        pub struct member_limit(());
+        ///Marker type for the `name` field
+        pub struct name(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GroupConvoBuilder<'a, S: group_convo_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct GroupConvoBuilder<St: group_convo_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<Datetime>,
-        Option<JoinLinkView<'a>>,
+        Option<JoinLinkView<S>>,
         Option<i64>,
-        Option<ConvoLockStatus<'a>>,
+        Option<ConvoLockStatus<S>>,
         Option<i64>,
         Option<i64>,
-        Option<CowStr<'a>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GroupConvo<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GroupConvoBuilder<'a, group_convo_state::Empty> {
+impl GroupConvo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GroupConvoBuilder<group_convo_state::Empty, DefaultStr> {
         GroupConvoBuilder::new()
     }
 }
 
-impl<'a> GroupConvoBuilder<'a, group_convo_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GroupConvo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GroupConvoBuilder<group_convo_state::Empty, S> {
+        GroupConvoBuilder::builder()
+    }
+}
+
+impl GroupConvoBuilder<group_convo_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<S: BosStr> GroupConvoBuilder<group_convo_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GroupConvoBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::CreatedAt: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::CreatedAt: group_convo_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetCreatedAt<S>> {
+    ) -> GroupConvoBuilder<group_convo_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: group_convo_state::State> GroupConvoBuilder<'a, S> {
+impl<St: group_convo_state::State, S: BosStr> GroupConvoBuilder<St, S> {
     /// Set the `joinLink` field (optional)
-    pub fn join_link(mut self, value: impl Into<Option<JoinLinkView<'a>>>) -> Self {
+    pub fn join_link(mut self, value: impl Into<Option<JoinLinkView<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `joinLink` field to an Option value (optional)
-    pub fn maybe_join_link(mut self, value: Option<JoinLinkView<'a>>) -> Self {
+    pub fn maybe_join_link(mut self, value: Option<JoinLinkView<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::JoinRequestCount: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::JoinRequestCount: group_convo_state::IsUnset,
 {
     /// Set the `joinRequestCount` field (required)
     pub fn join_request_count(
         mut self,
         value: impl Into<i64>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetJoinRequestCount<S>> {
+    ) -> GroupConvoBuilder<group_convo_state::SetJoinRequestCount<St>, S> {
         self._fields.2 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::LockStatus: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::LockStatus: group_convo_state::IsUnset,
 {
     /// Set the `lockStatus` field (required)
     pub fn lock_status(
         mut self,
-        value: impl Into<ConvoLockStatus<'a>>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetLockStatus<S>> {
+        value: impl Into<ConvoLockStatus<S>>,
+    ) -> GroupConvoBuilder<group_convo_state::SetLockStatus<St>, S> {
         self._fields.3 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::MemberCount: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::MemberCount: group_convo_state::IsUnset,
 {
     /// Set the `memberCount` field (required)
     pub fn member_count(
         mut self,
         value: impl Into<i64>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetMemberCount<S>> {
+    ) -> GroupConvoBuilder<group_convo_state::SetMemberCount<St>, S> {
         self._fields.4 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::MemberLimit: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::MemberLimit: group_convo_state::IsUnset,
 {
     /// Set the `memberLimit` field (required)
     pub fn member_limit(
         mut self,
         value: impl Into<i64>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetMemberLimit<S>> {
+    ) -> GroupConvoBuilder<group_convo_state::SetMemberLimit<St>, S> {
         self._fields.5 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::Name: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::Name: group_convo_state::IsUnset,
 {
     /// Set the `name` field (required)
     pub fn name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetName<S>> {
+        value: impl Into<S>,
+    ) -> GroupConvoBuilder<group_convo_state::SetName<St>, S> {
         self._fields.6 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::MemberLimit: group_convo_state::IsSet,
-    S::Name: group_convo_state::IsSet,
-    S::CreatedAt: group_convo_state::IsSet,
-    S::JoinRequestCount: group_convo_state::IsSet,
-    S::MemberCount: group_convo_state::IsSet,
-    S::LockStatus: group_convo_state::IsSet,
+    St: group_convo_state::State,
+    St::CreatedAt: group_convo_state::IsSet,
+    St::JoinRequestCount: group_convo_state::IsSet,
+    St::LockStatus: group_convo_state::IsSet,
+    St::MemberCount: group_convo_state::IsSet,
+    St::MemberLimit: group_convo_state::IsSet,
+    St::Name: group_convo_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GroupConvo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GroupConvo<S> {
         GroupConvo {
             created_at: self._fields.0.unwrap(),
             join_link: self._fields.1,
@@ -614,14 +634,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> GroupConvo<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> GroupConvo<S> {
         GroupConvo {
             created_at: self._fields.0.unwrap(),
             join_link: self._fields.1,

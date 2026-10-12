@@ -10,37 +10,35 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{AtUri, Nsid, Cid};
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::com_atproto::lexicon::schema::Schema;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ResolveLexicon<'a> {
-    #[serde(borrow)]
-    pub nsid: Nsid<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ResolveLexicon<S: BosStr = DefaultStr> {
+    pub nsid: Nsid<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ResolveLexiconOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ResolveLexiconOutput<S: BosStr = DefaultStr> {
     ///The CID of the lexicon schema record.
-    #[serde(borrow)]
-    pub cid: Cid<'a>,
+    pub cid: Cid<S>,
     ///The resolved lexicon schema record.
-    #[serde(borrow)]
-    pub schema: Schema<'a>,
+    pub schema: Schema<S>,
     ///The AT-URI of the lexicon schema record.
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -49,19 +47,20 @@ pub struct ResolveLexiconOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum ResolveLexiconError<'a> {
+pub enum ResolveLexiconError {
     /// No lexicon was resolved for the NSID.
     #[serde(rename = "LexiconNotFound")]
-    LexiconNotFound(Option<CowStr<'a>>),
+    LexiconNotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for ResolveLexiconError<'_> {
+impl core::fmt::Display for ResolveLexiconError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::LexiconNotFound(msg) => {
@@ -71,32 +70,42 @@ impl core::fmt::Display for ResolveLexiconError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for com.atproto.lexicon.resolveLexicon
+/** Response marker for the `com.atproto.lexicon.resolveLexicon` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ResolveLexiconOutput<S>` for this endpoint.*/
 pub struct ResolveLexiconResponse;
 impl jacquard_common::xrpc::XrpcResp for ResolveLexiconResponse {
     const NSID: &'static str = "com.atproto.lexicon.resolveLexicon";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ResolveLexiconOutput<'de>;
-    type Err<'de> = ResolveLexiconError<'de>;
+    type Output<S: BosStr> = ResolveLexiconOutput<S>;
+    type Err = ResolveLexiconError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for ResolveLexicon<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for ResolveLexicon<S> {
     const NSID: &'static str = "com.atproto.lexicon.resolveLexicon";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = ResolveLexiconResponse;
 }
 
-/// Endpoint type for com.atproto.lexicon.resolveLexicon
+/** Endpoint marker for the `com.atproto.lexicon.resolveLexicon` query.
+
+Path: `/xrpc/com.atproto.lexicon.resolveLexicon`. The request payload type is `ResolveLexicon<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct ResolveLexiconRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ResolveLexiconRequest {
     const PATH: &'static str = "/xrpc/com.atproto.lexicon.resolveLexicon";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = ResolveLexicon<'de>;
+    type Request<S: BosStr> = ResolveLexicon<S>;
     type Response = ResolveLexiconResponse;
 }
 
@@ -119,9 +128,9 @@ pub mod resolve_lexicon_state {
         type Nsid = Unset;
     }
     ///State transition - sets the `nsid` field to Set
-    pub struct SetNsid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetNsid<S> {}
-    impl<S: State> State for SetNsid<S> {
+    pub struct SetNsid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetNsid<St> {}
+    impl<St: State> State for SetNsid<St> {
         type Nsid = Set<members::nsid>;
     }
     /// Marker types for field names
@@ -132,57 +141,78 @@ pub mod resolve_lexicon_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ResolveLexiconBuilder<'a, S: resolve_lexicon_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Nsid<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ResolveLexiconBuilder<
+    St: resolve_lexicon_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Nsid<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ResolveLexicon<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ResolveLexiconBuilder<'a, resolve_lexicon_state::Empty> {
+impl ResolveLexicon<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ResolveLexiconBuilder<resolve_lexicon_state::Empty, DefaultStr> {
         ResolveLexiconBuilder::new()
     }
 }
 
-impl<'a> ResolveLexiconBuilder<'a, resolve_lexicon_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ResolveLexicon<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ResolveLexiconBuilder<resolve_lexicon_state::Empty, S> {
+        ResolveLexiconBuilder::builder()
+    }
+}
+
+impl ResolveLexiconBuilder<resolve_lexicon_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ResolveLexiconBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ResolveLexiconBuilder<'a, S>
+impl<S: BosStr> ResolveLexiconBuilder<resolve_lexicon_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ResolveLexiconBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ResolveLexiconBuilder<St, S>
 where
-    S: resolve_lexicon_state::State,
-    S::Nsid: resolve_lexicon_state::IsUnset,
+    St: resolve_lexicon_state::State,
+    St::Nsid: resolve_lexicon_state::IsUnset,
 {
     /// Set the `nsid` field (required)
     pub fn nsid(
         mut self,
-        value: impl Into<Nsid<'a>>,
-    ) -> ResolveLexiconBuilder<'a, resolve_lexicon_state::SetNsid<S>> {
+        value: impl Into<Nsid<S>>,
+    ) -> ResolveLexiconBuilder<resolve_lexicon_state::SetNsid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ResolveLexiconBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ResolveLexiconBuilder<'a, S>
+impl<St, S: BosStr> ResolveLexiconBuilder<St, S>
 where
-    S: resolve_lexicon_state::State,
-    S::Nsid: resolve_lexicon_state::IsSet,
+    St: resolve_lexicon_state::State,
+    St::Nsid: resolve_lexicon_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ResolveLexicon<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ResolveLexicon<S> {
         ResolveLexicon {
             nsid: self._fields.0.unwrap(),
         }

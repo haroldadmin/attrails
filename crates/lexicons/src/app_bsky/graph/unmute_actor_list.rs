@@ -10,28 +10,33 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::AtUri;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UnmuteActorList<'a> {
-    #[serde(borrow)]
-    pub list: AtUri<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UnmuteActorList<S: BosStr = DefaultStr> {
+    pub list: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.graph.unmuteActorList
+/** Response marker for the `app.bsky.graph.unmuteActorList` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `()` for this endpoint.*/
 pub struct UnmuteActorListResponse;
 impl jacquard_common::xrpc::XrpcResp for UnmuteActorListResponse {
     const NSID: &'static str = "app.bsky.graph.unmuteActorList";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ();
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ();
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for UnmuteActorList<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for UnmuteActorList<S> {
     const NSID: &'static str = "app.bsky.graph.unmuteActorList";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -39,14 +44,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for UnmuteActorList<'a> {
     type Response = UnmuteActorListResponse;
 }
 
-/// Endpoint type for app.bsky.graph.unmuteActorList
+/** Endpoint marker for the `app.bsky.graph.unmuteActorList` procedure.
+
+Path: `/xrpc/app.bsky.graph.unmuteActorList`. The request payload type is `UnmuteActorList<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct UnmuteActorListRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for UnmuteActorListRequest {
     const PATH: &'static str = "/xrpc/app.bsky.graph.unmuteActorList";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = UnmuteActorList<'de>;
+    type Request<S: BosStr> = UnmuteActorList<S>;
     type Response = UnmuteActorListResponse;
 }
 
@@ -69,9 +76,9 @@ pub mod unmute_actor_list_state {
         type List = Unset;
     }
     ///State transition - sets the `list` field to Set
-    pub struct SetList<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetList<S> {}
-    impl<S: State> State for SetList<S> {
+    pub struct SetList<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetList<St> {}
+    impl<St: State> State for SetList<St> {
         type List = Set<members::list>;
     }
     /// Marker types for field names
@@ -82,70 +89,88 @@ pub mod unmute_actor_list_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct UnmuteActorListBuilder<'a, S: unmute_actor_list_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<AtUri<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct UnmuteActorListBuilder<
+    St: unmute_actor_list_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtUri<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> UnmuteActorList<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> UnmuteActorListBuilder<'a, unmute_actor_list_state::Empty> {
+impl UnmuteActorList<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> UnmuteActorListBuilder<unmute_actor_list_state::Empty, DefaultStr> {
         UnmuteActorListBuilder::new()
     }
 }
 
-impl<'a> UnmuteActorListBuilder<'a, unmute_actor_list_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> UnmuteActorList<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> UnmuteActorListBuilder<unmute_actor_list_state::Empty, S> {
+        UnmuteActorListBuilder::builder()
+    }
+}
+
+impl UnmuteActorListBuilder<unmute_actor_list_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         UnmuteActorListBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UnmuteActorListBuilder<'a, S>
+impl<S: BosStr> UnmuteActorListBuilder<unmute_actor_list_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        UnmuteActorListBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> UnmuteActorListBuilder<St, S>
 where
-    S: unmute_actor_list_state::State,
-    S::List: unmute_actor_list_state::IsUnset,
+    St: unmute_actor_list_state::State,
+    St::List: unmute_actor_list_state::IsUnset,
 {
     /// Set the `list` field (required)
     pub fn list(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> UnmuteActorListBuilder<'a, unmute_actor_list_state::SetList<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> UnmuteActorListBuilder<unmute_actor_list_state::SetList<St>, S> {
         self._fields.0 = Option::Some(value.into());
         UnmuteActorListBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UnmuteActorListBuilder<'a, S>
+impl<St, S: BosStr> UnmuteActorListBuilder<St, S>
 where
-    S: unmute_actor_list_state::State,
-    S::List: unmute_actor_list_state::IsSet,
+    St: unmute_actor_list_state::State,
+    St::List: unmute_actor_list_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> UnmuteActorList<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> UnmuteActorList<S> {
         UnmuteActorList {
             list: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> UnmuteActorList<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> UnmuteActorList<S> {
         UnmuteActorList {
             list: self._fields.0.unwrap(),
             extra_data: Some(extra_data),

@@ -10,56 +10,60 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::actor::ProfileView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListActivitySubscriptions<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListActivitySubscriptions<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListActivitySubscriptionsOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListActivitySubscriptionsOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub subscriptions: Vec<ProfileView<'a>>,
+    pub cursor: Option<S>,
+    pub subscriptions: Vec<ProfileView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.notification.listActivitySubscriptions
+/** Response marker for the `app.bsky.notification.listActivitySubscriptions` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ListActivitySubscriptionsOutput<S>` for this endpoint.*/
 pub struct ListActivitySubscriptionsResponse;
 impl jacquard_common::xrpc::XrpcResp for ListActivitySubscriptionsResponse {
     const NSID: &'static str = "app.bsky.notification.listActivitySubscriptions";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ListActivitySubscriptionsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ListActivitySubscriptionsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for ListActivitySubscriptions<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for ListActivitySubscriptions<S> {
     const NSID: &'static str = "app.bsky.notification.listActivitySubscriptions";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = ListActivitySubscriptionsResponse;
 }
 
-/// Endpoint type for app.bsky.notification.listActivitySubscriptions
+/** Endpoint marker for the `app.bsky.notification.listActivitySubscriptions` query.
+
+Path: `/xrpc/app.bsky.notification.listActivitySubscriptions`. The request payload type is `ListActivitySubscriptions<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct ListActivitySubscriptionsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ListActivitySubscriptionsRequest {
     const PATH: &'static str = "/xrpc/app.bsky.notification.listActivitySubscriptions";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = ListActivitySubscriptions<'de>;
+    type Request<S: BosStr> = ListActivitySubscriptions<S>;
     type Response = ListActivitySubscriptionsResponse;
 }
 
@@ -86,57 +90,83 @@ pub mod list_activity_subscriptions_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct ListActivitySubscriptionsBuilder<
-    'a,
-    S: list_activity_subscriptions_state::State,
+    St: list_activity_subscriptions_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ListActivitySubscriptions<'a> {
-    /// Create a new builder for this type
+impl ListActivitySubscriptions<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> ListActivitySubscriptionsBuilder<
-        'a,
         list_activity_subscriptions_state::Empty,
+        DefaultStr,
     > {
         ListActivitySubscriptionsBuilder::new()
     }
 }
 
-impl<'a> ListActivitySubscriptionsBuilder<'a, list_activity_subscriptions_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ListActivitySubscriptions<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ListActivitySubscriptionsBuilder<
+        list_activity_subscriptions_state::Empty,
+        S,
+    > {
+        ListActivitySubscriptionsBuilder::builder()
+    }
+}
+
+impl ListActivitySubscriptionsBuilder<
+    list_activity_subscriptions_state::Empty,
+    DefaultStr,
+> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ListActivitySubscriptionsBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
 impl<
-    'a,
-    S: list_activity_subscriptions_state::State,
-> ListActivitySubscriptionsBuilder<'a, S> {
+    S: BosStr,
+> ListActivitySubscriptionsBuilder<list_activity_subscriptions_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ListActivitySubscriptionsBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: list_activity_subscriptions_state::State,
+    S: BosStr,
+> ListActivitySubscriptionsBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
 impl<
-    'a,
-    S: list_activity_subscriptions_state::State,
-> ListActivitySubscriptionsBuilder<'a, S> {
+    St: list_activity_subscriptions_state::State,
+    S: BosStr,
+> ListActivitySubscriptionsBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -149,12 +179,12 @@ impl<
     }
 }
 
-impl<'a, S> ListActivitySubscriptionsBuilder<'a, S>
+impl<St, S: BosStr> ListActivitySubscriptionsBuilder<St, S>
 where
-    S: list_activity_subscriptions_state::State,
+    St: list_activity_subscriptions_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> ListActivitySubscriptions<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ListActivitySubscriptions<S> {
         ListActivitySubscriptions {
             cursor: self._fields.0,
             limit: self._fields.1,

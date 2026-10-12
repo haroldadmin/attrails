@@ -10,28 +10,30 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateAllRead<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UpdateAllRead<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub status: Option<UpdateAllReadStatus<'a>>,
+    pub status: Option<UpdateAllReadStatus<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum UpdateAllReadStatus<'a> {
+pub enum UpdateAllReadStatus<S: BosStr = DefaultStr> {
     Request,
     Accepted,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> UpdateAllReadStatus<'a> {
+impl<S: BosStr> UpdateAllReadStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Request => "request",
@@ -39,70 +41,59 @@ impl<'a> UpdateAllReadStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for UpdateAllReadStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "request" => Self::Request,
             "accepted" => Self::Accepted,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for UpdateAllReadStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "request" => Self::Request,
-            "accepted" => Self::Accepted,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for UpdateAllReadStatus<'a> {
+impl<S: BosStr> core::fmt::Display for UpdateAllReadStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for UpdateAllReadStatus<'a> {
+impl<S: BosStr> AsRef<str> for UpdateAllReadStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for UpdateAllReadStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for UpdateAllReadStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for UpdateAllReadStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for UpdateAllReadStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for UpdateAllReadStatus<'a> {
+impl<S: BosStr + Default> Default for UpdateAllReadStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for UpdateAllReadStatus<'_> {
-    type Output = UpdateAllReadStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for UpdateAllReadStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = UpdateAllReadStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             UpdateAllReadStatus::Request => UpdateAllReadStatus::Request,
@@ -113,24 +104,27 @@ impl jacquard_common::IntoStatic for UpdateAllReadStatus<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateAllReadOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UpdateAllReadOutput<S: BosStr = DefaultStr> {
     ///The count of updated convos.
     pub updated_count: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for chat.bsky.convo.updateAllRead
+/** Response marker for the `chat.bsky.convo.updateAllRead` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `UpdateAllReadOutput<S>` for this endpoint.*/
 pub struct UpdateAllReadResponse;
 impl jacquard_common::xrpc::XrpcResp for UpdateAllReadResponse {
     const NSID: &'static str = "chat.bsky.convo.updateAllRead";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = UpdateAllReadOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = UpdateAllReadOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for UpdateAllRead<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for UpdateAllRead<S> {
     const NSID: &'static str = "chat.bsky.convo.updateAllRead";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -138,13 +132,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for UpdateAllRead<'a> {
     type Response = UpdateAllReadResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.updateAllRead
+/** Endpoint marker for the `chat.bsky.convo.updateAllRead` procedure.
+
+Path: `/xrpc/chat.bsky.convo.updateAllRead`. The request payload type is `UpdateAllRead<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct UpdateAllReadRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for UpdateAllReadRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.updateAllRead";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = UpdateAllRead<'de>;
+    type Request<S: BosStr> = UpdateAllRead<S>;
     type Response = UpdateAllReadResponse;
 }

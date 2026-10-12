@@ -10,8 +10,10 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::contact::SyncStatus;
 
@@ -19,18 +21,17 @@ use crate::app_bsky::contact::SyncStatus;
 #[serde(rename_all = "camelCase")]
 pub struct GetSyncStatus;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct GetSyncStatusOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetSyncStatusOutput<S: BosStr = DefaultStr> {
     ///If present, indicates the user has imported their contacts. If not present, indicates the user never used the feature or called `app.bsky.contact.removeData` and didn't import again since.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub sync_status: Option<SyncStatus<'a>>,
+    pub sync_status: Option<SyncStatus<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -39,20 +40,21 @@ pub struct GetSyncStatusOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetSyncStatusError<'a> {
+pub enum GetSyncStatusError {
     #[serde(rename = "InvalidDid")]
-    InvalidDid(Option<CowStr<'a>>),
+    InvalidDid(Option<SmolStr>),
     #[serde(rename = "InternalError")]
-    InternalError(Option<CowStr<'a>>),
+    InternalError(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetSyncStatusError<'_> {
+impl core::fmt::Display for GetSyncStatusError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidDid(msg) => {
@@ -69,18 +71,26 @@ impl core::fmt::Display for GetSyncStatusError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.contact.getSyncStatus
+/** Response marker for the `app.bsky.contact.getSyncStatus` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetSyncStatusOutput<S>` for this endpoint.*/
 pub struct GetSyncStatusResponse;
 impl jacquard_common::xrpc::XrpcResp for GetSyncStatusResponse {
     const NSID: &'static str = "app.bsky.contact.getSyncStatus";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetSyncStatusOutput<'de>;
-    type Err<'de> = GetSyncStatusError<'de>;
+    type Output<S: BosStr> = GetSyncStatusOutput<S>;
+    type Err = GetSyncStatusError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for GetSyncStatus {
@@ -89,11 +99,13 @@ impl jacquard_common::xrpc::XrpcRequest for GetSyncStatus {
     type Response = GetSyncStatusResponse;
 }
 
-/// Endpoint type for app.bsky.contact.getSyncStatus
+/** Endpoint marker for the `app.bsky.contact.getSyncStatus` query.
+
+Path: `/xrpc/app.bsky.contact.getSyncStatus`. The request payload type is `GetSyncStatus`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetSyncStatusRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetSyncStatusRequest {
     const PATH: &'static str = "/xrpc/app.bsky.contact.getSyncStatus";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetSyncStatus;
+    type Request<S: BosStr> = GetSyncStatus;
     type Response = GetSyncStatusResponse;
 }

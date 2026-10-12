@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `tools.ozone.team` Lexicon namespace/module.
 pub mod add_member;
 pub mod delete_member;
 pub mod list_members;
@@ -16,12 +17,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Datetime};
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -30,39 +33,36 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::actor::ProfileViewDetailed;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Member<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Member<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<Datetime>,
-    #[serde(borrow)]
-    pub did: Did<'a>,
+    pub did: Did<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub last_updated_by: Option<CowStr<'a>>,
+    pub last_updated_by: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub profile: Option<ProfileViewDetailed<'a>>,
-    #[serde(borrow)]
-    pub role: MemberRole<'a>,
+    pub profile: Option<ProfileViewDetailed<S>>,
+    pub role: MemberRole<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<Datetime>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum MemberRole<'a> {
+pub enum MemberRole<S: BosStr = DefaultStr> {
     RoleAdmin,
     RoleModerator,
     RoleTriage,
     RoleVerifier,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> MemberRole<'a> {
+impl<S: BosStr> MemberRole<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::RoleAdmin => "tools.ozone.team.defs#roleAdmin",
@@ -72,74 +72,61 @@ impl<'a> MemberRole<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for MemberRole<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "tools.ozone.team.defs#roleAdmin" => Self::RoleAdmin,
             "tools.ozone.team.defs#roleModerator" => Self::RoleModerator,
             "tools.ozone.team.defs#roleTriage" => Self::RoleTriage,
             "tools.ozone.team.defs#roleVerifier" => Self::RoleVerifier,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for MemberRole<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "tools.ozone.team.defs#roleAdmin" => Self::RoleAdmin,
-            "tools.ozone.team.defs#roleModerator" => Self::RoleModerator,
-            "tools.ozone.team.defs#roleTriage" => Self::RoleTriage,
-            "tools.ozone.team.defs#roleVerifier" => Self::RoleVerifier,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for MemberRole<'a> {
+impl<S: BosStr> core::fmt::Display for MemberRole<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for MemberRole<'a> {
+impl<S: BosStr> AsRef<str> for MemberRole<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for MemberRole<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for MemberRole<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for MemberRole<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for MemberRole<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for MemberRole<'a> {
+impl<S: BosStr + Default> Default for MemberRole<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for MemberRole<'_> {
-    type Output = MemberRole<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for MemberRole<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = MemberRole<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             MemberRole::RoleAdmin => MemberRole::RoleAdmin,
@@ -191,7 +178,7 @@ impl core::fmt::Display for RoleVerifier {
     }
 }
 
-impl<'a> LexiconSchema for Member<'a> {
+impl<S: BosStr> LexiconSchema for Member<S> {
     fn nsid() -> &'static str {
         "tools.ozone.team.defs"
     }
@@ -227,17 +214,17 @@ pub mod member_state {
         type Role = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
-        type Role = S::Role;
+        type Role = St::Role;
     }
     ///State transition - sets the `role` field to Set
-    pub struct SetRole<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRole<S> {}
-    impl<S: State> State for SetRole<S> {
-        type Did = S::Did;
+    pub struct SetRole<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRole<St> {}
+    impl<St: State> State for SetRole<St> {
+        type Did = St::Did;
         type Role = Set<members::role>;
     }
     /// Marker types for field names
@@ -250,40 +237,58 @@ pub mod member_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct MemberBuilder<'a, S: member_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct MemberBuilder<St: member_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<Datetime>,
-        Option<Did<'a>>,
+        Option<Did<S>>,
         Option<bool>,
-        Option<CowStr<'a>>,
-        Option<ProfileViewDetailed<'a>>,
-        Option<MemberRole<'a>>,
+        Option<S>,
+        Option<ProfileViewDetailed<S>>,
+        Option<MemberRole<S>>,
         Option<Datetime>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Member<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> MemberBuilder<'a, member_state::Empty> {
+impl Member<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> MemberBuilder<member_state::Empty, DefaultStr> {
         MemberBuilder::new()
     }
 }
 
-impl<'a> MemberBuilder<'a, member_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Member<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> MemberBuilder<member_state::Empty, S> {
+        MemberBuilder::builder()
+    }
+}
+
+impl MemberBuilder<member_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         MemberBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: member_state::State> MemberBuilder<'a, S> {
+impl<S: BosStr> MemberBuilder<member_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        MemberBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: member_state::State, S: BosStr> MemberBuilder<St, S> {
     /// Set the `createdAt` field (optional)
     pub fn created_at(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.0 = value.into();
@@ -296,26 +301,26 @@ impl<'a, S: member_state::State> MemberBuilder<'a, S> {
     }
 }
 
-impl<'a, S> MemberBuilder<'a, S>
+impl<St, S: BosStr> MemberBuilder<St, S>
 where
-    S: member_state::State,
-    S::Did: member_state::IsUnset,
+    St: member_state::State,
+    St::Did: member_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> MemberBuilder<'a, member_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> MemberBuilder<member_state::SetDid<St>, S> {
         self._fields.1 = Option::Some(value.into());
         MemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: member_state::State> MemberBuilder<'a, S> {
+impl<St: member_state::State, S: BosStr> MemberBuilder<St, S> {
     /// Set the `disabled` field (optional)
     pub fn disabled(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.2 = value.into();
@@ -328,52 +333,52 @@ impl<'a, S: member_state::State> MemberBuilder<'a, S> {
     }
 }
 
-impl<'a, S: member_state::State> MemberBuilder<'a, S> {
+impl<St: member_state::State, S: BosStr> MemberBuilder<St, S> {
     /// Set the `lastUpdatedBy` field (optional)
-    pub fn last_updated_by(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn last_updated_by(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `lastUpdatedBy` field to an Option value (optional)
-    pub fn maybe_last_updated_by(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_last_updated_by(mut self, value: Option<S>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: member_state::State> MemberBuilder<'a, S> {
+impl<St: member_state::State, S: BosStr> MemberBuilder<St, S> {
     /// Set the `profile` field (optional)
-    pub fn profile(mut self, value: impl Into<Option<ProfileViewDetailed<'a>>>) -> Self {
+    pub fn profile(mut self, value: impl Into<Option<ProfileViewDetailed<S>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `profile` field to an Option value (optional)
-    pub fn maybe_profile(mut self, value: Option<ProfileViewDetailed<'a>>) -> Self {
+    pub fn maybe_profile(mut self, value: Option<ProfileViewDetailed<S>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> MemberBuilder<'a, S>
+impl<St, S: BosStr> MemberBuilder<St, S>
 where
-    S: member_state::State,
-    S::Role: member_state::IsUnset,
+    St: member_state::State,
+    St::Role: member_state::IsUnset,
 {
     /// Set the `role` field (required)
     pub fn role(
         mut self,
-        value: impl Into<MemberRole<'a>>,
-    ) -> MemberBuilder<'a, member_state::SetRole<S>> {
+        value: impl Into<MemberRole<S>>,
+    ) -> MemberBuilder<member_state::SetRole<St>, S> {
         self._fields.5 = Option::Some(value.into());
         MemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: member_state::State> MemberBuilder<'a, S> {
+impl<St: member_state::State, S: BosStr> MemberBuilder<St, S> {
     /// Set the `updatedAt` field (optional)
     pub fn updated_at(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.6 = value.into();
@@ -386,14 +391,14 @@ impl<'a, S: member_state::State> MemberBuilder<'a, S> {
     }
 }
 
-impl<'a, S> MemberBuilder<'a, S>
+impl<St, S: BosStr> MemberBuilder<St, S>
 where
-    S: member_state::State,
-    S::Did: member_state::IsSet,
-    S::Role: member_state::IsSet,
+    St: member_state::State,
+    St::Did: member_state::IsSet,
+    St::Role: member_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Member<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Member<S> {
         Member {
             created_at: self._fields.0,
             did: self._fields.1.unwrap(),
@@ -405,14 +410,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Member<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Member<S> {
         Member {
             created_at: self._fields.0,
             did: self._fields.1.unwrap(),

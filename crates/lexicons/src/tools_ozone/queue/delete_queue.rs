@@ -10,41 +10,48 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteQueue<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DeleteQueue<S: BosStr = DefaultStr> {
     ///Optional: migrate all reports to this queue. If not specified, reports will be set to unassigned (-1).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub migrate_to_queue_id: Option<i64>,
     ///ID of the queue to delete
     pub queue_id: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteQueueOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DeleteQueueOutput<S: BosStr = DefaultStr> {
     pub deleted: bool,
     ///Number of reports that were migrated (if migration occurred)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reports_migrated: Option<i64>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.queue.deleteQueue
+/** Response marker for the `tools.ozone.queue.deleteQueue` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `DeleteQueueOutput<S>` for this endpoint.*/
 pub struct DeleteQueueResponse;
 impl jacquard_common::xrpc::XrpcResp for DeleteQueueResponse {
     const NSID: &'static str = "tools.ozone.queue.deleteQueue";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = DeleteQueueOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = DeleteQueueOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for DeleteQueue<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for DeleteQueue<S> {
     const NSID: &'static str = "tools.ozone.queue.deleteQueue";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -52,14 +59,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for DeleteQueue<'a> {
     type Response = DeleteQueueResponse;
 }
 
-/// Endpoint type for tools.ozone.queue.deleteQueue
+/** Endpoint marker for the `tools.ozone.queue.deleteQueue` procedure.
+
+Path: `/xrpc/tools.ozone.queue.deleteQueue`. The request payload type is `DeleteQueue<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct DeleteQueueRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for DeleteQueueRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.queue.deleteQueue";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = DeleteQueue<'de>;
+    type Request<S: BosStr> = DeleteQueue<S>;
     type Response = DeleteQueueResponse;
 }
 
@@ -82,9 +91,9 @@ pub mod delete_queue_state {
         type QueueId = Unset;
     }
     ///State transition - sets the `queue_id` field to Set
-    pub struct SetQueueId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetQueueId<S> {}
-    impl<S: State> State for SetQueueId<S> {
+    pub struct SetQueueId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetQueueId<St> {}
+    impl<St: State> State for SetQueueId<St> {
         type QueueId = Set<members::queue_id>;
     }
     /// Marker types for field names
@@ -95,32 +104,50 @@ pub mod delete_queue_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DeleteQueueBuilder<'a, S: delete_queue_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct DeleteQueueBuilder<St: delete_queue_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (Option<i64>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DeleteQueue<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DeleteQueueBuilder<'a, delete_queue_state::Empty> {
+impl DeleteQueue<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DeleteQueueBuilder<delete_queue_state::Empty, DefaultStr> {
         DeleteQueueBuilder::new()
     }
 }
 
-impl<'a> DeleteQueueBuilder<'a, delete_queue_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DeleteQueue<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DeleteQueueBuilder<delete_queue_state::Empty, S> {
+        DeleteQueueBuilder::builder()
+    }
+}
+
+impl DeleteQueueBuilder<delete_queue_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DeleteQueueBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: delete_queue_state::State> DeleteQueueBuilder<'a, S> {
+impl<S: BosStr> DeleteQueueBuilder<delete_queue_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DeleteQueueBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: delete_queue_state::State, S: BosStr> DeleteQueueBuilder<St, S> {
     /// Set the `migrateToQueueId` field (optional)
     pub fn migrate_to_queue_id(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.0 = value.into();
@@ -133,46 +160,43 @@ impl<'a, S: delete_queue_state::State> DeleteQueueBuilder<'a, S> {
     }
 }
 
-impl<'a, S> DeleteQueueBuilder<'a, S>
+impl<St, S: BosStr> DeleteQueueBuilder<St, S>
 where
-    S: delete_queue_state::State,
-    S::QueueId: delete_queue_state::IsUnset,
+    St: delete_queue_state::State,
+    St::QueueId: delete_queue_state::IsUnset,
 {
     /// Set the `queueId` field (required)
     pub fn queue_id(
         mut self,
         value: impl Into<i64>,
-    ) -> DeleteQueueBuilder<'a, delete_queue_state::SetQueueId<S>> {
+    ) -> DeleteQueueBuilder<delete_queue_state::SetQueueId<St>, S> {
         self._fields.1 = Option::Some(value.into());
         DeleteQueueBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DeleteQueueBuilder<'a, S>
+impl<St, S: BosStr> DeleteQueueBuilder<St, S>
 where
-    S: delete_queue_state::State,
-    S::QueueId: delete_queue_state::IsSet,
+    St: delete_queue_state::State,
+    St::QueueId: delete_queue_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DeleteQueue<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DeleteQueue<S> {
         DeleteQueue {
             migrate_to_queue_id: self._fields.0,
             queue_id: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DeleteQueue<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DeleteQueue<S> {
         DeleteQueue {
             migrate_to_queue_id: self._fields.0,
             queue_id: self._fields.1.unwrap(),

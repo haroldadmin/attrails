@@ -10,69 +10,70 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::set::SetView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct QuerySets<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct QuerySets<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub name_prefix: Option<CowStr<'a>>,
-    ///Defaults to `"name"`.
+    pub name_prefix: Option<S>,
+    /// Defaults to `"name"`.
     #[serde(default = "_default_sort_by")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub sort_by: Option<CowStr<'a>>,
-    ///Defaults to `"asc"`.
+    pub sort_by: Option<S>,
+    /// Defaults to `"asc"`.
     #[serde(default = "_default_sort_direction")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub sort_direction: Option<CowStr<'a>>,
+    pub sort_direction: Option<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct QuerySetsOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct QuerySetsOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub sets: Vec<SetView<'a>>,
+    pub cursor: Option<S>,
+    pub sets: Vec<SetView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.set.querySets
+/** Response marker for the `tools.ozone.set.querySets` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `QuerySetsOutput<S>` for this endpoint.*/
 pub struct QuerySetsResponse;
 impl jacquard_common::xrpc::XrpcResp for QuerySetsResponse {
     const NSID: &'static str = "tools.ozone.set.querySets";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = QuerySetsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = QuerySetsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for QuerySets<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for QuerySets<S> {
     const NSID: &'static str = "tools.ozone.set.querySets";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = QuerySetsResponse;
 }
 
-/// Endpoint type for tools.ozone.set.querySets
+/** Endpoint marker for the `tools.ozone.set.querySets` query.
+
+Path: `/xrpc/tools.ozone.set.querySets`. The request payload type is `QuerySets<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct QuerySetsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for QuerySetsRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.set.querySets";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = QuerySets<'de>;
+    type Request<S: BosStr> = QuerySets<S>;
     type Response = QuerySetsResponse;
 }
 
@@ -80,12 +81,12 @@ fn _default_limit() -> Option<i64> {
     Some(50i64)
 }
 
-fn _default_sort_by() -> Option<CowStr<'static>> {
-    Some(CowStr::from("name"))
+fn _default_sort_by<S: jacquard_common::FromStaticStr>() -> Option<S> {
+    Some(S::from_static("name"))
 }
 
-fn _default_sort_direction() -> Option<CowStr<'static>> {
-    Some(CowStr::from("asc"))
+fn _default_sort_direction<S: jacquard_common::FromStaticStr>() -> Option<S> {
+    Some(S::from_static("asc"))
 }
 
 pub mod query_sets_state {
@@ -107,51 +108,63 @@ pub mod query_sets_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct QuerySetsBuilder<'a, S: query_sets_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<i64>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct QuerySetsBuilder<St: query_sets_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>, Option<S>, Option<S>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> QuerySets<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> QuerySetsBuilder<'a, query_sets_state::Empty> {
+impl QuerySets<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> QuerySetsBuilder<query_sets_state::Empty, DefaultStr> {
         QuerySetsBuilder::new()
     }
 }
 
-impl<'a> QuerySetsBuilder<'a, query_sets_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> QuerySets<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> QuerySetsBuilder<query_sets_state::Empty, S> {
+        QuerySetsBuilder::builder()
+    }
+}
+
+impl QuerySetsBuilder<query_sets_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         QuerySetsBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: query_sets_state::State> QuerySetsBuilder<'a, S> {
+impl<S: BosStr> QuerySetsBuilder<query_sets_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        QuerySetsBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: query_sets_state::State, S: BosStr> QuerySetsBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: query_sets_state::State> QuerySetsBuilder<'a, S> {
+impl<St: query_sets_state::State, S: BosStr> QuerySetsBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -164,51 +177,51 @@ impl<'a, S: query_sets_state::State> QuerySetsBuilder<'a, S> {
     }
 }
 
-impl<'a, S: query_sets_state::State> QuerySetsBuilder<'a, S> {
+impl<St: query_sets_state::State, S: BosStr> QuerySetsBuilder<St, S> {
     /// Set the `namePrefix` field (optional)
-    pub fn name_prefix(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn name_prefix(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `namePrefix` field to an Option value (optional)
-    pub fn maybe_name_prefix(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_name_prefix(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: query_sets_state::State> QuerySetsBuilder<'a, S> {
+impl<St: query_sets_state::State, S: BosStr> QuerySetsBuilder<St, S> {
     /// Set the `sortBy` field (optional)
-    pub fn sort_by(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn sort_by(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `sortBy` field to an Option value (optional)
-    pub fn maybe_sort_by(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_sort_by(mut self, value: Option<S>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: query_sets_state::State> QuerySetsBuilder<'a, S> {
+impl<St: query_sets_state::State, S: BosStr> QuerySetsBuilder<St, S> {
     /// Set the `sortDirection` field (optional)
-    pub fn sort_direction(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn sort_direction(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `sortDirection` field to an Option value (optional)
-    pub fn maybe_sort_direction(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_sort_direction(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> QuerySetsBuilder<'a, S>
+impl<St, S: BosStr> QuerySetsBuilder<St, S>
 where
-    S: query_sets_state::State,
+    St: query_sets_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> QuerySets<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> QuerySets<S> {
         QuerySets {
             cursor: self._fields.0,
             limit: self._fields.1,

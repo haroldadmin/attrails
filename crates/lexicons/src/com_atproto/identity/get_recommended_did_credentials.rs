@@ -10,41 +10,43 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::value::Data;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct GetRecommendedDidCredentialsOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetRecommendedDidCredentialsOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub also_known_as: Option<Vec<CowStr<'a>>>,
+    pub also_known_as: Option<Vec<S>>,
     ///Recommended rotation keys for PLC dids. Should be undefined (or ignored) for did:webs.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub rotation_keys: Option<Vec<CowStr<'a>>>,
+    pub rotation_keys: Option<Vec<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub services: Option<Data<'a>>,
+    pub services: Option<Data<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub verification_methods: Option<Data<'a>>,
+    pub verification_methods: Option<Data<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// XRPC request marker type.
+/** Request marker for the `com.atproto.identity.getRecommendedDidCredentials` query.
+
+This endpoint has no request parameters or input body; send this marker with `jacquard::Client`.*/
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Copy)]
 pub struct GetRecommendedDidCredentials;
-/// Response type for com.atproto.identity.getRecommendedDidCredentials
+/** Response marker for the `com.atproto.identity.getRecommendedDidCredentials` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetRecommendedDidCredentialsOutput<S>` for this endpoint.*/
 pub struct GetRecommendedDidCredentialsResponse;
 impl jacquard_common::xrpc::XrpcResp for GetRecommendedDidCredentialsResponse {
     const NSID: &'static str = "com.atproto.identity.getRecommendedDidCredentials";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetRecommendedDidCredentialsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetRecommendedDidCredentialsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for GetRecommendedDidCredentials {
@@ -53,11 +55,13 @@ impl jacquard_common::xrpc::XrpcRequest for GetRecommendedDidCredentials {
     type Response = GetRecommendedDidCredentialsResponse;
 }
 
-/// Endpoint type for com.atproto.identity.getRecommendedDidCredentials
+/** Endpoint marker for the `com.atproto.identity.getRecommendedDidCredentials` query.
+
+Path: `/xrpc/com.atproto.identity.getRecommendedDidCredentials`. The request payload type is `GetRecommendedDidCredentials`; use this marker with lower-level `XrpcEndpoint` APIs when you need endpoint metadata.*/
 pub struct GetRecommendedDidCredentialsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetRecommendedDidCredentialsRequest {
     const PATH: &'static str = "/xrpc/com.atproto.identity.getRecommendedDidCredentials";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetRecommendedDidCredentials;
+    type Request<S: BosStr> = GetRecommendedDidCredentials;
     type Response = GetRecommendedDidCredentialsResponse;
 }

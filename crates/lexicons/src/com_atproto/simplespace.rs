@@ -10,11 +10,13 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -23,45 +25,54 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 /// App access policy: only the named clients may access the space, evaluated against the attested client_id.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct AllowList<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AllowList<S: BosStr = DefaultStr> {
     ///The OAuth client IDs permitted to access the space.
-    #[serde(borrow)]
-    pub allowed: Vec<CowStr<'a>>,
+    pub allowed: Vec<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// User access policy: the managing app is asked, via checkUserAccess, whether to authorize each user.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ManagingAppPolicy<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ManagingAppPolicy<S: BosStr = DefaultStr> {
     ///Service identifier of the managing app: a DID with an optional service fragment (e.g. 'did:web:example.com#forum').
-    #[serde(borrow)]
-    pub managing_app: CowStr<'a>,
+    pub managing_app: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// User access policy: only users on the space's member list may access it.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct MemberListPolicy<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct MemberListPolicy<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
 /// App access policy: any app may access the space. No client attestation required.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Open<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Open<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
 /// User access policy: any user may access the space.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PublicPolicy<'a> {}
-impl<'a> LexiconSchema for AllowList<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct PublicPolicy<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
+impl<S: BosStr> LexiconSchema for AllowList<S> {
     fn nsid() -> &'static str {
         "com.atproto.simplespace.defs"
     }
@@ -76,7 +87,7 @@ impl<'a> LexiconSchema for AllowList<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ManagingAppPolicy<'a> {
+impl<S: BosStr> LexiconSchema for ManagingAppPolicy<S> {
     fn nsid() -> &'static str {
         "com.atproto.simplespace.defs"
     }
@@ -91,7 +102,7 @@ impl<'a> LexiconSchema for ManagingAppPolicy<'a> {
     }
 }
 
-impl<'a> LexiconSchema for MemberListPolicy<'a> {
+impl<S: BosStr> LexiconSchema for MemberListPolicy<S> {
     fn nsid() -> &'static str {
         "com.atproto.simplespace.defs"
     }
@@ -106,7 +117,7 @@ impl<'a> LexiconSchema for MemberListPolicy<'a> {
     }
 }
 
-impl<'a> LexiconSchema for Open<'a> {
+impl<S: BosStr> LexiconSchema for Open<S> {
     fn nsid() -> &'static str {
         "com.atproto.simplespace.defs"
     }
@@ -121,7 +132,7 @@ impl<'a> LexiconSchema for Open<'a> {
     }
 }
 
-impl<'a> LexiconSchema for PublicPolicy<'a> {
+impl<S: BosStr> LexiconSchema for PublicPolicy<S> {
     fn nsid() -> &'static str {
         "com.atproto.simplespace.defs"
     }
@@ -155,9 +166,9 @@ pub mod allow_list_state {
         type Allowed = Unset;
     }
     ///State transition - sets the `allowed` field to Set
-    pub struct SetAllowed<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAllowed<S> {}
-    impl<S: State> State for SetAllowed<S> {
+    pub struct SetAllowed<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAllowed<St> {}
+    impl<St: State> State for SetAllowed<St> {
         type Allowed = Set<members::allowed>;
     }
     /// Marker types for field names
@@ -168,70 +179,85 @@ pub mod allow_list_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct AllowListBuilder<'a, S: allow_list_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<CowStr<'a>>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct AllowListBuilder<St: allow_list_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> AllowList<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> AllowListBuilder<'a, allow_list_state::Empty> {
+impl AllowList<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> AllowListBuilder<allow_list_state::Empty, DefaultStr> {
         AllowListBuilder::new()
     }
 }
 
-impl<'a> AllowListBuilder<'a, allow_list_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> AllowList<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> AllowListBuilder<allow_list_state::Empty, S> {
+        AllowListBuilder::builder()
+    }
+}
+
+impl AllowListBuilder<allow_list_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         AllowListBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AllowListBuilder<'a, S>
+impl<S: BosStr> AllowListBuilder<allow_list_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        AllowListBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> AllowListBuilder<St, S>
 where
-    S: allow_list_state::State,
-    S::Allowed: allow_list_state::IsUnset,
+    St: allow_list_state::State,
+    St::Allowed: allow_list_state::IsUnset,
 {
     /// Set the `allowed` field (required)
     pub fn allowed(
         mut self,
-        value: impl Into<Vec<CowStr<'a>>>,
-    ) -> AllowListBuilder<'a, allow_list_state::SetAllowed<S>> {
+        value: impl Into<Vec<S>>,
+    ) -> AllowListBuilder<allow_list_state::SetAllowed<St>, S> {
         self._fields.0 = Option::Some(value.into());
         AllowListBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AllowListBuilder<'a, S>
+impl<St, S: BosStr> AllowListBuilder<St, S>
 where
-    S: allow_list_state::State,
-    S::Allowed: allow_list_state::IsSet,
+    St: allow_list_state::State,
+    St::Allowed: allow_list_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> AllowList<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> AllowList<S> {
         AllowList {
             allowed: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> AllowList<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> AllowList<S> {
         AllowList {
             allowed: self._fields.0.unwrap(),
             extra_data: Some(extra_data),

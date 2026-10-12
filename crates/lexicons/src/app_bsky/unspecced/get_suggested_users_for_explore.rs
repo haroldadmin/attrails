@@ -10,57 +10,61 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::actor::ProfileView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetSuggestedUsersForExplore<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetSuggestedUsersForExplore<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub category: Option<CowStr<'a>>,
-    ///Defaults to `25`. Min: 1. Max: 50.
+    pub category: Option<S>,
+    /// Defaults to `25`. Min: 1. Max: 50.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetSuggestedUsersForExploreOutput<'a> {
-    #[serde(borrow)]
-    pub actors: Vec<ProfileView<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetSuggestedUsersForExploreOutput<S: BosStr = DefaultStr> {
+    pub actors: Vec<ProfileView<S>>,
     ///Snowflake for this recommendation, use when submitting recommendation events.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub rec_id_str: Option<CowStr<'a>>,
+    pub rec_id_str: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.unspecced.getSuggestedUsersForExplore
+/** Response marker for the `app.bsky.unspecced.getSuggestedUsersForExplore` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetSuggestedUsersForExploreOutput<S>` for this endpoint.*/
 pub struct GetSuggestedUsersForExploreResponse;
 impl jacquard_common::xrpc::XrpcResp for GetSuggestedUsersForExploreResponse {
     const NSID: &'static str = "app.bsky.unspecced.getSuggestedUsersForExplore";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetSuggestedUsersForExploreOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetSuggestedUsersForExploreOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetSuggestedUsersForExplore<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetSuggestedUsersForExplore<S> {
     const NSID: &'static str = "app.bsky.unspecced.getSuggestedUsersForExplore";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetSuggestedUsersForExploreResponse;
 }
 
-/// Endpoint type for app.bsky.unspecced.getSuggestedUsersForExplore
+/** Endpoint marker for the `app.bsky.unspecced.getSuggestedUsersForExplore` query.
+
+Path: `/xrpc/app.bsky.unspecced.getSuggestedUsersForExplore`. The request payload type is `GetSuggestedUsersForExplore<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetSuggestedUsersForExploreRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetSuggestedUsersForExploreRequest {
     const PATH: &'static str = "/xrpc/app.bsky.unspecced.getSuggestedUsersForExplore";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetSuggestedUsersForExplore<'de>;
+    type Request<S: BosStr> = GetSuggestedUsersForExplore<S>;
     type Response = GetSuggestedUsersForExploreResponse;
 }
 
@@ -87,59 +91,83 @@ pub mod get_suggested_users_for_explore_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct GetSuggestedUsersForExploreBuilder<
-    'a,
-    S: get_suggested_users_for_explore_state::State,
+    St: get_suggested_users_for_explore_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetSuggestedUsersForExplore<'a> {
-    /// Create a new builder for this type
+impl GetSuggestedUsersForExplore<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> GetSuggestedUsersForExploreBuilder<
-        'a,
         get_suggested_users_for_explore_state::Empty,
+        DefaultStr,
     > {
         GetSuggestedUsersForExploreBuilder::new()
     }
 }
 
-impl<
-    'a,
-> GetSuggestedUsersForExploreBuilder<'a, get_suggested_users_for_explore_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetSuggestedUsersForExplore<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetSuggestedUsersForExploreBuilder<
+        get_suggested_users_for_explore_state::Empty,
+        S,
+    > {
+        GetSuggestedUsersForExploreBuilder::builder()
+    }
+}
+
+impl GetSuggestedUsersForExploreBuilder<
+    get_suggested_users_for_explore_state::Empty,
+    DefaultStr,
+> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetSuggestedUsersForExploreBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
 impl<
-    'a,
-    S: get_suggested_users_for_explore_state::State,
-> GetSuggestedUsersForExploreBuilder<'a, S> {
+    S: BosStr,
+> GetSuggestedUsersForExploreBuilder<get_suggested_users_for_explore_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetSuggestedUsersForExploreBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: get_suggested_users_for_explore_state::State,
+    S: BosStr,
+> GetSuggestedUsersForExploreBuilder<St, S> {
     /// Set the `category` field (optional)
-    pub fn category(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn category(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `category` field to an Option value (optional)
-    pub fn maybe_category(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_category(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
 impl<
-    'a,
-    S: get_suggested_users_for_explore_state::State,
-> GetSuggestedUsersForExploreBuilder<'a, S> {
+    St: get_suggested_users_for_explore_state::State,
+    S: BosStr,
+> GetSuggestedUsersForExploreBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -152,12 +180,12 @@ impl<
     }
 }
 
-impl<'a, S> GetSuggestedUsersForExploreBuilder<'a, S>
+impl<St, S: BosStr> GetSuggestedUsersForExploreBuilder<St, S>
 where
-    S: get_suggested_users_for_explore_state::State,
+    St: get_suggested_users_for_explore_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetSuggestedUsersForExplore<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetSuggestedUsersForExplore<S> {
         GetSuggestedUsersForExplore {
             category: self._fields.0,
             limit: self._fields.1,

@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `chat.bsky.notification` Lexicon namespace/module.
 pub mod get_preferences;
 pub mod put_preferences;
 
@@ -14,11 +15,13 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -27,24 +30,24 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::notification;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ChatPreference<'a> {
-    #[serde(borrow)]
-    pub include: ChatPreferenceInclude<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ChatPreference<S: BosStr = DefaultStr> {
+    pub include: ChatPreferenceInclude<S>,
     pub push: bool,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ChatPreferenceInclude<'a> {
+pub enum ChatPreferenceInclude<S: BosStr = DefaultStr> {
     All,
     Follows,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> ChatPreferenceInclude<'a> {
+impl<S: BosStr> ChatPreferenceInclude<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::All => "all",
@@ -52,70 +55,59 @@ impl<'a> ChatPreferenceInclude<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for ChatPreferenceInclude<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "all" => Self::All,
             "follows" => Self::Follows,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for ChatPreferenceInclude<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "all" => Self::All,
-            "follows" => Self::Follows,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for ChatPreferenceInclude<'a> {
+impl<S: BosStr> core::fmt::Display for ChatPreferenceInclude<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for ChatPreferenceInclude<'a> {
+impl<S: BosStr> AsRef<str> for ChatPreferenceInclude<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for ChatPreferenceInclude<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for ChatPreferenceInclude<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for ChatPreferenceInclude<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for ChatPreferenceInclude<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for ChatPreferenceInclude<'a> {
+impl<S: BosStr + Default> Default for ChatPreferenceInclude<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for ChatPreferenceInclude<'_> {
-    type Output = ChatPreferenceInclude<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for ChatPreferenceInclude<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ChatPreferenceInclude<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             ChatPreferenceInclude::All => ChatPreferenceInclude::All,
@@ -128,17 +120,16 @@ impl jacquard_common::IntoStatic for ChatPreferenceInclude<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Preferences<'a> {
-    #[serde(borrow)]
-    pub chat: notification::ChatPreference<'a>,
-    #[serde(borrow)]
-    pub chat_request: notification::ChatPreference<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Preferences<S: BosStr = DefaultStr> {
+    pub chat: notification::ChatPreference<S>,
+    pub chat_request: notification::ChatPreference<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for ChatPreference<'a> {
+impl<S: BosStr> LexiconSchema for ChatPreference<S> {
     fn nsid() -> &'static str {
         "chat.bsky.notification.defs"
     }
@@ -153,7 +144,7 @@ impl<'a> LexiconSchema for ChatPreference<'a> {
     }
 }
 
-impl<'a> LexiconSchema for Preferences<'a> {
+impl<S: BosStr> LexiconSchema for Preferences<S> {
     fn nsid() -> &'static str {
         "chat.bsky.notification.defs"
     }
@@ -189,17 +180,17 @@ pub mod chat_preference_state {
         type Push = Unset;
     }
     ///State transition - sets the `include` field to Set
-    pub struct SetInclude<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetInclude<S> {}
-    impl<S: State> State for SetInclude<S> {
+    pub struct SetInclude<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetInclude<St> {}
+    impl<St: State> State for SetInclude<St> {
         type Include = Set<members::include>;
-        type Push = S::Push;
+        type Push = St::Push;
     }
     ///State transition - sets the `push` field to Set
-    pub struct SetPush<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPush<S> {}
-    impl<S: State> State for SetPush<S> {
-        type Include = S::Include;
+    pub struct SetPush<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPush<St> {}
+    impl<St: State> State for SetPush<St> {
+        type Include = St::Include;
         type Push = Set<members::push>;
     }
     /// Marker types for field names
@@ -212,91 +203,109 @@ pub mod chat_preference_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ChatPreferenceBuilder<'a, S: chat_preference_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<ChatPreferenceInclude<'a>>, Option<bool>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ChatPreferenceBuilder<
+    St: chat_preference_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<ChatPreferenceInclude<S>>, Option<bool>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ChatPreference<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ChatPreferenceBuilder<'a, chat_preference_state::Empty> {
+impl ChatPreference<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ChatPreferenceBuilder<chat_preference_state::Empty, DefaultStr> {
         ChatPreferenceBuilder::new()
     }
 }
 
-impl<'a> ChatPreferenceBuilder<'a, chat_preference_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ChatPreference<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ChatPreferenceBuilder<chat_preference_state::Empty, S> {
+        ChatPreferenceBuilder::builder()
+    }
+}
+
+impl ChatPreferenceBuilder<chat_preference_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ChatPreferenceBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ChatPreferenceBuilder<'a, S>
+impl<S: BosStr> ChatPreferenceBuilder<chat_preference_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ChatPreferenceBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ChatPreferenceBuilder<St, S>
 where
-    S: chat_preference_state::State,
-    S::Include: chat_preference_state::IsUnset,
+    St: chat_preference_state::State,
+    St::Include: chat_preference_state::IsUnset,
 {
     /// Set the `include` field (required)
     pub fn include(
         mut self,
-        value: impl Into<ChatPreferenceInclude<'a>>,
-    ) -> ChatPreferenceBuilder<'a, chat_preference_state::SetInclude<S>> {
+        value: impl Into<ChatPreferenceInclude<S>>,
+    ) -> ChatPreferenceBuilder<chat_preference_state::SetInclude<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ChatPreferenceBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ChatPreferenceBuilder<'a, S>
+impl<St, S: BosStr> ChatPreferenceBuilder<St, S>
 where
-    S: chat_preference_state::State,
-    S::Push: chat_preference_state::IsUnset,
+    St: chat_preference_state::State,
+    St::Push: chat_preference_state::IsUnset,
 {
     /// Set the `push` field (required)
     pub fn push(
         mut self,
         value: impl Into<bool>,
-    ) -> ChatPreferenceBuilder<'a, chat_preference_state::SetPush<S>> {
+    ) -> ChatPreferenceBuilder<chat_preference_state::SetPush<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ChatPreferenceBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ChatPreferenceBuilder<'a, S>
+impl<St, S: BosStr> ChatPreferenceBuilder<St, S>
 where
-    S: chat_preference_state::State,
-    S::Include: chat_preference_state::IsSet,
-    S::Push: chat_preference_state::IsSet,
+    St: chat_preference_state::State,
+    St::Include: chat_preference_state::IsSet,
+    St::Push: chat_preference_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ChatPreference<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ChatPreference<S> {
         ChatPreference {
             include: self._fields.0.unwrap(),
             push: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ChatPreference<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ChatPreference<S> {
         ChatPreference {
             include: self._fields.0.unwrap(),
             push: self._fields.1.unwrap(),
@@ -386,128 +395,143 @@ pub mod preferences_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type ChatRequest;
         type Chat;
+        type ChatRequest;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type ChatRequest = Unset;
         type Chat = Unset;
-    }
-    ///State transition - sets the `chat_request` field to Set
-    pub struct SetChatRequest<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetChatRequest<S> {}
-    impl<S: State> State for SetChatRequest<S> {
-        type ChatRequest = Set<members::chat_request>;
-        type Chat = S::Chat;
+        type ChatRequest = Unset;
     }
     ///State transition - sets the `chat` field to Set
-    pub struct SetChat<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetChat<S> {}
-    impl<S: State> State for SetChat<S> {
-        type ChatRequest = S::ChatRequest;
+    pub struct SetChat<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetChat<St> {}
+    impl<St: State> State for SetChat<St> {
         type Chat = Set<members::chat>;
+        type ChatRequest = St::ChatRequest;
+    }
+    ///State transition - sets the `chat_request` field to Set
+    pub struct SetChatRequest<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetChatRequest<St> {}
+    impl<St: State> State for SetChatRequest<St> {
+        type Chat = St::Chat;
+        type ChatRequest = Set<members::chat_request>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `chat_request` field
-        pub struct chat_request(());
         ///Marker type for the `chat` field
         pub struct chat(());
+        ///Marker type for the `chat_request` field
+        pub struct chat_request(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct PreferencesBuilder<'a, S: preferences_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct PreferencesBuilder<St: preferences_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<notification::ChatPreference<'a>>,
-        Option<notification::ChatPreference<'a>>,
+        Option<notification::ChatPreference<S>>,
+        Option<notification::ChatPreference<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Preferences<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> PreferencesBuilder<'a, preferences_state::Empty> {
+impl Preferences<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> PreferencesBuilder<preferences_state::Empty, DefaultStr> {
         PreferencesBuilder::new()
     }
 }
 
-impl<'a> PreferencesBuilder<'a, preferences_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Preferences<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> PreferencesBuilder<preferences_state::Empty, S> {
+        PreferencesBuilder::builder()
+    }
+}
+
+impl PreferencesBuilder<preferences_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         PreferencesBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> PreferencesBuilder<'a, S>
+impl<S: BosStr> PreferencesBuilder<preferences_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        PreferencesBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> PreferencesBuilder<St, S>
 where
-    S: preferences_state::State,
-    S::Chat: preferences_state::IsUnset,
+    St: preferences_state::State,
+    St::Chat: preferences_state::IsUnset,
 {
     /// Set the `chat` field (required)
     pub fn chat(
         mut self,
-        value: impl Into<notification::ChatPreference<'a>>,
-    ) -> PreferencesBuilder<'a, preferences_state::SetChat<S>> {
+        value: impl Into<notification::ChatPreference<S>>,
+    ) -> PreferencesBuilder<preferences_state::SetChat<St>, S> {
         self._fields.0 = Option::Some(value.into());
         PreferencesBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> PreferencesBuilder<'a, S>
+impl<St, S: BosStr> PreferencesBuilder<St, S>
 where
-    S: preferences_state::State,
-    S::ChatRequest: preferences_state::IsUnset,
+    St: preferences_state::State,
+    St::ChatRequest: preferences_state::IsUnset,
 {
     /// Set the `chatRequest` field (required)
     pub fn chat_request(
         mut self,
-        value: impl Into<notification::ChatPreference<'a>>,
-    ) -> PreferencesBuilder<'a, preferences_state::SetChatRequest<S>> {
+        value: impl Into<notification::ChatPreference<S>>,
+    ) -> PreferencesBuilder<preferences_state::SetChatRequest<St>, S> {
         self._fields.1 = Option::Some(value.into());
         PreferencesBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> PreferencesBuilder<'a, S>
+impl<St, S: BosStr> PreferencesBuilder<St, S>
 where
-    S: preferences_state::State,
-    S::ChatRequest: preferences_state::IsSet,
-    S::Chat: preferences_state::IsSet,
+    St: preferences_state::State,
+    St::Chat: preferences_state::IsSet,
+    St::ChatRequest: preferences_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Preferences<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Preferences<S> {
         Preferences {
             chat: self._fields.0.unwrap(),
             chat_request: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Preferences<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> Preferences<S> {
         Preferences {
             chat: self._fields.0.unwrap(),
             chat_request: self._fields.1.unwrap(),

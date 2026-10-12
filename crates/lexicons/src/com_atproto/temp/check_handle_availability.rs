@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Handle, Datetime};
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -25,42 +27,38 @@ use serde::{Serialize, Deserialize};
 use crate::com_atproto::temp::check_handle_availability;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct CheckHandleAvailability<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CheckHandleAvailability<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub birth_date: Option<Datetime>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub email: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub handle: Handle<'a>,
+    pub email: Option<S>,
+    pub handle: Handle<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct CheckHandleAvailabilityOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CheckHandleAvailabilityOutput<S: BosStr = DefaultStr> {
     ///Echo of the input handle.
-    #[serde(borrow)]
-    pub handle: Handle<'a>,
-    #[serde(borrow)]
-    pub result: CheckHandleAvailabilityOutputResult<'a>,
+    pub handle: Handle<S>,
+    pub result: CheckHandleAvailabilityOutputResult<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum CheckHandleAvailabilityOutputResult<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum CheckHandleAvailabilityOutputResult<S: BosStr = DefaultStr> {
     #[serde(rename = "com.atproto.temp.checkHandleAvailability#resultAvailable")]
-    ResultAvailable(Box<check_handle_availability::ResultAvailable<'a>>),
+    ResultAvailable(Box<check_handle_availability::ResultAvailable<S>>),
     #[serde(rename = "com.atproto.temp.checkHandleAvailability#resultUnavailable")]
-    ResultUnavailable(Box<check_handle_availability::ResultUnavailable<'a>>),
+    ResultUnavailable(Box<check_handle_availability::ResultUnavailable<S>>),
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -69,19 +67,20 @@ pub enum CheckHandleAvailabilityOutputResult<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum CheckHandleAvailabilityError<'a> {
+pub enum CheckHandleAvailabilityError {
     /// An invalid email was provided.
     #[serde(rename = "InvalidEmail")]
-    InvalidEmail(Option<CowStr<'a>>),
+    InvalidEmail(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for CheckHandleAvailabilityError<'_> {
+impl core::fmt::Display for CheckHandleAvailabilityError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidEmail(msg) => {
@@ -91,65 +90,77 @@ impl core::fmt::Display for CheckHandleAvailabilityError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
 /// Indicates the provided handle is available.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ResultAvailable<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ResultAvailable<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
 /// Indicates the provided handle is unavailable and gives suggestions of available handles.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ResultUnavailable<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ResultUnavailable<S: BosStr = DefaultStr> {
     ///List of suggested handles based on the provided inputs.
-    #[serde(borrow)]
-    pub suggestions: Vec<check_handle_availability::Suggestion<'a>>,
+    pub suggestions: Vec<check_handle_availability::Suggestion<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Suggestion<'a> {
-    #[serde(borrow)]
-    pub handle: Handle<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Suggestion<S: BosStr = DefaultStr> {
+    pub handle: Handle<S>,
     ///Method used to build this suggestion. Should be considered opaque to clients. Can be used for metrics.
-    #[serde(borrow)]
-    pub method: CowStr<'a>,
+    pub method: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for com.atproto.temp.checkHandleAvailability
+/** Response marker for the `com.atproto.temp.checkHandleAvailability` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `CheckHandleAvailabilityOutput<S>` for this endpoint.*/
 pub struct CheckHandleAvailabilityResponse;
 impl jacquard_common::xrpc::XrpcResp for CheckHandleAvailabilityResponse {
     const NSID: &'static str = "com.atproto.temp.checkHandleAvailability";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = CheckHandleAvailabilityOutput<'de>;
-    type Err<'de> = CheckHandleAvailabilityError<'de>;
+    type Output<S: BosStr> = CheckHandleAvailabilityOutput<S>;
+    type Err = CheckHandleAvailabilityError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for CheckHandleAvailability<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for CheckHandleAvailability<S> {
     const NSID: &'static str = "com.atproto.temp.checkHandleAvailability";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = CheckHandleAvailabilityResponse;
 }
 
-/// Endpoint type for com.atproto.temp.checkHandleAvailability
+/** Endpoint marker for the `com.atproto.temp.checkHandleAvailability` query.
+
+Path: `/xrpc/com.atproto.temp.checkHandleAvailability`. The request payload type is `CheckHandleAvailability<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct CheckHandleAvailabilityRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for CheckHandleAvailabilityRequest {
     const PATH: &'static str = "/xrpc/com.atproto.temp.checkHandleAvailability";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = CheckHandleAvailability<'de>;
+    type Request<S: BosStr> = CheckHandleAvailability<S>;
     type Response = CheckHandleAvailabilityResponse;
 }
 
-impl<'a> LexiconSchema for ResultAvailable<'a> {
+impl<S: BosStr> LexiconSchema for ResultAvailable<S> {
     fn nsid() -> &'static str {
         "com.atproto.temp.checkHandleAvailability"
     }
@@ -164,7 +175,7 @@ impl<'a> LexiconSchema for ResultAvailable<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ResultUnavailable<'a> {
+impl<S: BosStr> LexiconSchema for ResultUnavailable<S> {
     fn nsid() -> &'static str {
         "com.atproto.temp.checkHandleAvailability"
     }
@@ -179,7 +190,7 @@ impl<'a> LexiconSchema for ResultUnavailable<'a> {
     }
 }
 
-impl<'a> LexiconSchema for Suggestion<'a> {
+impl<S: BosStr> LexiconSchema for Suggestion<S> {
     fn nsid() -> &'static str {
         "com.atproto.temp.checkHandleAvailability"
     }
@@ -213,9 +224,9 @@ pub mod check_handle_availability_state {
         type Handle = Unset;
     }
     ///State transition - sets the `handle` field to Set
-    pub struct SetHandle<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHandle<S> {}
-    impl<S: State> State for SetHandle<S> {
+    pub struct SetHandle<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetHandle<St> {}
+    impl<St: State> State for SetHandle<St> {
         type Handle = Set<members::handle>;
     }
     /// Marker types for field names
@@ -226,41 +237,64 @@ pub mod check_handle_availability_state {
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct CheckHandleAvailabilityBuilder<
-    'a,
-    S: check_handle_availability_state::State,
+    St: check_handle_availability_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Datetime>, Option<CowStr<'a>>, Option<Handle<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Datetime>, Option<S>, Option<Handle<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> CheckHandleAvailability<'a> {
-    /// Create a new builder for this type
+impl CheckHandleAvailability<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> CheckHandleAvailabilityBuilder<
-        'a,
         check_handle_availability_state::Empty,
+        DefaultStr,
     > {
         CheckHandleAvailabilityBuilder::new()
     }
 }
 
-impl<'a> CheckHandleAvailabilityBuilder<'a, check_handle_availability_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> CheckHandleAvailability<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> CheckHandleAvailabilityBuilder<
+        check_handle_availability_state::Empty,
+        S,
+    > {
+        CheckHandleAvailabilityBuilder::builder()
+    }
+}
+
+impl CheckHandleAvailabilityBuilder<check_handle_availability_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         CheckHandleAvailabilityBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
 impl<
-    'a,
-    S: check_handle_availability_state::State,
-> CheckHandleAvailabilityBuilder<'a, S> {
+    S: BosStr,
+> CheckHandleAvailabilityBuilder<check_handle_availability_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        CheckHandleAvailabilityBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: check_handle_availability_state::State,
+    S: BosStr,
+> CheckHandleAvailabilityBuilder<St, S> {
     /// Set the `birthDate` field (optional)
     pub fn birth_date(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.0 = value.into();
@@ -274,50 +308,50 @@ impl<
 }
 
 impl<
-    'a,
-    S: check_handle_availability_state::State,
-> CheckHandleAvailabilityBuilder<'a, S> {
+    St: check_handle_availability_state::State,
+    S: BosStr,
+> CheckHandleAvailabilityBuilder<St, S> {
     /// Set the `email` field (optional)
-    pub fn email(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn email(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `email` field to an Option value (optional)
-    pub fn maybe_email(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_email(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> CheckHandleAvailabilityBuilder<'a, S>
+impl<St, S: BosStr> CheckHandleAvailabilityBuilder<St, S>
 where
-    S: check_handle_availability_state::State,
-    S::Handle: check_handle_availability_state::IsUnset,
+    St: check_handle_availability_state::State,
+    St::Handle: check_handle_availability_state::IsUnset,
 {
     /// Set the `handle` field (required)
     pub fn handle(
         mut self,
-        value: impl Into<Handle<'a>>,
+        value: impl Into<Handle<S>>,
     ) -> CheckHandleAvailabilityBuilder<
-        'a,
-        check_handle_availability_state::SetHandle<S>,
+        check_handle_availability_state::SetHandle<St>,
+        S,
     > {
         self._fields.2 = Option::Some(value.into());
         CheckHandleAvailabilityBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> CheckHandleAvailabilityBuilder<'a, S>
+impl<St, S: BosStr> CheckHandleAvailabilityBuilder<St, S>
 where
-    S: check_handle_availability_state::State,
-    S::Handle: check_handle_availability_state::IsSet,
+    St: check_handle_availability_state::State,
+    St::Handle: check_handle_availability_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> CheckHandleAvailability<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> CheckHandleAvailability<S> {
         CheckHandleAvailability {
             birth_date: self._fields.0,
             email: self._fields.1,
@@ -493,9 +527,9 @@ pub mod result_unavailable_state {
         type Suggestions = Unset;
     }
     ///State transition - sets the `suggestions` field to Set
-    pub struct SetSuggestions<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSuggestions<S> {}
-    impl<S: State> State for SetSuggestions<S> {
+    pub struct SetSuggestions<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSuggestions<St> {}
+    impl<St: State> State for SetSuggestions<St> {
         type Suggestions = Set<members::suggestions>;
     }
     /// Marker types for field names
@@ -506,70 +540,91 @@ pub mod result_unavailable_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ResultUnavailableBuilder<'a, S: result_unavailable_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<check_handle_availability::Suggestion<'a>>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ResultUnavailableBuilder<
+    St: result_unavailable_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<check_handle_availability::Suggestion<S>>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ResultUnavailable<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ResultUnavailableBuilder<'a, result_unavailable_state::Empty> {
+impl ResultUnavailable<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ResultUnavailableBuilder<
+        result_unavailable_state::Empty,
+        DefaultStr,
+    > {
         ResultUnavailableBuilder::new()
     }
 }
 
-impl<'a> ResultUnavailableBuilder<'a, result_unavailable_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ResultUnavailable<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ResultUnavailableBuilder<result_unavailable_state::Empty, S> {
+        ResultUnavailableBuilder::builder()
+    }
+}
+
+impl ResultUnavailableBuilder<result_unavailable_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ResultUnavailableBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ResultUnavailableBuilder<'a, S>
+impl<S: BosStr> ResultUnavailableBuilder<result_unavailable_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ResultUnavailableBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ResultUnavailableBuilder<St, S>
 where
-    S: result_unavailable_state::State,
-    S::Suggestions: result_unavailable_state::IsUnset,
+    St: result_unavailable_state::State,
+    St::Suggestions: result_unavailable_state::IsUnset,
 {
     /// Set the `suggestions` field (required)
     pub fn suggestions(
         mut self,
-        value: impl Into<Vec<check_handle_availability::Suggestion<'a>>>,
-    ) -> ResultUnavailableBuilder<'a, result_unavailable_state::SetSuggestions<S>> {
+        value: impl Into<Vec<check_handle_availability::Suggestion<S>>>,
+    ) -> ResultUnavailableBuilder<result_unavailable_state::SetSuggestions<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ResultUnavailableBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ResultUnavailableBuilder<'a, S>
+impl<St, S: BosStr> ResultUnavailableBuilder<St, S>
 where
-    S: result_unavailable_state::State,
-    S::Suggestions: result_unavailable_state::IsSet,
+    St: result_unavailable_state::State,
+    St::Suggestions: result_unavailable_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ResultUnavailable<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ResultUnavailable<S> {
         ResultUnavailable {
             suggestions: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ResultUnavailable<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ResultUnavailable<S> {
         ResultUnavailable {
             suggestions: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -598,17 +653,17 @@ pub mod suggestion_state {
         type Method = Unset;
     }
     ///State transition - sets the `handle` field to Set
-    pub struct SetHandle<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHandle<S> {}
-    impl<S: State> State for SetHandle<S> {
+    pub struct SetHandle<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetHandle<St> {}
+    impl<St: State> State for SetHandle<St> {
         type Handle = Set<members::handle>;
-        type Method = S::Method;
+        type Method = St::Method;
     }
     ///State transition - sets the `method` field to Set
-    pub struct SetMethod<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMethod<S> {}
-    impl<S: State> State for SetMethod<S> {
-        type Handle = S::Handle;
+    pub struct SetMethod<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMethod<St> {}
+    impl<St: State> State for SetMethod<St> {
+        type Handle = St::Handle;
         type Method = Set<members::method>;
     }
     /// Marker types for field names
@@ -621,91 +676,106 @@ pub mod suggestion_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SuggestionBuilder<'a, S: suggestion_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Handle<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct SuggestionBuilder<St: suggestion_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Handle<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Suggestion<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SuggestionBuilder<'a, suggestion_state::Empty> {
+impl Suggestion<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SuggestionBuilder<suggestion_state::Empty, DefaultStr> {
         SuggestionBuilder::new()
     }
 }
 
-impl<'a> SuggestionBuilder<'a, suggestion_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Suggestion<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SuggestionBuilder<suggestion_state::Empty, S> {
+        SuggestionBuilder::builder()
+    }
+}
+
+impl SuggestionBuilder<suggestion_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SuggestionBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SuggestionBuilder<'a, S>
+impl<S: BosStr> SuggestionBuilder<suggestion_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SuggestionBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SuggestionBuilder<St, S>
 where
-    S: suggestion_state::State,
-    S::Handle: suggestion_state::IsUnset,
+    St: suggestion_state::State,
+    St::Handle: suggestion_state::IsUnset,
 {
     /// Set the `handle` field (required)
     pub fn handle(
         mut self,
-        value: impl Into<Handle<'a>>,
-    ) -> SuggestionBuilder<'a, suggestion_state::SetHandle<S>> {
+        value: impl Into<Handle<S>>,
+    ) -> SuggestionBuilder<suggestion_state::SetHandle<St>, S> {
         self._fields.0 = Option::Some(value.into());
         SuggestionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SuggestionBuilder<'a, S>
+impl<St, S: BosStr> SuggestionBuilder<St, S>
 where
-    S: suggestion_state::State,
-    S::Method: suggestion_state::IsUnset,
+    St: suggestion_state::State,
+    St::Method: suggestion_state::IsUnset,
 {
     /// Set the `method` field (required)
     pub fn method(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> SuggestionBuilder<'a, suggestion_state::SetMethod<S>> {
+        value: impl Into<S>,
+    ) -> SuggestionBuilder<suggestion_state::SetMethod<St>, S> {
         self._fields.1 = Option::Some(value.into());
         SuggestionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SuggestionBuilder<'a, S>
+impl<St, S: BosStr> SuggestionBuilder<St, S>
 where
-    S: suggestion_state::State,
-    S::Handle: suggestion_state::IsSet,
-    S::Method: suggestion_state::IsSet,
+    St: suggestion_state::State,
+    St::Handle: suggestion_state::IsSet,
+    St::Method: suggestion_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Suggestion<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Suggestion<S> {
         Suggestion {
             handle: self._fields.0.unwrap(),
             method: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Suggestion<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> Suggestion<S> {
         Suggestion {
             handle: self._fields.0.unwrap(),
             method: self._fields.1.unwrap(),

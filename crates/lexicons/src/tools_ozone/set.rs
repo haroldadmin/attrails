@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `tools.ozone.set` Lexicon namespace/module.
 pub mod add_values;
 pub mod delete_set;
 pub mod delete_values;
@@ -18,12 +19,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Datetime;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -31,33 +34,31 @@ use jacquard_lexicon::schema::LexiconSchema;
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Set<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Set<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    pub description: Option<S>,
+    pub name: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SetView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SetView<S: BosStr = DefaultStr> {
     pub created_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    pub description: Option<S>,
+    pub name: S,
     pub set_size: i64,
     pub updated_at: Datetime,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for Set<'a> {
+impl<S: BosStr> LexiconSchema for Set<S> {
     fn nsid() -> &'static str {
         "tools.ozone.set.defs"
     }
@@ -116,7 +117,7 @@ impl<'a> LexiconSchema for Set<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SetView<'a> {
+impl<S: BosStr> LexiconSchema for SetView<S> {
     fn nsid() -> &'static str {
         "tools.ozone.set.defs"
     }
@@ -283,200 +284,212 @@ pub mod set_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type SetSize;
-        type Name;
-        type UpdatedAt;
         type CreatedAt;
+        type Name;
+        type SetSize;
+        type UpdatedAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type SetSize = Unset;
-        type Name = Unset;
-        type UpdatedAt = Unset;
         type CreatedAt = Unset;
-    }
-    ///State transition - sets the `set_size` field to Set
-    pub struct SetSetSize<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSetSize<S> {}
-    impl<S: State> State for SetSetSize<S> {
-        type SetSize = Set<members::set_size>;
-        type Name = S::Name;
-        type UpdatedAt = S::UpdatedAt;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `name` field to Set
-    pub struct SetName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetName<S> {}
-    impl<S: State> State for SetName<S> {
-        type SetSize = S::SetSize;
-        type Name = Set<members::name>;
-        type UpdatedAt = S::UpdatedAt;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `updated_at` field to Set
-    pub struct SetUpdatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUpdatedAt<S> {}
-    impl<S: State> State for SetUpdatedAt<S> {
-        type SetSize = S::SetSize;
-        type Name = S::Name;
-        type UpdatedAt = Set<members::updated_at>;
-        type CreatedAt = S::CreatedAt;
+        type Name = Unset;
+        type SetSize = Unset;
+        type UpdatedAt = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type SetSize = S::SetSize;
-        type Name = S::Name;
-        type UpdatedAt = S::UpdatedAt;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
+        type Name = St::Name;
+        type SetSize = St::SetSize;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `name` field to Set
+    pub struct SetName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetName<St> {}
+    impl<St: State> State for SetName<St> {
+        type CreatedAt = St::CreatedAt;
+        type Name = Set<members::name>;
+        type SetSize = St::SetSize;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `set_size` field to Set
+    pub struct SetSetSize<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSetSize<St> {}
+    impl<St: State> State for SetSetSize<St> {
+        type CreatedAt = St::CreatedAt;
+        type Name = St::Name;
+        type SetSize = Set<members::set_size>;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `updated_at` field to Set
+    pub struct SetUpdatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUpdatedAt<St> {}
+    impl<St: State> State for SetUpdatedAt<St> {
+        type CreatedAt = St::CreatedAt;
+        type Name = St::Name;
+        type SetSize = St::SetSize;
+        type UpdatedAt = Set<members::updated_at>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `set_size` field
-        pub struct set_size(());
-        ///Marker type for the `name` field
-        pub struct name(());
-        ///Marker type for the `updated_at` field
-        pub struct updated_at(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `name` field
+        pub struct name(());
+        ///Marker type for the `set_size` field
+        pub struct set_size(());
+        ///Marker type for the `updated_at` field
+        pub struct updated_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SetViewBuilder<'a, S: set_view_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<Datetime>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<i64>,
-        Option<Datetime>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct SetViewBuilder<St: set_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Datetime>, Option<S>, Option<S>, Option<i64>, Option<Datetime>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SetView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SetViewBuilder<'a, set_view_state::Empty> {
+impl SetView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SetViewBuilder<set_view_state::Empty, DefaultStr> {
         SetViewBuilder::new()
     }
 }
 
-impl<'a> SetViewBuilder<'a, set_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SetView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SetViewBuilder<set_view_state::Empty, S> {
+        SetViewBuilder::builder()
+    }
+}
+
+impl SetViewBuilder<set_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SetViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SetViewBuilder<'a, S>
+impl<S: BosStr> SetViewBuilder<set_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SetViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SetViewBuilder<St, S>
 where
-    S: set_view_state::State,
-    S::CreatedAt: set_view_state::IsUnset,
+    St: set_view_state::State,
+    St::CreatedAt: set_view_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> SetViewBuilder<'a, set_view_state::SetCreatedAt<S>> {
+    ) -> SetViewBuilder<set_view_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         SetViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: set_view_state::State> SetViewBuilder<'a, S> {
+impl<St: set_view_state::State, S: BosStr> SetViewBuilder<St, S> {
     /// Set the `description` field (optional)
-    pub fn description(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn description(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `description` field to an Option value (optional)
-    pub fn maybe_description(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_description(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> SetViewBuilder<'a, S>
+impl<St, S: BosStr> SetViewBuilder<St, S>
 where
-    S: set_view_state::State,
-    S::Name: set_view_state::IsUnset,
+    St: set_view_state::State,
+    St::Name: set_view_state::IsUnset,
 {
     /// Set the `name` field (required)
     pub fn name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> SetViewBuilder<'a, set_view_state::SetName<S>> {
+        value: impl Into<S>,
+    ) -> SetViewBuilder<set_view_state::SetName<St>, S> {
         self._fields.2 = Option::Some(value.into());
         SetViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SetViewBuilder<'a, S>
+impl<St, S: BosStr> SetViewBuilder<St, S>
 where
-    S: set_view_state::State,
-    S::SetSize: set_view_state::IsUnset,
+    St: set_view_state::State,
+    St::SetSize: set_view_state::IsUnset,
 {
     /// Set the `setSize` field (required)
     pub fn set_size(
         mut self,
         value: impl Into<i64>,
-    ) -> SetViewBuilder<'a, set_view_state::SetSetSize<S>> {
+    ) -> SetViewBuilder<set_view_state::SetSetSize<St>, S> {
         self._fields.3 = Option::Some(value.into());
         SetViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SetViewBuilder<'a, S>
+impl<St, S: BosStr> SetViewBuilder<St, S>
 where
-    S: set_view_state::State,
-    S::UpdatedAt: set_view_state::IsUnset,
+    St: set_view_state::State,
+    St::UpdatedAt: set_view_state::IsUnset,
 {
     /// Set the `updatedAt` field (required)
     pub fn updated_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> SetViewBuilder<'a, set_view_state::SetUpdatedAt<S>> {
+    ) -> SetViewBuilder<set_view_state::SetUpdatedAt<St>, S> {
         self._fields.4 = Option::Some(value.into());
         SetViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SetViewBuilder<'a, S>
+impl<St, S: BosStr> SetViewBuilder<St, S>
 where
-    S: set_view_state::State,
-    S::SetSize: set_view_state::IsSet,
-    S::Name: set_view_state::IsSet,
-    S::UpdatedAt: set_view_state::IsSet,
-    S::CreatedAt: set_view_state::IsSet,
+    St: set_view_state::State,
+    St::CreatedAt: set_view_state::IsSet,
+    St::Name: set_view_state::IsSet,
+    St::SetSize: set_view_state::IsSet,
+    St::UpdatedAt: set_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SetView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SetView<S> {
         SetView {
             created_at: self._fields.0.unwrap(),
             description: self._fields.1,
@@ -486,14 +499,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SetView<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> SetView<S> {
         SetView {
             created_at: self._fields.0.unwrap(),
             description: self._fields.1,

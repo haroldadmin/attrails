@@ -10,45 +10,44 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::queue::QueueView;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateQueue<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UpdateQueue<S: BosStr = DefaultStr> {
     ///Optional description of the queue
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
+    pub description: Option<S>,
     ///Enable or disable the queue
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
     ///New display name for the queue
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub name: Option<CowStr<'a>>,
+    pub name: Option<S>,
     ///ID of the queue to update
     pub queue_id: i64,
     ///Policy keys to recommend when actioning reports in this queue
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub recommended_policies: Option<Vec<CowStr<'a>>>,
+    pub recommended_policies: Option<Vec<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateQueueOutput<'a> {
-    #[serde(borrow)]
-    pub queue: QueueView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UpdateQueueOutput<S: BosStr = DefaultStr> {
+    pub queue: QueueView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -57,19 +56,20 @@ pub struct UpdateQueueOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum UpdateQueueError<'a> {
+pub enum UpdateQueueError {
     /// One or more recommended policy keys do not exist in the configured policy list
     #[serde(rename = "InvalidRecommendedPolicies")]
-    InvalidRecommendedPolicies(Option<CowStr<'a>>),
+    InvalidRecommendedPolicies(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for UpdateQueueError<'_> {
+impl core::fmt::Display for UpdateQueueError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidRecommendedPolicies(msg) => {
@@ -79,21 +79,29 @@ impl core::fmt::Display for UpdateQueueError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for tools.ozone.queue.updateQueue
+/** Response marker for the `tools.ozone.queue.updateQueue` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `UpdateQueueOutput<S>` for this endpoint.*/
 pub struct UpdateQueueResponse;
 impl jacquard_common::xrpc::XrpcResp for UpdateQueueResponse {
     const NSID: &'static str = "tools.ozone.queue.updateQueue";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = UpdateQueueOutput<'de>;
-    type Err<'de> = UpdateQueueError<'de>;
+    type Output<S: BosStr> = UpdateQueueOutput<S>;
+    type Err = UpdateQueueError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for UpdateQueue<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for UpdateQueue<S> {
     const NSID: &'static str = "tools.ozone.queue.updateQueue";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -101,14 +109,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for UpdateQueue<'a> {
     type Response = UpdateQueueResponse;
 }
 
-/// Endpoint type for tools.ozone.queue.updateQueue
+/** Endpoint marker for the `tools.ozone.queue.updateQueue` procedure.
+
+Path: `/xrpc/tools.ozone.queue.updateQueue`. The request payload type is `UpdateQueue<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct UpdateQueueRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for UpdateQueueRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.queue.updateQueue";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = UpdateQueue<'de>;
+    type Request<S: BosStr> = UpdateQueue<S>;
     type Response = UpdateQueueResponse;
 }
 
@@ -131,9 +141,9 @@ pub mod update_queue_state {
         type QueueId = Unset;
     }
     ///State transition - sets the `queue_id` field to Set
-    pub struct SetQueueId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetQueueId<S> {}
-    impl<S: State> State for SetQueueId<S> {
+    pub struct SetQueueId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetQueueId<St> {}
+    impl<St: State> State for SetQueueId<St> {
         type QueueId = Set<members::queue_id>;
     }
     /// Marker types for field names
@@ -144,51 +154,63 @@ pub mod update_queue_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct UpdateQueueBuilder<'a, S: update_queue_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<bool>,
-        Option<CowStr<'a>>,
-        Option<i64>,
-        Option<Vec<CowStr<'a>>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct UpdateQueueBuilder<St: update_queue_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<bool>, Option<S>, Option<i64>, Option<Vec<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> UpdateQueue<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> UpdateQueueBuilder<'a, update_queue_state::Empty> {
+impl UpdateQueue<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> UpdateQueueBuilder<update_queue_state::Empty, DefaultStr> {
         UpdateQueueBuilder::new()
     }
 }
 
-impl<'a> UpdateQueueBuilder<'a, update_queue_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> UpdateQueue<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> UpdateQueueBuilder<update_queue_state::Empty, S> {
+        UpdateQueueBuilder::builder()
+    }
+}
+
+impl UpdateQueueBuilder<update_queue_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         UpdateQueueBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: update_queue_state::State> UpdateQueueBuilder<'a, S> {
+impl<S: BosStr> UpdateQueueBuilder<update_queue_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        UpdateQueueBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: update_queue_state::State, S: BosStr> UpdateQueueBuilder<St, S> {
     /// Set the `description` field (optional)
-    pub fn description(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn description(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `description` field to an Option value (optional)
-    pub fn maybe_description(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_description(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: update_queue_state::State> UpdateQueueBuilder<'a, S> {
+impl<St: update_queue_state::State, S: BosStr> UpdateQueueBuilder<St, S> {
     /// Set the `enabled` field (optional)
     pub fn enabled(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.1 = value.into();
@@ -201,61 +223,58 @@ impl<'a, S: update_queue_state::State> UpdateQueueBuilder<'a, S> {
     }
 }
 
-impl<'a, S: update_queue_state::State> UpdateQueueBuilder<'a, S> {
+impl<St: update_queue_state::State, S: BosStr> UpdateQueueBuilder<St, S> {
     /// Set the `name` field (optional)
-    pub fn name(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn name(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `name` field to an Option value (optional)
-    pub fn maybe_name(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_name(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> UpdateQueueBuilder<'a, S>
+impl<St, S: BosStr> UpdateQueueBuilder<St, S>
 where
-    S: update_queue_state::State,
-    S::QueueId: update_queue_state::IsUnset,
+    St: update_queue_state::State,
+    St::QueueId: update_queue_state::IsUnset,
 {
     /// Set the `queueId` field (required)
     pub fn queue_id(
         mut self,
         value: impl Into<i64>,
-    ) -> UpdateQueueBuilder<'a, update_queue_state::SetQueueId<S>> {
+    ) -> UpdateQueueBuilder<update_queue_state::SetQueueId<St>, S> {
         self._fields.3 = Option::Some(value.into());
         UpdateQueueBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: update_queue_state::State> UpdateQueueBuilder<'a, S> {
+impl<St: update_queue_state::State, S: BosStr> UpdateQueueBuilder<St, S> {
     /// Set the `recommendedPolicies` field (optional)
-    pub fn recommended_policies(
-        mut self,
-        value: impl Into<Option<Vec<CowStr<'a>>>>,
-    ) -> Self {
+    pub fn recommended_policies(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `recommendedPolicies` field to an Option value (optional)
-    pub fn maybe_recommended_policies(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_recommended_policies(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> UpdateQueueBuilder<'a, S>
+impl<St, S: BosStr> UpdateQueueBuilder<St, S>
 where
-    S: update_queue_state::State,
-    S::QueueId: update_queue_state::IsSet,
+    St: update_queue_state::State,
+    St::QueueId: update_queue_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> UpdateQueue<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> UpdateQueue<S> {
         UpdateQueue {
             description: self._fields.0,
             enabled: self._fields.1,
@@ -265,14 +284,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> UpdateQueue<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> UpdateQueue<S> {
         UpdateQueue {
             description: self._fields.0,
             enabled: self._fields.1,

@@ -10,61 +10,63 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{AtUri, UriValue};
 use jacquard_common::types::value::Data;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::embed::external::View;
 use crate::com_atproto::repo::strong_ref::StrongRef;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetEmbedExternalView<'a> {
-    #[serde(borrow)]
-    pub uris: Vec<AtUri<'a>>,
-    #[serde(borrow)]
-    pub url: UriValue<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetEmbedExternalView<S: BosStr = DefaultStr> {
+    pub uris: Vec<AtUri<S>>,
+    pub url: UriValue<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct GetEmbedExternalViewOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetEmbedExternalViewOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub associated_records: Option<Vec<Data<'a>>>,
+    pub associated_records: Option<Vec<Data<S>>>,
     ///StrongRefs (URI+CID) of the Atmosphere records that backed this view, suitable for embedding into a post's external.associatedRefs.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub associated_refs: Option<Vec<StrongRef<'a>>>,
+    pub associated_refs: Option<Vec<StrongRef<S>>>,
     ///Hydrated view of the embed. Present only when the resolved records back the requested URL and supply enough information to populate the required `viewExternal` fields. Omitted alongside the rest of the response when no records resolved or validation failed.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub view: Option<View<'a>>,
+    pub view: Option<View<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.embed.getEmbedExternalView
+/** Response marker for the `app.bsky.embed.getEmbedExternalView` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetEmbedExternalViewOutput<S>` for this endpoint.*/
 pub struct GetEmbedExternalViewResponse;
 impl jacquard_common::xrpc::XrpcResp for GetEmbedExternalViewResponse {
     const NSID: &'static str = "app.bsky.embed.getEmbedExternalView";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetEmbedExternalViewOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetEmbedExternalViewOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetEmbedExternalView<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetEmbedExternalView<S> {
     const NSID: &'static str = "app.bsky.embed.getEmbedExternalView";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetEmbedExternalViewResponse;
 }
 
-/// Endpoint type for app.bsky.embed.getEmbedExternalView
+/** Endpoint marker for the `app.bsky.embed.getEmbedExternalView` query.
+
+Path: `/xrpc/app.bsky.embed.getEmbedExternalView`. The request payload type is `GetEmbedExternalView<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetEmbedExternalViewRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetEmbedExternalViewRequest {
     const PATH: &'static str = "/xrpc/app.bsky.embed.getEmbedExternalView";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetEmbedExternalView<'de>;
+    type Request<S: BosStr> = GetEmbedExternalView<S>;
     type Response = GetEmbedExternalViewResponse;
 }
 
@@ -89,17 +91,17 @@ pub mod get_embed_external_view_state {
         type Url = Unset;
     }
     ///State transition - sets the `uris` field to Set
-    pub struct SetUris<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUris<S> {}
-    impl<S: State> State for SetUris<S> {
+    pub struct SetUris<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUris<St> {}
+    impl<St: State> State for SetUris<St> {
         type Uris = Set<members::uris>;
-        type Url = S::Url;
+        type Url = St::Url;
     }
     ///State transition - sets the `url` field to Set
-    pub struct SetUrl<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUrl<S> {}
-    impl<S: State> State for SetUrl<S> {
-        type Uris = S::Uris;
+    pub struct SetUrl<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUrl<St> {}
+    impl<St: State> State for SetUrl<St> {
+        type Uris = St::Uris;
         type Url = Set<members::url>;
     }
     /// Marker types for field names
@@ -112,80 +114,104 @@ pub mod get_embed_external_view_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetEmbedExternalViewBuilder<'a, S: get_embed_external_view_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<AtUri<'a>>>, Option<UriValue<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetEmbedExternalViewBuilder<
+    St: get_embed_external_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<AtUri<S>>>, Option<UriValue<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetEmbedExternalView<'a> {
-    /// Create a new builder for this type
+impl GetEmbedExternalView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> GetEmbedExternalViewBuilder<
-        'a,
         get_embed_external_view_state::Empty,
+        DefaultStr,
     > {
         GetEmbedExternalViewBuilder::new()
     }
 }
 
-impl<'a> GetEmbedExternalViewBuilder<'a, get_embed_external_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetEmbedExternalView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetEmbedExternalViewBuilder<
+        get_embed_external_view_state::Empty,
+        S,
+    > {
+        GetEmbedExternalViewBuilder::builder()
+    }
+}
+
+impl GetEmbedExternalViewBuilder<get_embed_external_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetEmbedExternalViewBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetEmbedExternalViewBuilder<'a, S>
+impl<S: BosStr> GetEmbedExternalViewBuilder<get_embed_external_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetEmbedExternalViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetEmbedExternalViewBuilder<St, S>
 where
-    S: get_embed_external_view_state::State,
-    S::Uris: get_embed_external_view_state::IsUnset,
+    St: get_embed_external_view_state::State,
+    St::Uris: get_embed_external_view_state::IsUnset,
 {
     /// Set the `uris` field (required)
     pub fn uris(
         mut self,
-        value: impl Into<Vec<AtUri<'a>>>,
-    ) -> GetEmbedExternalViewBuilder<'a, get_embed_external_view_state::SetUris<S>> {
+        value: impl Into<Vec<AtUri<S>>>,
+    ) -> GetEmbedExternalViewBuilder<get_embed_external_view_state::SetUris<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetEmbedExternalViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetEmbedExternalViewBuilder<'a, S>
+impl<St, S: BosStr> GetEmbedExternalViewBuilder<St, S>
 where
-    S: get_embed_external_view_state::State,
-    S::Url: get_embed_external_view_state::IsUnset,
+    St: get_embed_external_view_state::State,
+    St::Url: get_embed_external_view_state::IsUnset,
 {
     /// Set the `url` field (required)
     pub fn url(
         mut self,
-        value: impl Into<UriValue<'a>>,
-    ) -> GetEmbedExternalViewBuilder<'a, get_embed_external_view_state::SetUrl<S>> {
+        value: impl Into<UriValue<S>>,
+    ) -> GetEmbedExternalViewBuilder<get_embed_external_view_state::SetUrl<St>, S> {
         self._fields.1 = Option::Some(value.into());
         GetEmbedExternalViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetEmbedExternalViewBuilder<'a, S>
+impl<St, S: BosStr> GetEmbedExternalViewBuilder<St, S>
 where
-    S: get_embed_external_view_state::State,
-    S::Uris: get_embed_external_view_state::IsSet,
-    S::Url: get_embed_external_view_state::IsSet,
+    St: get_embed_external_view_state::State,
+    St::Uris: get_embed_external_view_state::IsSet,
+    St::Url: get_embed_external_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetEmbedExternalView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetEmbedExternalView<S> {
         GetEmbedExternalView {
             uris: self._fields.0.unwrap(),
             url: self._fields.1.unwrap(),

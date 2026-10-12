@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Nsid, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{IntoStatic, lexicon};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -31,49 +33,45 @@ use crate::com_atproto::moderation::ReasonType;
 use crate::com_atproto::moderation::SubjectType;
 /// A declaration of the existence of labeler service.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase", rename = "app.bsky.labeler.service", tag = "$type")]
-pub struct Service<'a> {
+#[serde(
+    rename_all = "camelCase",
+    rename = "app.bsky.labeler.service",
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct Service<S: BosStr = DefaultStr> {
     pub created_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub labels: Option<SelfLabels<'a>>,
-    #[serde(borrow)]
-    pub policies: LabelerPolicies<'a>,
+    pub labels: Option<SelfLabels<S>>,
+    pub policies: LabelerPolicies<S>,
     ///The set of report reason 'codes' which are in-scope for this service to review and action. These usually align to policy categories. If not defined (distinct from empty array), all reason types are allowed.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reason_types: Option<Vec<ReasonType<'a>>>,
+    pub reason_types: Option<Vec<ReasonType<S>>>,
     ///Set of record types (collection NSIDs) which can be reported to this service. If not defined (distinct from empty array), default is any record type.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub subject_collections: Option<Vec<Nsid<'a>>>,
+    pub subject_collections: Option<Vec<Nsid<S>>>,
     ///The set of subject types (account, record, etc) this service accepts reports on.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub subject_types: Option<Vec<SubjectType<'a>>>,
+    pub subject_types: Option<Vec<SubjectType<S>>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct ServiceGetRecordOutput<'a> {
+pub struct ServiceGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Service<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Service<S>,
 }
 
-impl<'a> Service<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, ServiceRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Service<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, ServiceRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
@@ -84,18 +82,17 @@ pub struct ServiceRecord;
 impl XrpcResp for ServiceRecord {
     const NSID: &'static str = "app.bsky.labeler.service";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ServiceGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = ServiceGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<ServiceGetRecordOutput<'_>> for Service<'_> {
-    fn from(output: ServiceGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<ServiceGetRecordOutput<S>> for Service<S> {
+    fn from(output: ServiceGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Service<'_> {
+impl<S: BosStr> Collection for Service<S> {
     const NSID: &'static str = "app.bsky.labeler.service";
     type Record = ServiceRecord;
 }
@@ -105,7 +102,7 @@ impl Collection for ServiceRecord {
     type Record = ServiceRecord;
 }
 
-impl<'a> LexiconSchema for Service<'a> {
+impl<S: BosStr> LexiconSchema for Service<S> {
     fn nsid() -> &'static str {
         "app.bsky.labeler.service"
     }
@@ -130,179 +127,194 @@ pub mod service_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Policies;
         type CreatedAt;
+        type Policies;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Policies = Unset;
         type CreatedAt = Unset;
-    }
-    ///State transition - sets the `policies` field to Set
-    pub struct SetPolicies<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPolicies<S> {}
-    impl<S: State> State for SetPolicies<S> {
-        type Policies = Set<members::policies>;
-        type CreatedAt = S::CreatedAt;
+        type Policies = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Policies = S::Policies;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
+        type Policies = St::Policies;
+    }
+    ///State transition - sets the `policies` field to Set
+    pub struct SetPolicies<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPolicies<St> {}
+    impl<St: State> State for SetPolicies<St> {
+        type CreatedAt = St::CreatedAt;
+        type Policies = Set<members::policies>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `policies` field
-        pub struct policies(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `policies` field
+        pub struct policies(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ServiceBuilder<'a, S: service_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ServiceBuilder<St: service_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<Datetime>,
-        Option<SelfLabels<'a>>,
-        Option<LabelerPolicies<'a>>,
-        Option<Vec<ReasonType<'a>>>,
-        Option<Vec<Nsid<'a>>>,
-        Option<Vec<SubjectType<'a>>>,
+        Option<SelfLabels<S>>,
+        Option<LabelerPolicies<S>>,
+        Option<Vec<ReasonType<S>>>,
+        Option<Vec<Nsid<S>>>,
+        Option<Vec<SubjectType<S>>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Service<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ServiceBuilder<'a, service_state::Empty> {
+impl Service<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ServiceBuilder<service_state::Empty, DefaultStr> {
         ServiceBuilder::new()
     }
 }
 
-impl<'a> ServiceBuilder<'a, service_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Service<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ServiceBuilder<service_state::Empty, S> {
+        ServiceBuilder::builder()
+    }
+}
+
+impl ServiceBuilder<service_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ServiceBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ServiceBuilder<'a, S>
+impl<S: BosStr> ServiceBuilder<service_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ServiceBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ServiceBuilder<St, S>
 where
-    S: service_state::State,
-    S::CreatedAt: service_state::IsUnset,
+    St: service_state::State,
+    St::CreatedAt: service_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> ServiceBuilder<'a, service_state::SetCreatedAt<S>> {
+    ) -> ServiceBuilder<service_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ServiceBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: service_state::State> ServiceBuilder<'a, S> {
+impl<St: service_state::State, S: BosStr> ServiceBuilder<St, S> {
     /// Set the `labels` field (optional)
-    pub fn labels(mut self, value: impl Into<Option<SelfLabels<'a>>>) -> Self {
+    pub fn labels(mut self, value: impl Into<Option<SelfLabels<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `labels` field to an Option value (optional)
-    pub fn maybe_labels(mut self, value: Option<SelfLabels<'a>>) -> Self {
+    pub fn maybe_labels(mut self, value: Option<SelfLabels<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> ServiceBuilder<'a, S>
+impl<St, S: BosStr> ServiceBuilder<St, S>
 where
-    S: service_state::State,
-    S::Policies: service_state::IsUnset,
+    St: service_state::State,
+    St::Policies: service_state::IsUnset,
 {
     /// Set the `policies` field (required)
     pub fn policies(
         mut self,
-        value: impl Into<LabelerPolicies<'a>>,
-    ) -> ServiceBuilder<'a, service_state::SetPolicies<S>> {
+        value: impl Into<LabelerPolicies<S>>,
+    ) -> ServiceBuilder<service_state::SetPolicies<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ServiceBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: service_state::State> ServiceBuilder<'a, S> {
+impl<St: service_state::State, S: BosStr> ServiceBuilder<St, S> {
     /// Set the `reasonTypes` field (optional)
-    pub fn reason_types(
-        mut self,
-        value: impl Into<Option<Vec<ReasonType<'a>>>>,
-    ) -> Self {
+    pub fn reason_types(mut self, value: impl Into<Option<Vec<ReasonType<S>>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `reasonTypes` field to an Option value (optional)
-    pub fn maybe_reason_types(mut self, value: Option<Vec<ReasonType<'a>>>) -> Self {
+    pub fn maybe_reason_types(mut self, value: Option<Vec<ReasonType<S>>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: service_state::State> ServiceBuilder<'a, S> {
+impl<St: service_state::State, S: BosStr> ServiceBuilder<St, S> {
     /// Set the `subjectCollections` field (optional)
     pub fn subject_collections(
         mut self,
-        value: impl Into<Option<Vec<Nsid<'a>>>>,
+        value: impl Into<Option<Vec<Nsid<S>>>>,
     ) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `subjectCollections` field to an Option value (optional)
-    pub fn maybe_subject_collections(mut self, value: Option<Vec<Nsid<'a>>>) -> Self {
+    pub fn maybe_subject_collections(mut self, value: Option<Vec<Nsid<S>>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S: service_state::State> ServiceBuilder<'a, S> {
+impl<St: service_state::State, S: BosStr> ServiceBuilder<St, S> {
     /// Set the `subjectTypes` field (optional)
     pub fn subject_types(
         mut self,
-        value: impl Into<Option<Vec<SubjectType<'a>>>>,
+        value: impl Into<Option<Vec<SubjectType<S>>>>,
     ) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `subjectTypes` field to an Option value (optional)
-    pub fn maybe_subject_types(mut self, value: Option<Vec<SubjectType<'a>>>) -> Self {
+    pub fn maybe_subject_types(mut self, value: Option<Vec<SubjectType<S>>>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S> ServiceBuilder<'a, S>
+impl<St, S: BosStr> ServiceBuilder<St, S>
 where
-    S: service_state::State,
-    S::Policies: service_state::IsSet,
-    S::CreatedAt: service_state::IsSet,
+    St: service_state::State,
+    St::CreatedAt: service_state::IsSet,
+    St::Policies: service_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Service<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Service<S> {
         Service {
             created_at: self._fields.0.unwrap(),
             labels: self._fields.1,
@@ -313,14 +325,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Service<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Service<S> {
         Service {
             created_at: self._fields.0.unwrap(),
             labels: self._fields.1,

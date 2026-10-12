@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, AtUri};
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -24,42 +26,39 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::feed::describe_feed_generator;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Feed<'a> {
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Feed<S: BosStr = DefaultStr> {
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Links<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Links<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub privacy_policy: Option<CowStr<'a>>,
+    pub privacy_policy: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub terms_of_service: Option<CowStr<'a>>,
+    pub terms_of_service: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DescribeFeedGeneratorOutput<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
-    #[serde(borrow)]
-    pub feeds: Vec<describe_feed_generator::Feed<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DescribeFeedGeneratorOutput<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
+    pub feeds: Vec<describe_feed_generator::Feed<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub links: Option<describe_feed_generator::Links<'a>>,
+    pub links: Option<describe_feed_generator::Links<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for Feed<'a> {
+impl<S: BosStr> LexiconSchema for Feed<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.describeFeedGenerator"
     }
@@ -74,7 +73,7 @@ impl<'a> LexiconSchema for Feed<'a> {
     }
 }
 
-impl<'a> LexiconSchema for Links<'a> {
+impl<S: BosStr> LexiconSchema for Links<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.describeFeedGenerator"
     }
@@ -89,17 +88,21 @@ impl<'a> LexiconSchema for Links<'a> {
     }
 }
 
-/// XRPC request marker type.
+/** Request marker for the `app.bsky.feed.describeFeedGenerator` query.
+
+This endpoint has no request parameters or input body; send this marker with `jacquard::Client`.*/
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Copy)]
 pub struct DescribeFeedGenerator;
-/// Response type for app.bsky.feed.describeFeedGenerator
+/** Response marker for the `app.bsky.feed.describeFeedGenerator` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `DescribeFeedGeneratorOutput<S>` for this endpoint.*/
 pub struct DescribeFeedGeneratorResponse;
 impl jacquard_common::xrpc::XrpcResp for DescribeFeedGeneratorResponse {
     const NSID: &'static str = "app.bsky.feed.describeFeedGenerator";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = DescribeFeedGeneratorOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = DescribeFeedGeneratorOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for DescribeFeedGenerator {
@@ -108,12 +111,14 @@ impl jacquard_common::xrpc::XrpcRequest for DescribeFeedGenerator {
     type Response = DescribeFeedGeneratorResponse;
 }
 
-/// Endpoint type for app.bsky.feed.describeFeedGenerator
+/** Endpoint marker for the `app.bsky.feed.describeFeedGenerator` query.
+
+Path: `/xrpc/app.bsky.feed.describeFeedGenerator`. The request payload type is `DescribeFeedGenerator`; use this marker with lower-level `XrpcEndpoint` APIs when you need endpoint metadata.*/
 pub struct DescribeFeedGeneratorRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for DescribeFeedGeneratorRequest {
     const PATH: &'static str = "/xrpc/app.bsky.feed.describeFeedGenerator";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = DescribeFeedGenerator;
+    type Request<S: BosStr> = DescribeFeedGenerator;
     type Response = DescribeFeedGeneratorResponse;
 }
 
@@ -136,9 +141,9 @@ pub mod feed_state {
         type Uri = Unset;
     }
     ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
         type Uri = Set<members::uri>;
     }
     /// Marker types for field names
@@ -149,70 +154,82 @@ pub mod feed_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct FeedBuilder<'a, S: feed_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<AtUri<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct FeedBuilder<St: feed_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtUri<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Feed<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> FeedBuilder<'a, feed_state::Empty> {
+impl Feed<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> FeedBuilder<feed_state::Empty, DefaultStr> {
         FeedBuilder::new()
     }
 }
 
-impl<'a> FeedBuilder<'a, feed_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Feed<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> FeedBuilder<feed_state::Empty, S> {
+        FeedBuilder::builder()
+    }
+}
+
+impl FeedBuilder<feed_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         FeedBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> FeedBuilder<'a, S>
+impl<S: BosStr> FeedBuilder<feed_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        FeedBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> FeedBuilder<St, S>
 where
-    S: feed_state::State,
-    S::Uri: feed_state::IsUnset,
+    St: feed_state::State,
+    St::Uri: feed_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> FeedBuilder<'a, feed_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> FeedBuilder<feed_state::SetUri<St>, S> {
         self._fields.0 = Option::Some(value.into());
         FeedBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> FeedBuilder<'a, S>
+impl<St, S: BosStr> FeedBuilder<St, S>
 where
-    S: feed_state::State,
-    S::Uri: feed_state::IsSet,
+    St: feed_state::State,
+    St::Uri: feed_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Feed<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Feed<S> {
         Feed {
             uri: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Feed<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Feed<S> {
         Feed {
             uri: self._fields.0.unwrap(),
             extra_data: Some(extra_data),

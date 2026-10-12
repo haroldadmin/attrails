@@ -10,48 +10,54 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::signature::SigDetail;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct FindCorrelation<'a> {
-    #[serde(borrow)]
-    pub dids: Vec<Did<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct FindCorrelation<S: BosStr = DefaultStr> {
+    pub dids: Vec<Did<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct FindCorrelationOutput<'a> {
-    #[serde(borrow)]
-    pub details: Vec<SigDetail<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct FindCorrelationOutput<S: BosStr = DefaultStr> {
+    pub details: Vec<SigDetail<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.signature.findCorrelation
+/** Response marker for the `tools.ozone.signature.findCorrelation` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `FindCorrelationOutput<S>` for this endpoint.*/
 pub struct FindCorrelationResponse;
 impl jacquard_common::xrpc::XrpcResp for FindCorrelationResponse {
     const NSID: &'static str = "tools.ozone.signature.findCorrelation";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = FindCorrelationOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = FindCorrelationOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for FindCorrelation<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for FindCorrelation<S> {
     const NSID: &'static str = "tools.ozone.signature.findCorrelation";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = FindCorrelationResponse;
 }
 
-/// Endpoint type for tools.ozone.signature.findCorrelation
+/** Endpoint marker for the `tools.ozone.signature.findCorrelation` query.
+
+Path: `/xrpc/tools.ozone.signature.findCorrelation`. The request payload type is `FindCorrelation<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct FindCorrelationRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for FindCorrelationRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.signature.findCorrelation";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = FindCorrelation<'de>;
+    type Request<S: BosStr> = FindCorrelation<S>;
     type Response = FindCorrelationResponse;
 }
 
@@ -74,9 +80,9 @@ pub mod find_correlation_state {
         type Dids = Unset;
     }
     ///State transition - sets the `dids` field to Set
-    pub struct SetDids<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDids<S> {}
-    impl<S: State> State for SetDids<S> {
+    pub struct SetDids<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDids<St> {}
+    impl<St: State> State for SetDids<St> {
         type Dids = Set<members::dids>;
     }
     /// Marker types for field names
@@ -87,57 +93,78 @@ pub mod find_correlation_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct FindCorrelationBuilder<'a, S: find_correlation_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<Did<'a>>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct FindCorrelationBuilder<
+    St: find_correlation_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<Did<S>>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> FindCorrelation<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> FindCorrelationBuilder<'a, find_correlation_state::Empty> {
+impl FindCorrelation<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> FindCorrelationBuilder<find_correlation_state::Empty, DefaultStr> {
         FindCorrelationBuilder::new()
     }
 }
 
-impl<'a> FindCorrelationBuilder<'a, find_correlation_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> FindCorrelation<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> FindCorrelationBuilder<find_correlation_state::Empty, S> {
+        FindCorrelationBuilder::builder()
+    }
+}
+
+impl FindCorrelationBuilder<find_correlation_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         FindCorrelationBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> FindCorrelationBuilder<'a, S>
+impl<S: BosStr> FindCorrelationBuilder<find_correlation_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        FindCorrelationBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> FindCorrelationBuilder<St, S>
 where
-    S: find_correlation_state::State,
-    S::Dids: find_correlation_state::IsUnset,
+    St: find_correlation_state::State,
+    St::Dids: find_correlation_state::IsUnset,
 {
     /// Set the `dids` field (required)
     pub fn dids(
         mut self,
-        value: impl Into<Vec<Did<'a>>>,
-    ) -> FindCorrelationBuilder<'a, find_correlation_state::SetDids<S>> {
+        value: impl Into<Vec<Did<S>>>,
+    ) -> FindCorrelationBuilder<find_correlation_state::SetDids<St>, S> {
         self._fields.0 = Option::Some(value.into());
         FindCorrelationBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> FindCorrelationBuilder<'a, S>
+impl<St, S: BosStr> FindCorrelationBuilder<St, S>
 where
-    S: find_correlation_state::State,
-    S::Dids: find_correlation_state::IsSet,
+    St: find_correlation_state::State,
+    St::Dids: find_correlation_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> FindCorrelation<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> FindCorrelation<S> {
         FindCorrelation {
             dids: self._fields.0.unwrap(),
         }

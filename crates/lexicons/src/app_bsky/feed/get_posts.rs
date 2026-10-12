@@ -10,48 +10,54 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::AtUri;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::feed::PostView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetPosts<'a> {
-    #[serde(borrow)]
-    pub uris: Vec<AtUri<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetPosts<S: BosStr = DefaultStr> {
+    pub uris: Vec<AtUri<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetPostsOutput<'a> {
-    #[serde(borrow)]
-    pub posts: Vec<PostView<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetPostsOutput<S: BosStr = DefaultStr> {
+    pub posts: Vec<PostView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.feed.getPosts
+/** Response marker for the `app.bsky.feed.getPosts` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetPostsOutput<S>` for this endpoint.*/
 pub struct GetPostsResponse;
 impl jacquard_common::xrpc::XrpcResp for GetPostsResponse {
     const NSID: &'static str = "app.bsky.feed.getPosts";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetPostsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetPostsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetPosts<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetPosts<S> {
     const NSID: &'static str = "app.bsky.feed.getPosts";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetPostsResponse;
 }
 
-/// Endpoint type for app.bsky.feed.getPosts
+/** Endpoint marker for the `app.bsky.feed.getPosts` query.
+
+Path: `/xrpc/app.bsky.feed.getPosts`. The request payload type is `GetPosts<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetPostsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetPostsRequest {
     const PATH: &'static str = "/xrpc/app.bsky.feed.getPosts";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetPosts<'de>;
+    type Request<S: BosStr> = GetPosts<S>;
     type Response = GetPostsResponse;
 }
 
@@ -74,9 +80,9 @@ pub mod get_posts_state {
         type Uris = Unset;
     }
     ///State transition - sets the `uris` field to Set
-    pub struct SetUris<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUris<S> {}
-    impl<S: State> State for SetUris<S> {
+    pub struct SetUris<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUris<St> {}
+    impl<St: State> State for SetUris<St> {
         type Uris = Set<members::uris>;
     }
     /// Marker types for field names
@@ -87,57 +93,75 @@ pub mod get_posts_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetPostsBuilder<'a, S: get_posts_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<AtUri<'a>>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetPostsBuilder<St: get_posts_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<AtUri<S>>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetPosts<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetPostsBuilder<'a, get_posts_state::Empty> {
+impl GetPosts<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetPostsBuilder<get_posts_state::Empty, DefaultStr> {
         GetPostsBuilder::new()
     }
 }
 
-impl<'a> GetPostsBuilder<'a, get_posts_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetPosts<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetPostsBuilder<get_posts_state::Empty, S> {
+        GetPostsBuilder::builder()
+    }
+}
+
+impl GetPostsBuilder<get_posts_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetPostsBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetPostsBuilder<'a, S>
+impl<S: BosStr> GetPostsBuilder<get_posts_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetPostsBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetPostsBuilder<St, S>
 where
-    S: get_posts_state::State,
-    S::Uris: get_posts_state::IsUnset,
+    St: get_posts_state::State,
+    St::Uris: get_posts_state::IsUnset,
 {
     /// Set the `uris` field (required)
     pub fn uris(
         mut self,
-        value: impl Into<Vec<AtUri<'a>>>,
-    ) -> GetPostsBuilder<'a, get_posts_state::SetUris<S>> {
+        value: impl Into<Vec<AtUri<S>>>,
+    ) -> GetPostsBuilder<get_posts_state::SetUris<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetPostsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetPostsBuilder<'a, S>
+impl<St, S: BosStr> GetPostsBuilder<St, S>
 where
-    S: get_posts_state::State,
-    S::Uris: get_posts_state::IsSet,
+    St: get_posts_state::State,
+    St::Uris: get_posts_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetPosts<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetPosts<S> {
         GetPosts {
             uris: self._fields.0.unwrap(),
         }

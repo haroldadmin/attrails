@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::AtUri;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -30,97 +32,97 @@ use crate::app_bsky::unspecced::ThreadItemPost;
 use crate::app_bsky::unspecced::get_post_thread_v2;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetPostThreadV2<'a> {
-    /// Defaults to `true`.
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetPostThreadV2<S: BosStr = DefaultStr> {
+    ///  Defaults to `true`.
     #[serde(default = "_default_above")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub above: Option<bool>,
-    #[serde(borrow)]
-    pub anchor: AtUri<'a>,
-    ///Defaults to `6`. Min: 0. Max: 20.
+    pub anchor: AtUri<S>,
+    /// Defaults to `6`. Min: 0. Max: 20.
     #[serde(default = "_default_below")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub below: Option<i64>,
-    ///Defaults to `10`. Min: 0. Max: 100.
+    /// Defaults to `10`. Min: 0. Max: 100.
     #[serde(default = "_default_branching_factor")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub branching_factor: Option<i64>,
-    ///Defaults to `"oldest"`.
+    /// Defaults to `"oldest"`.
     #[serde(default = "_default_sort")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub sort: Option<CowStr<'a>>,
+    pub sort: Option<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetPostThreadV2Output<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetPostThreadV2Output<S: BosStr = DefaultStr> {
     ///Whether this thread has additional replies. If true, a call can be made to the `getPostThreadOtherV2` endpoint to retrieve them.
     pub has_other_replies: bool,
     ///A flat list of thread items. The depth of each item is indicated by the depth property inside the item.
-    #[serde(borrow)]
-    pub thread: Vec<get_post_thread_v2::ThreadItem<'a>>,
+    pub thread: Vec<get_post_thread_v2::ThreadItem<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub threadgate: Option<ThreadgateView<'a>>,
+    pub threadgate: Option<ThreadgateView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadItem<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ThreadItem<S: BosStr = DefaultStr> {
     ///The nesting level of this item in the thread. Depth 0 means the anchor item. Items above have negative depths, items below have positive depths.
     pub depth: i64,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: ThreadItemValue<'a>,
+    pub uri: AtUri<S>,
+    pub value: ThreadItemValue<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ThreadItemValue<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ThreadItemValue<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.unspecced.defs#threadItemPost")]
-    ThreadItemPost(Box<ThreadItemPost<'a>>),
+    ThreadItemPost(Box<ThreadItemPost<S>>),
     #[serde(rename = "app.bsky.unspecced.defs#threadItemNoUnauthenticated")]
-    ThreadItemNoUnauthenticated(Box<ThreadItemNoUnauthenticated<'a>>),
+    ThreadItemNoUnauthenticated(Box<ThreadItemNoUnauthenticated<S>>),
     #[serde(rename = "app.bsky.unspecced.defs#threadItemNotFound")]
-    ThreadItemNotFound(Box<ThreadItemNotFound<'a>>),
+    ThreadItemNotFound(Box<ThreadItemNotFound<S>>),
     #[serde(rename = "app.bsky.unspecced.defs#threadItemBlocked")]
-    ThreadItemBlocked(Box<ThreadItemBlocked<'a>>),
+    ThreadItemBlocked(Box<ThreadItemBlocked<S>>),
 }
 
-/// Response type for app.bsky.unspecced.getPostThreadV2
+/** Response marker for the `app.bsky.unspecced.getPostThreadV2` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetPostThreadV2Output<S>` for this endpoint.*/
 pub struct GetPostThreadV2Response;
 impl jacquard_common::xrpc::XrpcResp for GetPostThreadV2Response {
     const NSID: &'static str = "app.bsky.unspecced.getPostThreadV2";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetPostThreadV2Output<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetPostThreadV2Output<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetPostThreadV2<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetPostThreadV2<S> {
     const NSID: &'static str = "app.bsky.unspecced.getPostThreadV2";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetPostThreadV2Response;
 }
 
-/// Endpoint type for app.bsky.unspecced.getPostThreadV2
+/** Endpoint marker for the `app.bsky.unspecced.getPostThreadV2` query.
+
+Path: `/xrpc/app.bsky.unspecced.getPostThreadV2`. The request payload type is `GetPostThreadV2<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetPostThreadV2Request;
 impl jacquard_common::xrpc::XrpcEndpoint for GetPostThreadV2Request {
     const PATH: &'static str = "/xrpc/app.bsky.unspecced.getPostThreadV2";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetPostThreadV2<'de>;
+    type Request<S: BosStr> = GetPostThreadV2<S>;
     type Response = GetPostThreadV2Response;
 }
 
-impl<'a> LexiconSchema for ThreadItem<'a> {
+impl<S: BosStr> LexiconSchema for ThreadItem<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.getPostThreadV2"
     }
@@ -147,8 +149,8 @@ fn _default_branching_factor() -> Option<i64> {
     Some(10i64)
 }
 
-fn _default_sort() -> Option<CowStr<'static>> {
-    Some(CowStr::from("oldest"))
+fn _default_sort<S: jacquard_common::FromStaticStr>() -> Option<S> {
+    Some(S::from_static("oldest"))
 }
 
 pub mod get_post_thread_v2_state {
@@ -170,9 +172,9 @@ pub mod get_post_thread_v2_state {
         type Anchor = Unset;
     }
     ///State transition - sets the `anchor` field to Set
-    pub struct SetAnchor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAnchor<S> {}
-    impl<S: State> State for SetAnchor<S> {
+    pub struct SetAnchor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAnchor<St> {}
+    impl<St: State> State for SetAnchor<St> {
         type Anchor = Set<members::anchor>;
     }
     /// Marker types for field names
@@ -183,38 +185,53 @@ pub mod get_post_thread_v2_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetPostThreadV2Builder<'a, S: get_post_thread_v2_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<bool>,
-        Option<AtUri<'a>>,
-        Option<i64>,
-        Option<i64>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetPostThreadV2Builder<
+    St: get_post_thread_v2_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<bool>, Option<AtUri<S>>, Option<i64>, Option<i64>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetPostThreadV2<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetPostThreadV2Builder<'a, get_post_thread_v2_state::Empty> {
+impl GetPostThreadV2<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetPostThreadV2Builder<get_post_thread_v2_state::Empty, DefaultStr> {
         GetPostThreadV2Builder::new()
     }
 }
 
-impl<'a> GetPostThreadV2Builder<'a, get_post_thread_v2_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetPostThreadV2<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetPostThreadV2Builder<get_post_thread_v2_state::Empty, S> {
+        GetPostThreadV2Builder::builder()
+    }
+}
+
+impl GetPostThreadV2Builder<get_post_thread_v2_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetPostThreadV2Builder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_post_thread_v2_state::State> GetPostThreadV2Builder<'a, S> {
+impl<S: BosStr> GetPostThreadV2Builder<get_post_thread_v2_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetPostThreadV2Builder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: get_post_thread_v2_state::State, S: BosStr> GetPostThreadV2Builder<St, S> {
     /// Set the `above` field (optional)
     pub fn above(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.0 = value.into();
@@ -227,26 +244,26 @@ impl<'a, S: get_post_thread_v2_state::State> GetPostThreadV2Builder<'a, S> {
     }
 }
 
-impl<'a, S> GetPostThreadV2Builder<'a, S>
+impl<St, S: BosStr> GetPostThreadV2Builder<St, S>
 where
-    S: get_post_thread_v2_state::State,
-    S::Anchor: get_post_thread_v2_state::IsUnset,
+    St: get_post_thread_v2_state::State,
+    St::Anchor: get_post_thread_v2_state::IsUnset,
 {
     /// Set the `anchor` field (required)
     pub fn anchor(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> GetPostThreadV2Builder<'a, get_post_thread_v2_state::SetAnchor<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> GetPostThreadV2Builder<get_post_thread_v2_state::SetAnchor<St>, S> {
         self._fields.1 = Option::Some(value.into());
         GetPostThreadV2Builder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_post_thread_v2_state::State> GetPostThreadV2Builder<'a, S> {
+impl<St: get_post_thread_v2_state::State, S: BosStr> GetPostThreadV2Builder<St, S> {
     /// Set the `below` field (optional)
     pub fn below(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.2 = value.into();
@@ -259,7 +276,7 @@ impl<'a, S: get_post_thread_v2_state::State> GetPostThreadV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: get_post_thread_v2_state::State> GetPostThreadV2Builder<'a, S> {
+impl<St: get_post_thread_v2_state::State, S: BosStr> GetPostThreadV2Builder<St, S> {
     /// Set the `branchingFactor` field (optional)
     pub fn branching_factor(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.3 = value.into();
@@ -272,26 +289,26 @@ impl<'a, S: get_post_thread_v2_state::State> GetPostThreadV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: get_post_thread_v2_state::State> GetPostThreadV2Builder<'a, S> {
+impl<St: get_post_thread_v2_state::State, S: BosStr> GetPostThreadV2Builder<St, S> {
     /// Set the `sort` field (optional)
-    pub fn sort(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn sort(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `sort` field to an Option value (optional)
-    pub fn maybe_sort(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_sort(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> GetPostThreadV2Builder<'a, S>
+impl<St, S: BosStr> GetPostThreadV2Builder<St, S>
 where
-    S: get_post_thread_v2_state::State,
-    S::Anchor: get_post_thread_v2_state::IsSet,
+    St: get_post_thread_v2_state::State,
+    St::Anchor: get_post_thread_v2_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetPostThreadV2<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetPostThreadV2<S> {
         GetPostThreadV2 {
             above: self._fields.0,
             anchor: self._fields.1.unwrap(),
@@ -312,145 +329,163 @@ pub mod thread_item_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Uri;
         type Depth;
+        type Uri;
         type Value;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Uri = Unset;
         type Depth = Unset;
+        type Uri = Unset;
         type Value = Unset;
     }
-    ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type Uri = Set<members::uri>;
-        type Depth = S::Depth;
-        type Value = S::Value;
-    }
     ///State transition - sets the `depth` field to Set
-    pub struct SetDepth<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDepth<S> {}
-    impl<S: State> State for SetDepth<S> {
-        type Uri = S::Uri;
+    pub struct SetDepth<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDepth<St> {}
+    impl<St: State> State for SetDepth<St> {
         type Depth = Set<members::depth>;
-        type Value = S::Value;
+        type Uri = St::Uri;
+        type Value = St::Value;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type Depth = St::Depth;
+        type Uri = Set<members::uri>;
+        type Value = St::Value;
     }
     ///State transition - sets the `value` field to Set
-    pub struct SetValue<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetValue<S> {}
-    impl<S: State> State for SetValue<S> {
-        type Uri = S::Uri;
-        type Depth = S::Depth;
+    pub struct SetValue<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetValue<St> {}
+    impl<St: State> State for SetValue<St> {
+        type Depth = St::Depth;
+        type Uri = St::Uri;
         type Value = Set<members::value>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `uri` field
-        pub struct uri(());
         ///Marker type for the `depth` field
         pub struct depth(());
+        ///Marker type for the `uri` field
+        pub struct uri(());
         ///Marker type for the `value` field
         pub struct value(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ThreadItemBuilder<'a, S: thread_item_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<i64>, Option<AtUri<'a>>, Option<ThreadItemValue<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ThreadItemBuilder<St: thread_item_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<i64>, Option<AtUri<S>>, Option<ThreadItemValue<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ThreadItem<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ThreadItemBuilder<'a, thread_item_state::Empty> {
+impl ThreadItem<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ThreadItemBuilder<thread_item_state::Empty, DefaultStr> {
         ThreadItemBuilder::new()
     }
 }
 
-impl<'a> ThreadItemBuilder<'a, thread_item_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ThreadItem<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ThreadItemBuilder<thread_item_state::Empty, S> {
+        ThreadItemBuilder::builder()
+    }
+}
+
+impl ThreadItemBuilder<thread_item_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ThreadItemBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemBuilder<'a, S>
+impl<S: BosStr> ThreadItemBuilder<thread_item_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ThreadItemBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ThreadItemBuilder<St, S>
 where
-    S: thread_item_state::State,
-    S::Depth: thread_item_state::IsUnset,
+    St: thread_item_state::State,
+    St::Depth: thread_item_state::IsUnset,
 {
     /// Set the `depth` field (required)
     pub fn depth(
         mut self,
         value: impl Into<i64>,
-    ) -> ThreadItemBuilder<'a, thread_item_state::SetDepth<S>> {
+    ) -> ThreadItemBuilder<thread_item_state::SetDepth<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ThreadItemBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemBuilder<St, S>
 where
-    S: thread_item_state::State,
-    S::Uri: thread_item_state::IsUnset,
+    St: thread_item_state::State,
+    St::Uri: thread_item_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> ThreadItemBuilder<'a, thread_item_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> ThreadItemBuilder<thread_item_state::SetUri<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ThreadItemBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemBuilder<St, S>
 where
-    S: thread_item_state::State,
-    S::Value: thread_item_state::IsUnset,
+    St: thread_item_state::State,
+    St::Value: thread_item_state::IsUnset,
 {
     /// Set the `value` field (required)
     pub fn value(
         mut self,
-        value: impl Into<ThreadItemValue<'a>>,
-    ) -> ThreadItemBuilder<'a, thread_item_state::SetValue<S>> {
+        value: impl Into<ThreadItemValue<S>>,
+    ) -> ThreadItemBuilder<thread_item_state::SetValue<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ThreadItemBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemBuilder<St, S>
 where
-    S: thread_item_state::State,
-    S::Uri: thread_item_state::IsSet,
-    S::Depth: thread_item_state::IsSet,
-    S::Value: thread_item_state::IsSet,
+    St: thread_item_state::State,
+    St::Depth: thread_item_state::IsSet,
+    St::Uri: thread_item_state::IsSet,
+    St::Value: thread_item_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ThreadItem<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ThreadItem<S> {
         ThreadItem {
             depth: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),
@@ -458,14 +493,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ThreadItem<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ThreadItem<S> {
         ThreadItem {
             depth: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),

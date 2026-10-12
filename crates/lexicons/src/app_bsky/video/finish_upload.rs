@@ -10,33 +10,33 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::video::JobStatus;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct FinishUpload<'a> {
-    #[serde(borrow)]
-    pub job_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct FinishUpload<S: BosStr = DefaultStr> {
+    pub job_id: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct FinishUploadOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct FinishUploadOutput<S: BosStr = DefaultStr> {
     ///The processing job to poll with getJobStatus; on deduplication this may differ from the input jobId.
-    #[serde(borrow)]
-    pub completed_job_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub job_status: JobStatus<'a>,
+    pub completed_job_id: S,
+    pub job_status: JobStatus<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -45,40 +45,41 @@ pub struct FinishUploadOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum FinishUploadError<'a> {
+pub enum FinishUploadError {
     /// The job ID is unknown or aged out of retention; known terminal sessions are never reported as not found.
     #[serde(rename = "UploadNotFound")]
-    UploadNotFound(Option<CowStr<'a>>),
+    UploadNotFound(Option<SmolStr>),
     /// The upload session expired before finalization began.
     #[serde(rename = "UploadExpired")]
-    UploadExpired(Option<CowStr<'a>>),
+    UploadExpired(Option<SmolStr>),
     /// Not all parts are recorded; the error message lists the missing part numbers.
     #[serde(rename = "MissingParts")]
-    MissingParts(Option<CowStr<'a>>),
+    MissingParts(Option<SmolStr>),
     /// A finish is in progress; check getUploadStatus and retry.
     #[serde(rename = "UploadNotReady")]
-    UploadNotReady(Option<CowStr<'a>>),
+    UploadNotReady(Option<SmolStr>),
     /// The assembled object's detected content type is not supported.
     #[serde(rename = "UnsupportedContentType")]
-    UnsupportedContentType(Option<CowStr<'a>>),
+    UnsupportedContentType(Option<SmolStr>),
     /// The session is known to have failed; the error carries its failure reason.
     #[serde(rename = "UploadFailed")]
-    UploadFailed(Option<CowStr<'a>>),
+    UploadFailed(Option<SmolStr>),
     /// The session is known to have been aborted.
     #[serde(rename = "UploadAborted")]
-    UploadAborted(Option<CowStr<'a>>),
+    UploadAborted(Option<SmolStr>),
     /// The service is draining or temporarily at capacity; retry later.
     #[serde(rename = "ServiceOverloaded")]
-    ServiceOverloaded(Option<CowStr<'a>>),
+    ServiceOverloaded(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for FinishUploadError<'_> {
+impl core::fmt::Display for FinishUploadError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::UploadNotFound(msg) => {
@@ -137,21 +138,29 @@ impl core::fmt::Display for FinishUploadError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.video.finishUpload
+/** Response marker for the `app.bsky.video.finishUpload` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `FinishUploadOutput<S>` for this endpoint.*/
 pub struct FinishUploadResponse;
 impl jacquard_common::xrpc::XrpcResp for FinishUploadResponse {
     const NSID: &'static str = "app.bsky.video.finishUpload";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = FinishUploadOutput<'de>;
-    type Err<'de> = FinishUploadError<'de>;
+    type Output<S: BosStr> = FinishUploadOutput<S>;
+    type Err = FinishUploadError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for FinishUpload<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for FinishUpload<S> {
     const NSID: &'static str = "app.bsky.video.finishUpload";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -159,13 +168,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for FinishUpload<'a> {
     type Response = FinishUploadResponse;
 }
 
-/// Endpoint type for app.bsky.video.finishUpload
+/** Endpoint marker for the `app.bsky.video.finishUpload` procedure.
+
+Path: `/xrpc/app.bsky.video.finishUpload`. The request payload type is `FinishUpload<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct FinishUploadRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for FinishUploadRequest {
     const PATH: &'static str = "/xrpc/app.bsky.video.finishUpload";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = FinishUpload<'de>;
+    type Request<S: BosStr> = FinishUpload<S>;
     type Response = FinishUploadResponse;
 }

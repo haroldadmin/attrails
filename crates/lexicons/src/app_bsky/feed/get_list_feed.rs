@@ -10,40 +10,38 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::AtUri;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::feed::FeedViewPost;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetListFeed<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetListFeed<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
-    #[serde(borrow)]
-    pub list: AtUri<'a>,
+    pub list: AtUri<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetListFeedOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetListFeedOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub feed: Vec<FeedViewPost<'a>>,
+    pub cursor: Option<S>,
+    pub feed: Vec<FeedViewPost<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -52,18 +50,19 @@ pub struct GetListFeedOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetListFeedError<'a> {
+pub enum GetListFeedError {
     #[serde(rename = "UnknownList")]
-    UnknownList(Option<CowStr<'a>>),
+    UnknownList(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetListFeedError<'_> {
+impl core::fmt::Display for GetListFeedError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::UnknownList(msg) => {
@@ -73,32 +72,42 @@ impl core::fmt::Display for GetListFeedError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.feed.getListFeed
+/** Response marker for the `app.bsky.feed.getListFeed` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetListFeedOutput<S>` for this endpoint.*/
 pub struct GetListFeedResponse;
 impl jacquard_common::xrpc::XrpcResp for GetListFeedResponse {
     const NSID: &'static str = "app.bsky.feed.getListFeed";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetListFeedOutput<'de>;
-    type Err<'de> = GetListFeedError<'de>;
+    type Output<S: BosStr> = GetListFeedOutput<S>;
+    type Err = GetListFeedError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetListFeed<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetListFeed<S> {
     const NSID: &'static str = "app.bsky.feed.getListFeed";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetListFeedResponse;
 }
 
-/// Endpoint type for app.bsky.feed.getListFeed
+/** Endpoint marker for the `app.bsky.feed.getListFeed` query.
+
+Path: `/xrpc/app.bsky.feed.getListFeed`. The request payload type is `GetListFeed<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetListFeedRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetListFeedRequest {
     const PATH: &'static str = "/xrpc/app.bsky.feed.getListFeed";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetListFeed<'de>;
+    type Request<S: BosStr> = GetListFeed<S>;
     type Response = GetListFeedResponse;
 }
 
@@ -125,9 +134,9 @@ pub mod get_list_feed_state {
         type List = Unset;
     }
     ///State transition - sets the `list` field to Set
-    pub struct SetList<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetList<S> {}
-    impl<S: State> State for SetList<S> {
+    pub struct SetList<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetList<St> {}
+    impl<St: State> State for SetList<St> {
         type List = Set<members::list>;
     }
     /// Marker types for field names
@@ -138,45 +147,63 @@ pub mod get_list_feed_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetListFeedBuilder<'a, S: get_list_feed_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetListFeedBuilder<St: get_list_feed_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetListFeed<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetListFeedBuilder<'a, get_list_feed_state::Empty> {
+impl GetListFeed<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetListFeedBuilder<get_list_feed_state::Empty, DefaultStr> {
         GetListFeedBuilder::new()
     }
 }
 
-impl<'a> GetListFeedBuilder<'a, get_list_feed_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetListFeed<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetListFeedBuilder<get_list_feed_state::Empty, S> {
+        GetListFeedBuilder::builder()
+    }
+}
+
+impl GetListFeedBuilder<get_list_feed_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetListFeedBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_list_feed_state::State> GetListFeedBuilder<'a, S> {
+impl<S: BosStr> GetListFeedBuilder<get_list_feed_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetListFeedBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: get_list_feed_state::State, S: BosStr> GetListFeedBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: get_list_feed_state::State> GetListFeedBuilder<'a, S> {
+impl<St: get_list_feed_state::State, S: BosStr> GetListFeedBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -189,32 +216,32 @@ impl<'a, S: get_list_feed_state::State> GetListFeedBuilder<'a, S> {
     }
 }
 
-impl<'a, S> GetListFeedBuilder<'a, S>
+impl<St, S: BosStr> GetListFeedBuilder<St, S>
 where
-    S: get_list_feed_state::State,
-    S::List: get_list_feed_state::IsUnset,
+    St: get_list_feed_state::State,
+    St::List: get_list_feed_state::IsUnset,
 {
     /// Set the `list` field (required)
     pub fn list(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> GetListFeedBuilder<'a, get_list_feed_state::SetList<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> GetListFeedBuilder<get_list_feed_state::SetList<St>, S> {
         self._fields.2 = Option::Some(value.into());
         GetListFeedBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetListFeedBuilder<'a, S>
+impl<St, S: BosStr> GetListFeedBuilder<St, S>
 where
-    S: get_list_feed_state::State,
-    S::List: get_list_feed_state::IsSet,
+    St: get_list_feed_state::State,
+    St::List: get_list_feed_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetListFeed<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetListFeed<S> {
         GetListFeed {
             cursor: self._fields.0,
             limit: self._fields.1,

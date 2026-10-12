@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::ident::AtIdentifier;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -27,48 +29,43 @@ use crate::app_bsky::graph::ListView;
 use crate::app_bsky::graph::get_lists_with_membership;
 /// A list and an optional list item indicating membership of a target user to that list.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListWithMembership<'a> {
-    #[serde(borrow)]
-    pub list: ListView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListWithMembership<S: BosStr = DefaultStr> {
+    pub list: ListView<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub list_item: Option<ListItemView<'a>>,
+    pub list_item: Option<ListItemView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetListsWithMembership<'a> {
-    #[serde(borrow)]
-    pub actor: AtIdentifier<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetListsWithMembership<S: BosStr = DefaultStr> {
+    pub actor: AtIdentifier<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub purposes: Option<Vec<CowStr<'a>>>,
+    pub purposes: Option<Vec<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetListsWithMembershipOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetListsWithMembershipOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub lists_with_membership: Vec<get_lists_with_membership::ListWithMembership<'a>>,
+    pub cursor: Option<S>,
+    pub lists_with_membership: Vec<get_lists_with_membership::ListWithMembership<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for ListWithMembership<'a> {
+impl<S: BosStr> LexiconSchema for ListWithMembership<S> {
     fn nsid() -> &'static str {
         "app.bsky.graph.getListsWithMembership"
     }
@@ -83,27 +80,31 @@ impl<'a> LexiconSchema for ListWithMembership<'a> {
     }
 }
 
-/// Response type for app.bsky.graph.getListsWithMembership
+/** Response marker for the `app.bsky.graph.getListsWithMembership` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetListsWithMembershipOutput<S>` for this endpoint.*/
 pub struct GetListsWithMembershipResponse;
 impl jacquard_common::xrpc::XrpcResp for GetListsWithMembershipResponse {
     const NSID: &'static str = "app.bsky.graph.getListsWithMembership";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetListsWithMembershipOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetListsWithMembershipOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetListsWithMembership<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetListsWithMembership<S> {
     const NSID: &'static str = "app.bsky.graph.getListsWithMembership";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetListsWithMembershipResponse;
 }
 
-/// Endpoint type for app.bsky.graph.getListsWithMembership
+/** Endpoint marker for the `app.bsky.graph.getListsWithMembership` query.
+
+Path: `/xrpc/app.bsky.graph.getListsWithMembership`. The request payload type is `GetListsWithMembership<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetListsWithMembershipRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetListsWithMembershipRequest {
     const PATH: &'static str = "/xrpc/app.bsky.graph.getListsWithMembership";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetListsWithMembership<'de>;
+    type Request<S: BosStr> = GetListsWithMembership<S>;
     type Response = GetListsWithMembershipResponse;
 }
 
@@ -126,9 +127,9 @@ pub mod list_with_membership_state {
         type List = Unset;
     }
     ///State transition - sets the `list` field to Set
-    pub struct SetList<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetList<S> {}
-    impl<S: State> State for SetList<S> {
+    pub struct SetList<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetList<St> {}
+    impl<St: State> State for SetList<St> {
         type List = Set<members::list>;
     }
     /// Marker types for field names
@@ -139,84 +140,105 @@ pub mod list_with_membership_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ListWithMembershipBuilder<'a, S: list_with_membership_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<ListView<'a>>, Option<ListItemView<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ListWithMembershipBuilder<
+    St: list_with_membership_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<ListView<S>>, Option<ListItemView<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ListWithMembership<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ListWithMembershipBuilder<'a, list_with_membership_state::Empty> {
+impl ListWithMembership<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ListWithMembershipBuilder<
+        list_with_membership_state::Empty,
+        DefaultStr,
+    > {
         ListWithMembershipBuilder::new()
     }
 }
 
-impl<'a> ListWithMembershipBuilder<'a, list_with_membership_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ListWithMembership<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ListWithMembershipBuilder<list_with_membership_state::Empty, S> {
+        ListWithMembershipBuilder::builder()
+    }
+}
+
+impl ListWithMembershipBuilder<list_with_membership_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ListWithMembershipBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ListWithMembershipBuilder<'a, S>
+impl<S: BosStr> ListWithMembershipBuilder<list_with_membership_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ListWithMembershipBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ListWithMembershipBuilder<St, S>
 where
-    S: list_with_membership_state::State,
-    S::List: list_with_membership_state::IsUnset,
+    St: list_with_membership_state::State,
+    St::List: list_with_membership_state::IsUnset,
 {
     /// Set the `list` field (required)
     pub fn list(
         mut self,
-        value: impl Into<ListView<'a>>,
-    ) -> ListWithMembershipBuilder<'a, list_with_membership_state::SetList<S>> {
+        value: impl Into<ListView<S>>,
+    ) -> ListWithMembershipBuilder<list_with_membership_state::SetList<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ListWithMembershipBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: list_with_membership_state::State> ListWithMembershipBuilder<'a, S> {
+impl<St: list_with_membership_state::State, S: BosStr> ListWithMembershipBuilder<St, S> {
     /// Set the `listItem` field (optional)
-    pub fn list_item(mut self, value: impl Into<Option<ListItemView<'a>>>) -> Self {
+    pub fn list_item(mut self, value: impl Into<Option<ListItemView<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `listItem` field to an Option value (optional)
-    pub fn maybe_list_item(mut self, value: Option<ListItemView<'a>>) -> Self {
+    pub fn maybe_list_item(mut self, value: Option<ListItemView<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> ListWithMembershipBuilder<'a, S>
+impl<St, S: BosStr> ListWithMembershipBuilder<St, S>
 where
-    S: list_with_membership_state::State,
-    S::List: list_with_membership_state::IsSet,
+    St: list_with_membership_state::State,
+    St::List: list_with_membership_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ListWithMembership<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ListWithMembership<S> {
         ListWithMembership {
             list: self._fields.0.unwrap(),
             list_item: self._fields.1,
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ListWithMembership<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ListWithMembership<S> {
         ListWithMembership {
             list: self._fields.0.unwrap(),
             list_item: self._fields.1,
@@ -347,9 +369,9 @@ pub mod get_lists_with_membership_state {
         type Actor = Unset;
     }
     ///State transition - sets the `actor` field to Set
-    pub struct SetActor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetActor<S> {}
-    impl<S: State> State for SetActor<S> {
+    pub struct SetActor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetActor<St> {}
+    impl<St: State> State for SetActor<St> {
         type Actor = Set<members::actor>;
     }
     /// Marker types for field names
@@ -360,81 +382,102 @@ pub mod get_lists_with_membership_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetListsWithMembershipBuilder<'a, S: get_lists_with_membership_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<AtIdentifier<'a>>,
-        Option<CowStr<'a>>,
-        Option<i64>,
-        Option<Vec<CowStr<'a>>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetListsWithMembershipBuilder<
+    St: get_lists_with_membership_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtIdentifier<S>>, Option<S>, Option<i64>, Option<Vec<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetListsWithMembership<'a> {
-    /// Create a new builder for this type
+impl GetListsWithMembership<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> GetListsWithMembershipBuilder<
-        'a,
         get_lists_with_membership_state::Empty,
+        DefaultStr,
     > {
         GetListsWithMembershipBuilder::new()
     }
 }
 
-impl<'a> GetListsWithMembershipBuilder<'a, get_lists_with_membership_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetListsWithMembership<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetListsWithMembershipBuilder<
+        get_lists_with_membership_state::Empty,
+        S,
+    > {
+        GetListsWithMembershipBuilder::builder()
+    }
+}
+
+impl GetListsWithMembershipBuilder<get_lists_with_membership_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetListsWithMembershipBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
-        }
-    }
-}
-
-impl<'a, S> GetListsWithMembershipBuilder<'a, S>
-where
-    S: get_lists_with_membership_state::State,
-    S::Actor: get_lists_with_membership_state::IsUnset,
-{
-    /// Set the `actor` field (required)
-    pub fn actor(
-        mut self,
-        value: impl Into<AtIdentifier<'a>>,
-    ) -> GetListsWithMembershipBuilder<
-        'a,
-        get_lists_with_membership_state::SetActor<S>,
-    > {
-        self._fields.0 = Option::Some(value.into());
-        GetListsWithMembershipBuilder {
-            _state: PhantomData,
-            _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
 impl<
-    'a,
-    S: get_lists_with_membership_state::State,
-> GetListsWithMembershipBuilder<'a, S> {
+    S: BosStr,
+> GetListsWithMembershipBuilder<get_lists_with_membership_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetListsWithMembershipBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetListsWithMembershipBuilder<St, S>
+where
+    St: get_lists_with_membership_state::State,
+    St::Actor: get_lists_with_membership_state::IsUnset,
+{
+    /// Set the `actor` field (required)
+    pub fn actor(
+        mut self,
+        value: impl Into<AtIdentifier<S>>,
+    ) -> GetListsWithMembershipBuilder<
+        get_lists_with_membership_state::SetActor<St>,
+        S,
+    > {
+        self._fields.0 = Option::Some(value.into());
+        GetListsWithMembershipBuilder {
+            _state: PhantomData,
+            _fields: self._fields,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: get_lists_with_membership_state::State,
+    S: BosStr,
+> GetListsWithMembershipBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
 impl<
-    'a,
-    S: get_lists_with_membership_state::State,
-> GetListsWithMembershipBuilder<'a, S> {
+    St: get_lists_with_membership_state::State,
+    S: BosStr,
+> GetListsWithMembershipBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.2 = value.into();
@@ -448,28 +491,28 @@ impl<
 }
 
 impl<
-    'a,
-    S: get_lists_with_membership_state::State,
-> GetListsWithMembershipBuilder<'a, S> {
+    St: get_lists_with_membership_state::State,
+    S: BosStr,
+> GetListsWithMembershipBuilder<St, S> {
     /// Set the `purposes` field (optional)
-    pub fn purposes(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn purposes(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `purposes` field to an Option value (optional)
-    pub fn maybe_purposes(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_purposes(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> GetListsWithMembershipBuilder<'a, S>
+impl<St, S: BosStr> GetListsWithMembershipBuilder<St, S>
 where
-    S: get_lists_with_membership_state::State,
-    S::Actor: get_lists_with_membership_state::IsSet,
+    St: get_lists_with_membership_state::State,
+    St::Actor: get_lists_with_membership_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetListsWithMembership<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetListsWithMembership<S> {
         GetListsWithMembership {
             actor: self._fields.0.unwrap(),
             cursor: self._fields.1,

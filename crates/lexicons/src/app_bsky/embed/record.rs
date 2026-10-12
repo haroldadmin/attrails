@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::value::Data;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -37,94 +39,88 @@ use crate::app_bsky::embed::record;
 use crate::app_bsky::embed::record_with_media;
 use crate::app_bsky::embed::video;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Record<'a> {
-    #[serde(borrow)]
-    pub record: StrongRef<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Record<S: BosStr = DefaultStr> {
+    pub record: StrongRef<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct View<'a> {
-    #[serde(borrow)]
-    pub record: ViewUnionRecord<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct View<S: BosStr = DefaultStr> {
+    pub record: ViewUnionRecord<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ViewUnionRecord<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ViewUnionRecord<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.embed.record#viewRecord")]
-    ViewRecord(Box<record::ViewRecord<'a>>),
+    ViewRecord(Box<record::ViewRecord<S>>),
     #[serde(rename = "app.bsky.embed.record#viewNotFound")]
-    ViewNotFound(Box<record::ViewNotFound<'a>>),
+    ViewNotFound(Box<record::ViewNotFound<S>>),
     #[serde(rename = "app.bsky.embed.record#viewBlocked")]
-    ViewBlocked(Box<record::ViewBlocked<'a>>),
+    ViewBlocked(Box<record::ViewBlocked<S>>),
     #[serde(rename = "app.bsky.embed.record#viewDetached")]
-    ViewDetached(Box<record::ViewDetached<'a>>),
+    ViewDetached(Box<record::ViewDetached<S>>),
     #[serde(rename = "app.bsky.feed.defs#generatorView")]
-    GeneratorView(Box<GeneratorView<'a>>),
+    GeneratorView(Box<GeneratorView<S>>),
     #[serde(rename = "app.bsky.graph.defs#listView")]
-    ListView(Box<ListView<'a>>),
+    ListView(Box<ListView<S>>),
     #[serde(rename = "app.bsky.labeler.defs#labelerView")]
-    LabelerView(Box<LabelerView<'a>>),
+    LabelerView(Box<LabelerView<S>>),
     #[serde(rename = "app.bsky.graph.defs#starterPackViewBasic")]
-    StarterPackViewBasic(Box<StarterPackViewBasic<'a>>),
+    StarterPackViewBasic(Box<StarterPackViewBasic<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewBlocked<'a> {
-    #[serde(borrow)]
-    pub author: BlockedAuthor<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ViewBlocked<S: BosStr = DefaultStr> {
+    pub author: BlockedAuthor<S>,
     pub blocked: bool,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewDetached<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ViewDetached<S: BosStr = DefaultStr> {
     pub detached: bool,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewNotFound<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ViewNotFound<S: BosStr = DefaultStr> {
     pub not_found: bool,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewRecord<'a> {
-    #[serde(borrow)]
-    pub author: ProfileViewBasic<'a>,
-    #[serde(borrow)]
-    pub cid: Cid<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ViewRecord<S: BosStr = DefaultStr> {
+    pub author: ProfileViewBasic<S>,
+    pub cid: Cid<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embeds: Option<Vec<ViewRecordEmbedsItem<'a>>>,
+    pub embeds: Option<Vec<ViewRecordEmbedsItem<S>>>,
     pub indexed_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub labels: Option<Vec<Label<'a>>>,
+    pub labels: Option<Vec<Label<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub like_count: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -133,33 +129,33 @@ pub struct ViewRecord<'a> {
     pub reply_count: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repost_count: Option<i64>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub uri: AtUri<S>,
     ///The record data itself.
-    #[serde(borrow)]
-    pub value: Data<'a>,
+    pub value: Data<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ViewRecordEmbedsItem<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ViewRecordEmbedsItem<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.embed.images#view")]
-    ImagesView(Box<images::View<'a>>),
+    ImagesView(Box<images::View<S>>),
     #[serde(rename = "app.bsky.embed.video#view")]
-    VideoView(Box<video::View<'a>>),
+    VideoView(Box<video::View<S>>),
     #[serde(rename = "app.bsky.embed.gallery#view")]
-    GalleryView(Box<gallery::View<'a>>),
+    GalleryView(Box<gallery::View<S>>),
     #[serde(rename = "app.bsky.embed.external#view")]
-    ExternalView(Box<external::View<'a>>),
+    ExternalView(Box<external::View<S>>),
     #[serde(rename = "app.bsky.embed.record#view")]
-    View(Box<record::View<'a>>),
+    View(Box<record::View<S>>),
     #[serde(rename = "app.bsky.embed.recordWithMedia#view")]
-    RecordWithMediaView(Box<record_with_media::View<'a>>),
+    RecordWithMediaView(Box<record_with_media::View<S>>),
 }
 
-impl<'a> LexiconSchema for Record<'a> {
+impl<S: BosStr> LexiconSchema for Record<S> {
     fn nsid() -> &'static str {
         "app.bsky.embed.record"
     }
@@ -174,7 +170,7 @@ impl<'a> LexiconSchema for Record<'a> {
     }
 }
 
-impl<'a> LexiconSchema for View<'a> {
+impl<S: BosStr> LexiconSchema for View<S> {
     fn nsid() -> &'static str {
         "app.bsky.embed.record"
     }
@@ -189,7 +185,7 @@ impl<'a> LexiconSchema for View<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ViewBlocked<'a> {
+impl<S: BosStr> LexiconSchema for ViewBlocked<S> {
     fn nsid() -> &'static str {
         "app.bsky.embed.record"
     }
@@ -204,7 +200,7 @@ impl<'a> LexiconSchema for ViewBlocked<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ViewDetached<'a> {
+impl<S: BosStr> LexiconSchema for ViewDetached<S> {
     fn nsid() -> &'static str {
         "app.bsky.embed.record"
     }
@@ -219,7 +215,7 @@ impl<'a> LexiconSchema for ViewDetached<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ViewNotFound<'a> {
+impl<S: BosStr> LexiconSchema for ViewNotFound<S> {
     fn nsid() -> &'static str {
         "app.bsky.embed.record"
     }
@@ -234,7 +230,7 @@ impl<'a> LexiconSchema for ViewNotFound<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ViewRecord<'a> {
+impl<S: BosStr> LexiconSchema for ViewRecord<S> {
     fn nsid() -> &'static str {
         "app.bsky.embed.record"
     }
@@ -268,9 +264,9 @@ pub mod record_state {
         type Record = Unset;
     }
     ///State transition - sets the `record` field to Set
-    pub struct SetRecord<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRecord<S> {}
-    impl<S: State> State for SetRecord<S> {
+    pub struct SetRecord<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRecord<St> {}
+    impl<St: State> State for SetRecord<St> {
         type Record = Set<members::record>;
     }
     /// Marker types for field names
@@ -281,67 +277,82 @@ pub mod record_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct RecordBuilder<'a, S: record_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<StrongRef<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct RecordBuilder<St: record_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<StrongRef<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Record<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> RecordBuilder<'a, record_state::Empty> {
+impl Record<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> RecordBuilder<record_state::Empty, DefaultStr> {
         RecordBuilder::new()
     }
 }
 
-impl<'a> RecordBuilder<'a, record_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Record<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> RecordBuilder<record_state::Empty, S> {
+        RecordBuilder::builder()
+    }
+}
+
+impl RecordBuilder<record_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         RecordBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RecordBuilder<'a, S>
+impl<S: BosStr> RecordBuilder<record_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        RecordBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> RecordBuilder<St, S>
 where
-    S: record_state::State,
-    S::Record: record_state::IsUnset,
+    St: record_state::State,
+    St::Record: record_state::IsUnset,
 {
     /// Set the `record` field (required)
     pub fn record(
         mut self,
-        value: impl Into<StrongRef<'a>>,
-    ) -> RecordBuilder<'a, record_state::SetRecord<S>> {
+        value: impl Into<StrongRef<S>>,
+    ) -> RecordBuilder<record_state::SetRecord<St>, S> {
         self._fields.0 = Option::Some(value.into());
         RecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RecordBuilder<'a, S>
+impl<St, S: BosStr> RecordBuilder<St, S>
 where
-    S: record_state::State,
-    S::Record: record_state::IsSet,
+    St: record_state::State,
+    St::Record: record_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Record<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Record<S> {
         Record {
             record: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> Record<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Record<S> {
         Record {
             record: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -629,9 +640,9 @@ pub mod view_state {
         type Record = Unset;
     }
     ///State transition - sets the `record` field to Set
-    pub struct SetRecord<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRecord<S> {}
-    impl<S: State> State for SetRecord<S> {
+    pub struct SetRecord<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRecord<St> {}
+    impl<St: State> State for SetRecord<St> {
         type Record = Set<members::record>;
     }
     /// Marker types for field names
@@ -642,67 +653,82 @@ pub mod view_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ViewBuilder<'a, S: view_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<ViewUnionRecord<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ViewBuilder<St: view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<ViewUnionRecord<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> View<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ViewBuilder<'a, view_state::Empty> {
+impl View<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ViewBuilder<view_state::Empty, DefaultStr> {
         ViewBuilder::new()
     }
 }
 
-impl<'a> ViewBuilder<'a, view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> View<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ViewBuilder<view_state::Empty, S> {
+        ViewBuilder::builder()
+    }
+}
+
+impl ViewBuilder<view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ViewBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewBuilder<'a, S>
+impl<S: BosStr> ViewBuilder<view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ViewBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ViewBuilder<St, S>
 where
-    S: view_state::State,
-    S::Record: view_state::IsUnset,
+    St: view_state::State,
+    St::Record: view_state::IsUnset,
 {
     /// Set the `record` field (required)
     pub fn record(
         mut self,
-        value: impl Into<ViewUnionRecord<'a>>,
-    ) -> ViewBuilder<'a, view_state::SetRecord<S>> {
+        value: impl Into<ViewUnionRecord<S>>,
+    ) -> ViewBuilder<view_state::SetRecord<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewBuilder<'a, S>
+impl<St, S: BosStr> ViewBuilder<St, S>
 where
-    S: view_state::State,
-    S::Record: view_state::IsSet,
+    St: view_state::State,
+    St::Record: view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> View<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> View<S> {
         View {
             record: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> View<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> View<S> {
         View {
             record: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -721,144 +747,162 @@ pub mod view_blocked_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type Author;
-        type Uri;
         type Blocked;
+        type Uri;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type Author = Unset;
-        type Uri = Unset;
         type Blocked = Unset;
+        type Uri = Unset;
     }
     ///State transition - sets the `author` field to Set
-    pub struct SetAuthor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAuthor<S> {}
-    impl<S: State> State for SetAuthor<S> {
+    pub struct SetAuthor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAuthor<St> {}
+    impl<St: State> State for SetAuthor<St> {
         type Author = Set<members::author>;
-        type Uri = S::Uri;
-        type Blocked = S::Blocked;
-    }
-    ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type Author = S::Author;
-        type Uri = Set<members::uri>;
-        type Blocked = S::Blocked;
+        type Blocked = St::Blocked;
+        type Uri = St::Uri;
     }
     ///State transition - sets the `blocked` field to Set
-    pub struct SetBlocked<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetBlocked<S> {}
-    impl<S: State> State for SetBlocked<S> {
-        type Author = S::Author;
-        type Uri = S::Uri;
+    pub struct SetBlocked<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetBlocked<St> {}
+    impl<St: State> State for SetBlocked<St> {
+        type Author = St::Author;
         type Blocked = Set<members::blocked>;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type Author = St::Author;
+        type Blocked = St::Blocked;
+        type Uri = Set<members::uri>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
         ///Marker type for the `author` field
         pub struct author(());
-        ///Marker type for the `uri` field
-        pub struct uri(());
         ///Marker type for the `blocked` field
         pub struct blocked(());
+        ///Marker type for the `uri` field
+        pub struct uri(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ViewBlockedBuilder<'a, S: view_blocked_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<BlockedAuthor<'a>>, Option<bool>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ViewBlockedBuilder<St: view_blocked_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<BlockedAuthor<S>>, Option<bool>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ViewBlocked<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ViewBlockedBuilder<'a, view_blocked_state::Empty> {
+impl ViewBlocked<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ViewBlockedBuilder<view_blocked_state::Empty, DefaultStr> {
         ViewBlockedBuilder::new()
     }
 }
 
-impl<'a> ViewBlockedBuilder<'a, view_blocked_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ViewBlocked<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ViewBlockedBuilder<view_blocked_state::Empty, S> {
+        ViewBlockedBuilder::builder()
+    }
+}
+
+impl ViewBlockedBuilder<view_blocked_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ViewBlockedBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewBlockedBuilder<'a, S>
+impl<S: BosStr> ViewBlockedBuilder<view_blocked_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ViewBlockedBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ViewBlockedBuilder<St, S>
 where
-    S: view_blocked_state::State,
-    S::Author: view_blocked_state::IsUnset,
+    St: view_blocked_state::State,
+    St::Author: view_blocked_state::IsUnset,
 {
     /// Set the `author` field (required)
     pub fn author(
         mut self,
-        value: impl Into<BlockedAuthor<'a>>,
-    ) -> ViewBlockedBuilder<'a, view_blocked_state::SetAuthor<S>> {
+        value: impl Into<BlockedAuthor<S>>,
+    ) -> ViewBlockedBuilder<view_blocked_state::SetAuthor<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ViewBlockedBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewBlockedBuilder<'a, S>
+impl<St, S: BosStr> ViewBlockedBuilder<St, S>
 where
-    S: view_blocked_state::State,
-    S::Blocked: view_blocked_state::IsUnset,
+    St: view_blocked_state::State,
+    St::Blocked: view_blocked_state::IsUnset,
 {
     /// Set the `blocked` field (required)
     pub fn blocked(
         mut self,
         value: impl Into<bool>,
-    ) -> ViewBlockedBuilder<'a, view_blocked_state::SetBlocked<S>> {
+    ) -> ViewBlockedBuilder<view_blocked_state::SetBlocked<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ViewBlockedBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewBlockedBuilder<'a, S>
+impl<St, S: BosStr> ViewBlockedBuilder<St, S>
 where
-    S: view_blocked_state::State,
-    S::Uri: view_blocked_state::IsUnset,
+    St: view_blocked_state::State,
+    St::Uri: view_blocked_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> ViewBlockedBuilder<'a, view_blocked_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> ViewBlockedBuilder<view_blocked_state::SetUri<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ViewBlockedBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewBlockedBuilder<'a, S>
+impl<St, S: BosStr> ViewBlockedBuilder<St, S>
 where
-    S: view_blocked_state::State,
-    S::Author: view_blocked_state::IsSet,
-    S::Uri: view_blocked_state::IsSet,
-    S::Blocked: view_blocked_state::IsSet,
+    St: view_blocked_state::State,
+    St::Author: view_blocked_state::IsSet,
+    St::Blocked: view_blocked_state::IsSet,
+    St::Uri: view_blocked_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ViewBlocked<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ViewBlocked<S> {
         ViewBlocked {
             author: self._fields.0.unwrap(),
             blocked: self._fields.1.unwrap(),
@@ -866,11 +910,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ViewBlocked<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ViewBlocked<S> {
         ViewBlocked {
             author: self._fields.0.unwrap(),
             blocked: self._fields.1.unwrap(),
@@ -890,122 +934,140 @@ pub mod view_detached_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Uri;
         type Detached;
+        type Uri;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Uri = Unset;
         type Detached = Unset;
-    }
-    ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type Uri = Set<members::uri>;
-        type Detached = S::Detached;
+        type Uri = Unset;
     }
     ///State transition - sets the `detached` field to Set
-    pub struct SetDetached<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDetached<S> {}
-    impl<S: State> State for SetDetached<S> {
-        type Uri = S::Uri;
+    pub struct SetDetached<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDetached<St> {}
+    impl<St: State> State for SetDetached<St> {
         type Detached = Set<members::detached>;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type Detached = St::Detached;
+        type Uri = Set<members::uri>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `uri` field
-        pub struct uri(());
         ///Marker type for the `detached` field
         pub struct detached(());
+        ///Marker type for the `uri` field
+        pub struct uri(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ViewDetachedBuilder<'a, S: view_detached_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<bool>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ViewDetachedBuilder<St: view_detached_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<bool>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ViewDetached<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ViewDetachedBuilder<'a, view_detached_state::Empty> {
+impl ViewDetached<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ViewDetachedBuilder<view_detached_state::Empty, DefaultStr> {
         ViewDetachedBuilder::new()
     }
 }
 
-impl<'a> ViewDetachedBuilder<'a, view_detached_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ViewDetached<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ViewDetachedBuilder<view_detached_state::Empty, S> {
+        ViewDetachedBuilder::builder()
+    }
+}
+
+impl ViewDetachedBuilder<view_detached_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ViewDetachedBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewDetachedBuilder<'a, S>
+impl<S: BosStr> ViewDetachedBuilder<view_detached_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ViewDetachedBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ViewDetachedBuilder<St, S>
 where
-    S: view_detached_state::State,
-    S::Detached: view_detached_state::IsUnset,
+    St: view_detached_state::State,
+    St::Detached: view_detached_state::IsUnset,
 {
     /// Set the `detached` field (required)
     pub fn detached(
         mut self,
         value: impl Into<bool>,
-    ) -> ViewDetachedBuilder<'a, view_detached_state::SetDetached<S>> {
+    ) -> ViewDetachedBuilder<view_detached_state::SetDetached<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ViewDetachedBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewDetachedBuilder<'a, S>
+impl<St, S: BosStr> ViewDetachedBuilder<St, S>
 where
-    S: view_detached_state::State,
-    S::Uri: view_detached_state::IsUnset,
+    St: view_detached_state::State,
+    St::Uri: view_detached_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> ViewDetachedBuilder<'a, view_detached_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> ViewDetachedBuilder<view_detached_state::SetUri<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ViewDetachedBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewDetachedBuilder<'a, S>
+impl<St, S: BosStr> ViewDetachedBuilder<St, S>
 where
-    S: view_detached_state::State,
-    S::Uri: view_detached_state::IsSet,
-    S::Detached: view_detached_state::IsSet,
+    St: view_detached_state::State,
+    St::Detached: view_detached_state::IsSet,
+    St::Uri: view_detached_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ViewDetached<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ViewDetached<S> {
         ViewDetached {
             detached: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ViewDetached<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ViewDetached<S> {
         ViewDetached {
             detached: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),
@@ -1024,122 +1086,140 @@ pub mod view_not_found_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Uri;
         type NotFound;
+        type Uri;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Uri = Unset;
         type NotFound = Unset;
-    }
-    ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type Uri = Set<members::uri>;
-        type NotFound = S::NotFound;
+        type Uri = Unset;
     }
     ///State transition - sets the `not_found` field to Set
-    pub struct SetNotFound<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetNotFound<S> {}
-    impl<S: State> State for SetNotFound<S> {
-        type Uri = S::Uri;
+    pub struct SetNotFound<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetNotFound<St> {}
+    impl<St: State> State for SetNotFound<St> {
         type NotFound = Set<members::not_found>;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type NotFound = St::NotFound;
+        type Uri = Set<members::uri>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `uri` field
-        pub struct uri(());
         ///Marker type for the `not_found` field
         pub struct not_found(());
+        ///Marker type for the `uri` field
+        pub struct uri(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ViewNotFoundBuilder<'a, S: view_not_found_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<bool>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ViewNotFoundBuilder<St: view_not_found_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<bool>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ViewNotFound<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ViewNotFoundBuilder<'a, view_not_found_state::Empty> {
+impl ViewNotFound<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ViewNotFoundBuilder<view_not_found_state::Empty, DefaultStr> {
         ViewNotFoundBuilder::new()
     }
 }
 
-impl<'a> ViewNotFoundBuilder<'a, view_not_found_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ViewNotFound<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ViewNotFoundBuilder<view_not_found_state::Empty, S> {
+        ViewNotFoundBuilder::builder()
+    }
+}
+
+impl ViewNotFoundBuilder<view_not_found_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ViewNotFoundBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewNotFoundBuilder<'a, S>
+impl<S: BosStr> ViewNotFoundBuilder<view_not_found_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ViewNotFoundBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ViewNotFoundBuilder<St, S>
 where
-    S: view_not_found_state::State,
-    S::NotFound: view_not_found_state::IsUnset,
+    St: view_not_found_state::State,
+    St::NotFound: view_not_found_state::IsUnset,
 {
     /// Set the `notFound` field (required)
     pub fn not_found(
         mut self,
         value: impl Into<bool>,
-    ) -> ViewNotFoundBuilder<'a, view_not_found_state::SetNotFound<S>> {
+    ) -> ViewNotFoundBuilder<view_not_found_state::SetNotFound<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ViewNotFoundBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewNotFoundBuilder<'a, S>
+impl<St, S: BosStr> ViewNotFoundBuilder<St, S>
 where
-    S: view_not_found_state::State,
-    S::Uri: view_not_found_state::IsUnset,
+    St: view_not_found_state::State,
+    St::Uri: view_not_found_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> ViewNotFoundBuilder<'a, view_not_found_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> ViewNotFoundBuilder<view_not_found_state::SetUri<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ViewNotFoundBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewNotFoundBuilder<'a, S>
+impl<St, S: BosStr> ViewNotFoundBuilder<St, S>
 where
-    S: view_not_found_state::State,
-    S::Uri: view_not_found_state::IsSet,
-    S::NotFound: view_not_found_state::IsSet,
+    St: view_not_found_state::State,
+    St::NotFound: view_not_found_state::IsSet,
+    St::Uri: view_not_found_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ViewNotFound<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ViewNotFound<S> {
         ViewNotFound {
             not_found: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ViewNotFound<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ViewNotFound<S> {
         ViewNotFound {
             not_found: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),
@@ -1158,212 +1238,230 @@ pub mod view_record_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type Author;
+        type Cid;
         type IndexedAt;
         type Uri;
-        type Author;
         type Value;
-        type Cid;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type Author = Unset;
+        type Cid = Unset;
         type IndexedAt = Unset;
         type Uri = Unset;
-        type Author = Unset;
         type Value = Unset;
-        type Cid = Unset;
-    }
-    ///State transition - sets the `indexed_at` field to Set
-    pub struct SetIndexedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetIndexedAt<S> {}
-    impl<S: State> State for SetIndexedAt<S> {
-        type IndexedAt = Set<members::indexed_at>;
-        type Uri = S::Uri;
-        type Author = S::Author;
-        type Value = S::Value;
-        type Cid = S::Cid;
-    }
-    ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type IndexedAt = S::IndexedAt;
-        type Uri = Set<members::uri>;
-        type Author = S::Author;
-        type Value = S::Value;
-        type Cid = S::Cid;
     }
     ///State transition - sets the `author` field to Set
-    pub struct SetAuthor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAuthor<S> {}
-    impl<S: State> State for SetAuthor<S> {
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
+    pub struct SetAuthor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAuthor<St> {}
+    impl<St: State> State for SetAuthor<St> {
         type Author = Set<members::author>;
-        type Value = S::Value;
-        type Cid = S::Cid;
-    }
-    ///State transition - sets the `value` field to Set
-    pub struct SetValue<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetValue<S> {}
-    impl<S: State> State for SetValue<S> {
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
-        type Author = S::Author;
-        type Value = Set<members::value>;
-        type Cid = S::Cid;
+        type Cid = St::Cid;
+        type IndexedAt = St::IndexedAt;
+        type Uri = St::Uri;
+        type Value = St::Value;
     }
     ///State transition - sets the `cid` field to Set
-    pub struct SetCid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCid<S> {}
-    impl<S: State> State for SetCid<S> {
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
-        type Author = S::Author;
-        type Value = S::Value;
+    pub struct SetCid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCid<St> {}
+    impl<St: State> State for SetCid<St> {
+        type Author = St::Author;
         type Cid = Set<members::cid>;
+        type IndexedAt = St::IndexedAt;
+        type Uri = St::Uri;
+        type Value = St::Value;
+    }
+    ///State transition - sets the `indexed_at` field to Set
+    pub struct SetIndexedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetIndexedAt<St> {}
+    impl<St: State> State for SetIndexedAt<St> {
+        type Author = St::Author;
+        type Cid = St::Cid;
+        type IndexedAt = Set<members::indexed_at>;
+        type Uri = St::Uri;
+        type Value = St::Value;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type Author = St::Author;
+        type Cid = St::Cid;
+        type IndexedAt = St::IndexedAt;
+        type Uri = Set<members::uri>;
+        type Value = St::Value;
+    }
+    ///State transition - sets the `value` field to Set
+    pub struct SetValue<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetValue<St> {}
+    impl<St: State> State for SetValue<St> {
+        type Author = St::Author;
+        type Cid = St::Cid;
+        type IndexedAt = St::IndexedAt;
+        type Uri = St::Uri;
+        type Value = Set<members::value>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `author` field
+        pub struct author(());
+        ///Marker type for the `cid` field
+        pub struct cid(());
         ///Marker type for the `indexed_at` field
         pub struct indexed_at(());
         ///Marker type for the `uri` field
         pub struct uri(());
-        ///Marker type for the `author` field
-        pub struct author(());
         ///Marker type for the `value` field
         pub struct value(());
-        ///Marker type for the `cid` field
-        pub struct cid(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ViewRecordBuilder<'a, S: view_record_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ViewRecordBuilder<St: view_record_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<ProfileViewBasic<'a>>,
-        Option<Cid<'a>>,
-        Option<Vec<ViewRecordEmbedsItem<'a>>>,
+        Option<ProfileViewBasic<S>>,
+        Option<Cid<S>>,
+        Option<Vec<ViewRecordEmbedsItem<S>>>,
         Option<Datetime>,
-        Option<Vec<Label<'a>>>,
+        Option<Vec<Label<S>>>,
         Option<i64>,
         Option<i64>,
         Option<i64>,
         Option<i64>,
-        Option<AtUri<'a>>,
-        Option<Data<'a>>,
+        Option<AtUri<S>>,
+        Option<Data<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ViewRecord<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ViewRecordBuilder<'a, view_record_state::Empty> {
+impl ViewRecord<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ViewRecordBuilder<view_record_state::Empty, DefaultStr> {
         ViewRecordBuilder::new()
     }
 }
 
-impl<'a> ViewRecordBuilder<'a, view_record_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ViewRecord<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ViewRecordBuilder<view_record_state::Empty, S> {
+        ViewRecordBuilder::builder()
+    }
+}
+
+impl ViewRecordBuilder<view_record_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ViewRecordBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewRecordBuilder<'a, S>
+impl<S: BosStr> ViewRecordBuilder<view_record_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ViewRecordBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ViewRecordBuilder<St, S>
 where
-    S: view_record_state::State,
-    S::Author: view_record_state::IsUnset,
+    St: view_record_state::State,
+    St::Author: view_record_state::IsUnset,
 {
     /// Set the `author` field (required)
     pub fn author(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
-    ) -> ViewRecordBuilder<'a, view_record_state::SetAuthor<S>> {
+        value: impl Into<ProfileViewBasic<S>>,
+    ) -> ViewRecordBuilder<view_record_state::SetAuthor<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ViewRecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewRecordBuilder<'a, S>
+impl<St, S: BosStr> ViewRecordBuilder<St, S>
 where
-    S: view_record_state::State,
-    S::Cid: view_record_state::IsUnset,
+    St: view_record_state::State,
+    St::Cid: view_record_state::IsUnset,
 {
     /// Set the `cid` field (required)
     pub fn cid(
         mut self,
-        value: impl Into<Cid<'a>>,
-    ) -> ViewRecordBuilder<'a, view_record_state::SetCid<S>> {
+        value: impl Into<Cid<S>>,
+    ) -> ViewRecordBuilder<view_record_state::SetCid<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ViewRecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
+impl<St: view_record_state::State, S: BosStr> ViewRecordBuilder<St, S> {
     /// Set the `embeds` field (optional)
     pub fn embeds(
         mut self,
-        value: impl Into<Option<Vec<ViewRecordEmbedsItem<'a>>>>,
+        value: impl Into<Option<Vec<ViewRecordEmbedsItem<S>>>>,
     ) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `embeds` field to an Option value (optional)
-    pub fn maybe_embeds(mut self, value: Option<Vec<ViewRecordEmbedsItem<'a>>>) -> Self {
+    pub fn maybe_embeds(mut self, value: Option<Vec<ViewRecordEmbedsItem<S>>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> ViewRecordBuilder<'a, S>
+impl<St, S: BosStr> ViewRecordBuilder<St, S>
 where
-    S: view_record_state::State,
-    S::IndexedAt: view_record_state::IsUnset,
+    St: view_record_state::State,
+    St::IndexedAt: view_record_state::IsUnset,
 {
     /// Set the `indexedAt` field (required)
     pub fn indexed_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> ViewRecordBuilder<'a, view_record_state::SetIndexedAt<S>> {
+    ) -> ViewRecordBuilder<view_record_state::SetIndexedAt<St>, S> {
         self._fields.3 = Option::Some(value.into());
         ViewRecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
+impl<St: view_record_state::State, S: BosStr> ViewRecordBuilder<St, S> {
     /// Set the `labels` field (optional)
-    pub fn labels(mut self, value: impl Into<Option<Vec<Label<'a>>>>) -> Self {
+    pub fn labels(mut self, value: impl Into<Option<Vec<Label<S>>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `labels` field to an Option value (optional)
-    pub fn maybe_labels(mut self, value: Option<Vec<Label<'a>>>) -> Self {
+    pub fn maybe_labels(mut self, value: Option<Vec<Label<S>>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
+impl<St: view_record_state::State, S: BosStr> ViewRecordBuilder<St, S> {
     /// Set the `likeCount` field (optional)
     pub fn like_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.5 = value.into();
@@ -1376,7 +1474,7 @@ impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
     }
 }
 
-impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
+impl<St: view_record_state::State, S: BosStr> ViewRecordBuilder<St, S> {
     /// Set the `quoteCount` field (optional)
     pub fn quote_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.6 = value.into();
@@ -1389,7 +1487,7 @@ impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
     }
 }
 
-impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
+impl<St: view_record_state::State, S: BosStr> ViewRecordBuilder<St, S> {
     /// Set the `replyCount` field (optional)
     pub fn reply_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.7 = value.into();
@@ -1402,7 +1500,7 @@ impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
     }
 }
 
-impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
+impl<St: view_record_state::State, S: BosStr> ViewRecordBuilder<St, S> {
     /// Set the `repostCount` field (optional)
     pub fn repost_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.8 = value.into();
@@ -1415,55 +1513,55 @@ impl<'a, S: view_record_state::State> ViewRecordBuilder<'a, S> {
     }
 }
 
-impl<'a, S> ViewRecordBuilder<'a, S>
+impl<St, S: BosStr> ViewRecordBuilder<St, S>
 where
-    S: view_record_state::State,
-    S::Uri: view_record_state::IsUnset,
+    St: view_record_state::State,
+    St::Uri: view_record_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> ViewRecordBuilder<'a, view_record_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> ViewRecordBuilder<view_record_state::SetUri<St>, S> {
         self._fields.9 = Option::Some(value.into());
         ViewRecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewRecordBuilder<'a, S>
+impl<St, S: BosStr> ViewRecordBuilder<St, S>
 where
-    S: view_record_state::State,
-    S::Value: view_record_state::IsUnset,
+    St: view_record_state::State,
+    St::Value: view_record_state::IsUnset,
 {
     /// Set the `value` field (required)
     pub fn value(
         mut self,
-        value: impl Into<Data<'a>>,
-    ) -> ViewRecordBuilder<'a, view_record_state::SetValue<S>> {
+        value: impl Into<Data<S>>,
+    ) -> ViewRecordBuilder<view_record_state::SetValue<St>, S> {
         self._fields.10 = Option::Some(value.into());
         ViewRecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewRecordBuilder<'a, S>
+impl<St, S: BosStr> ViewRecordBuilder<St, S>
 where
-    S: view_record_state::State,
-    S::IndexedAt: view_record_state::IsSet,
-    S::Uri: view_record_state::IsSet,
-    S::Author: view_record_state::IsSet,
-    S::Value: view_record_state::IsSet,
-    S::Cid: view_record_state::IsSet,
+    St: view_record_state::State,
+    St::Author: view_record_state::IsSet,
+    St::Cid: view_record_state::IsSet,
+    St::IndexedAt: view_record_state::IsSet,
+    St::Uri: view_record_state::IsSet,
+    St::Value: view_record_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ViewRecord<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ViewRecord<S> {
         ViewRecord {
             author: self._fields.0.unwrap(),
             cid: self._fields.1.unwrap(),
@@ -1479,11 +1577,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ViewRecord<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ViewRecord<S> {
         ViewRecord {
             author: self._fields.0.unwrap(),
             cid: self._fields.1.unwrap(),

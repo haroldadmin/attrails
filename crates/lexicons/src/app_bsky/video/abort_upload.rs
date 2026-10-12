@@ -10,46 +10,46 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct AbortUpload<'a> {
-    #[serde(borrow)]
-    pub job_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AbortUpload<S: BosStr = DefaultStr> {
+    pub job_id: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct AbortUploadOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AbortUploadOutput<S: BosStr = DefaultStr> {
     ///Present only when state is completed.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub completed_job_id: Option<CowStr<'a>>,
+    pub completed_job_id: Option<S>,
     ///Present only when state is failed.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub failure_reason: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub state: AbortUploadOutputState<'a>,
+    pub failure_reason: Option<S>,
+    pub state: AbortUploadOutputState<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AbortUploadOutputState<'a> {
+pub enum AbortUploadOutputState<S: BosStr = DefaultStr> {
     Aborted,
     Completed,
     Failed,
     Expired,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> AbortUploadOutputState<'a> {
+impl<S: BosStr> AbortUploadOutputState<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Aborted => "aborted",
@@ -59,74 +59,61 @@ impl<'a> AbortUploadOutputState<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for AbortUploadOutputState<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "aborted" => Self::Aborted,
             "completed" => Self::Completed,
             "failed" => Self::Failed,
             "expired" => Self::Expired,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for AbortUploadOutputState<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "aborted" => Self::Aborted,
-            "completed" => Self::Completed,
-            "failed" => Self::Failed,
-            "expired" => Self::Expired,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for AbortUploadOutputState<'a> {
+impl<S: BosStr> core::fmt::Display for AbortUploadOutputState<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for AbortUploadOutputState<'a> {
+impl<S: BosStr> AsRef<str> for AbortUploadOutputState<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for AbortUploadOutputState<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for AbortUploadOutputState<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for AbortUploadOutputState<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for AbortUploadOutputState<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for AbortUploadOutputState<'a> {
+impl<S: BosStr + Default> Default for AbortUploadOutputState<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for AbortUploadOutputState<'_> {
-    type Output = AbortUploadOutputState<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for AbortUploadOutputState<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = AbortUploadOutputState<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             AbortUploadOutputState::Aborted => AbortUploadOutputState::Aborted,
@@ -141,7 +128,6 @@ impl jacquard_common::IntoStatic for AbortUploadOutputState<'_> {
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -150,22 +136,23 @@ impl jacquard_common::IntoStatic for AbortUploadOutputState<'_> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum AbortUploadError<'a> {
+pub enum AbortUploadError {
     /// The job ID is unknown or aged out of retention; known terminal sessions return their outcome and are never reported as not found.
     #[serde(rename = "UploadNotFound")]
-    UploadNotFound(Option<CowStr<'a>>),
+    UploadNotFound(Option<SmolStr>),
     /// A finish is in progress; check getUploadStatus and retry.
     #[serde(rename = "UploadNotReady")]
-    UploadNotReady(Option<CowStr<'a>>),
+    UploadNotReady(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for AbortUploadError<'_> {
+impl core::fmt::Display for AbortUploadError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::UploadNotFound(msg) => {
@@ -182,21 +169,29 @@ impl core::fmt::Display for AbortUploadError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.video.abortUpload
+/** Response marker for the `app.bsky.video.abortUpload` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `AbortUploadOutput<S>` for this endpoint.*/
 pub struct AbortUploadResponse;
 impl jacquard_common::xrpc::XrpcResp for AbortUploadResponse {
     const NSID: &'static str = "app.bsky.video.abortUpload";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = AbortUploadOutput<'de>;
-    type Err<'de> = AbortUploadError<'de>;
+    type Output<S: BosStr> = AbortUploadOutput<S>;
+    type Err = AbortUploadError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for AbortUpload<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for AbortUpload<S> {
     const NSID: &'static str = "app.bsky.video.abortUpload";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -204,13 +199,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for AbortUpload<'a> {
     type Response = AbortUploadResponse;
 }
 
-/// Endpoint type for app.bsky.video.abortUpload
+/** Endpoint marker for the `app.bsky.video.abortUpload` procedure.
+
+Path: `/xrpc/app.bsky.video.abortUpload`. The request payload type is `AbortUpload<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct AbortUploadRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for AbortUploadRequest {
     const PATH: &'static str = "/xrpc/app.bsky.video.abortUpload";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = AbortUpload<'de>;
+    type Request<S: BosStr> = AbortUpload<S>;
     type Response = AbortUploadResponse;
 }

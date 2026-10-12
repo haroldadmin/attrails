@@ -10,26 +10,30 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteSet<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DeleteSet<S: BosStr = DefaultStr> {
     ///Name of the set to delete
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    pub name: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteSetOutput<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DeleteSetOutput<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
 
-#[open_union]
+
 #[derive(
     Serialize,
     Deserialize,
@@ -38,19 +42,20 @@ pub struct DeleteSetOutput<'a> {}
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum DeleteSetError<'a> {
+pub enum DeleteSetError {
     /// set with the given name does not exist
     #[serde(rename = "SetNotFound")]
-    SetNotFound(Option<CowStr<'a>>),
+    SetNotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for DeleteSetError<'_> {
+impl core::fmt::Display for DeleteSetError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::SetNotFound(msg) => {
@@ -60,21 +65,29 @@ impl core::fmt::Display for DeleteSetError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for tools.ozone.set.deleteSet
+/** Response marker for the `tools.ozone.set.deleteSet` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `DeleteSetOutput<S>` for this endpoint.*/
 pub struct DeleteSetResponse;
 impl jacquard_common::xrpc::XrpcResp for DeleteSetResponse {
     const NSID: &'static str = "tools.ozone.set.deleteSet";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = DeleteSetOutput<'de>;
-    type Err<'de> = DeleteSetError<'de>;
+    type Output<S: BosStr> = DeleteSetOutput<S>;
+    type Err = DeleteSetError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for DeleteSet<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for DeleteSet<S> {
     const NSID: &'static str = "tools.ozone.set.deleteSet";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -82,13 +95,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for DeleteSet<'a> {
     type Response = DeleteSetResponse;
 }
 
-/// Endpoint type for tools.ozone.set.deleteSet
+/** Endpoint marker for the `tools.ozone.set.deleteSet` procedure.
+
+Path: `/xrpc/tools.ozone.set.deleteSet`. The request payload type is `DeleteSet<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct DeleteSetRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for DeleteSetRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.set.deleteSet";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = DeleteSet<'de>;
+    type Request<S: BosStr> = DeleteSet<S>;
     type Response = DeleteSetResponse;
 }

@@ -10,28 +10,32 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct RevokeAppPassword<'a> {
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct RevokeAppPassword<S: BosStr = DefaultStr> {
+    pub name: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for com.atproto.server.revokeAppPassword
+/** Response marker for the `com.atproto.server.revokeAppPassword` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `()` for this endpoint.*/
 pub struct RevokeAppPasswordResponse;
 impl jacquard_common::xrpc::XrpcResp for RevokeAppPasswordResponse {
     const NSID: &'static str = "com.atproto.server.revokeAppPassword";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ();
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ();
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for RevokeAppPassword<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for RevokeAppPassword<S> {
     const NSID: &'static str = "com.atproto.server.revokeAppPassword";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -39,13 +43,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for RevokeAppPassword<'a> {
     type Response = RevokeAppPasswordResponse;
 }
 
-/// Endpoint type for com.atproto.server.revokeAppPassword
+/** Endpoint marker for the `com.atproto.server.revokeAppPassword` procedure.
+
+Path: `/xrpc/com.atproto.server.revokeAppPassword`. The request payload type is `RevokeAppPassword<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct RevokeAppPasswordRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for RevokeAppPasswordRequest {
     const PATH: &'static str = "/xrpc/com.atproto.server.revokeAppPassword";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = RevokeAppPassword<'de>;
+    type Request<S: BosStr> = RevokeAppPassword<S>;
     type Response = RevokeAppPasswordResponse;
 }

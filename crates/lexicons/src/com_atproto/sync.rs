@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `com.atproto.sync` Lexicon namespace/module.
 pub mod get_blob;
 pub mod get_blocks;
 pub mod get_checkout;
@@ -25,19 +26,19 @@ pub mod request_crawl;
 #[cfg(feature = "streaming")]
 pub mod subscribe_repos;
 
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum HostStatus<'a> {
+pub enum HostStatus<S: BosStr = DefaultStr> {
     Active,
     Idle,
     Offline,
     Throttled,
     Banned,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> HostStatus<'a> {
+impl<S: BosStr> HostStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Active => "active",
@@ -48,70 +49,57 @@ impl<'a> HostStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for HostStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "active" => Self::Active,
             "idle" => Self::Idle,
             "offline" => Self::Offline,
             "throttled" => Self::Throttled,
             "banned" => Self::Banned,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for HostStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "active" => Self::Active,
-            "idle" => Self::Idle,
-            "offline" => Self::Offline,
-            "throttled" => Self::Throttled,
-            "banned" => Self::Banned,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for HostStatus<'a> {
+impl<S: BosStr> AsRef<str> for HostStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for HostStatus<'a> {
+impl<S: BosStr> core::fmt::Display for HostStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for HostStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> serde::Serialize for HostStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for HostStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: serde::Deserialize<'de> + BosStr> serde::Deserialize<'de>
+for HostStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for HostStatus<'_> {
-    type Output = HostStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for HostStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = HostStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             HostStatus::Active => HostStatus::Active,

@@ -10,54 +10,57 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::ageassurance::State;
 use crate::app_bsky::ageassurance::StateMetadata;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetState<'a> {
-    #[serde(borrow)]
-    pub country_code: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetState<S: BosStr = DefaultStr> {
+    pub country_code: S,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub region_code: Option<CowStr<'a>>,
+    pub region_code: Option<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetStateOutput<'a> {
-    #[serde(borrow)]
-    pub metadata: StateMetadata<'a>,
-    #[serde(borrow)]
-    pub state: State<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetStateOutput<S: BosStr = DefaultStr> {
+    pub metadata: StateMetadata<S>,
+    pub state: State<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.ageassurance.getState
+/** Response marker for the `app.bsky.ageassurance.getState` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetStateOutput<S>` for this endpoint.*/
 pub struct GetStateResponse;
 impl jacquard_common::xrpc::XrpcResp for GetStateResponse {
     const NSID: &'static str = "app.bsky.ageassurance.getState";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetStateOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetStateOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetState<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetState<S> {
     const NSID: &'static str = "app.bsky.ageassurance.getState";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetStateResponse;
 }
 
-/// Endpoint type for app.bsky.ageassurance.getState
+/** Endpoint marker for the `app.bsky.ageassurance.getState` query.
+
+Path: `/xrpc/app.bsky.ageassurance.getState`. The request payload type is `GetState<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetStateRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetStateRequest {
     const PATH: &'static str = "/xrpc/app.bsky.ageassurance.getState";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetState<'de>;
+    type Request<S: BosStr> = GetState<S>;
     type Response = GetStateResponse;
 }
 
@@ -80,9 +83,9 @@ pub mod get_state_state {
         type CountryCode = Unset;
     }
     ///State transition - sets the `country_code` field to Set
-    pub struct SetCountryCode<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCountryCode<S> {}
-    impl<S: State> State for SetCountryCode<S> {
+    pub struct SetCountryCode<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCountryCode<St> {}
+    impl<St: State> State for SetCountryCode<St> {
         type CountryCode = Set<members::country_code>;
     }
     /// Marker types for field names
@@ -93,70 +96,88 @@ pub mod get_state_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetStateBuilder<'a, S: get_state_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetStateBuilder<St: get_state_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetState<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetStateBuilder<'a, get_state_state::Empty> {
+impl GetState<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetStateBuilder<get_state_state::Empty, DefaultStr> {
         GetStateBuilder::new()
     }
 }
 
-impl<'a> GetStateBuilder<'a, get_state_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetState<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetStateBuilder<get_state_state::Empty, S> {
+        GetStateBuilder::builder()
+    }
+}
+
+impl GetStateBuilder<get_state_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetStateBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetStateBuilder<'a, S>
+impl<S: BosStr> GetStateBuilder<get_state_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetStateBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetStateBuilder<St, S>
 where
-    S: get_state_state::State,
-    S::CountryCode: get_state_state::IsUnset,
+    St: get_state_state::State,
+    St::CountryCode: get_state_state::IsUnset,
 {
     /// Set the `countryCode` field (required)
     pub fn country_code(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> GetStateBuilder<'a, get_state_state::SetCountryCode<S>> {
+        value: impl Into<S>,
+    ) -> GetStateBuilder<get_state_state::SetCountryCode<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetStateBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_state_state::State> GetStateBuilder<'a, S> {
+impl<St: get_state_state::State, S: BosStr> GetStateBuilder<St, S> {
     /// Set the `regionCode` field (optional)
-    pub fn region_code(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn region_code(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `regionCode` field to an Option value (optional)
-    pub fn maybe_region_code(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_region_code(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> GetStateBuilder<'a, S>
+impl<St, S: BosStr> GetStateBuilder<St, S>
 where
-    S: get_state_state::State,
-    S::CountryCode: get_state_state::IsSet,
+    St: get_state_state::State,
+    St::CountryCode: get_state_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetState<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetState<S> {
         GetState {
             country_code: self._fields.0.unwrap(),
             region_code: self._fields.1,

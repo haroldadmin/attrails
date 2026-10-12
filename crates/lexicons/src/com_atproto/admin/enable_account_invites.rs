@@ -10,33 +10,36 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct EnableAccountInvites<'a> {
-    #[serde(borrow)]
-    pub account: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct EnableAccountInvites<S: BosStr = DefaultStr> {
+    pub account: Did<S>,
     ///Optional reason for enabled invites.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub note: Option<CowStr<'a>>,
+    pub note: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for com.atproto.admin.enableAccountInvites
+/** Response marker for the `com.atproto.admin.enableAccountInvites` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `()` for this endpoint.*/
 pub struct EnableAccountInvitesResponse;
 impl jacquard_common::xrpc::XrpcResp for EnableAccountInvitesResponse {
     const NSID: &'static str = "com.atproto.admin.enableAccountInvites";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ();
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ();
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for EnableAccountInvites<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for EnableAccountInvites<S> {
     const NSID: &'static str = "com.atproto.admin.enableAccountInvites";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -44,14 +47,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for EnableAccountInvites<'a> {
     type Response = EnableAccountInvitesResponse;
 }
 
-/// Endpoint type for com.atproto.admin.enableAccountInvites
+/** Endpoint marker for the `com.atproto.admin.enableAccountInvites` procedure.
+
+Path: `/xrpc/com.atproto.admin.enableAccountInvites`. The request payload type is `EnableAccountInvites<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct EnableAccountInvitesRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for EnableAccountInvitesRequest {
     const PATH: &'static str = "/xrpc/com.atproto.admin.enableAccountInvites";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = EnableAccountInvites<'de>;
+    type Request<S: BosStr> = EnableAccountInvites<S>;
     type Response = EnableAccountInvitesResponse;
 }
 
@@ -74,9 +79,9 @@ pub mod enable_account_invites_state {
         type Account = Unset;
     }
     ///State transition - sets the `account` field to Set
-    pub struct SetAccount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAccount<S> {}
-    impl<S: State> State for SetAccount<S> {
+    pub struct SetAccount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAccount<St> {}
+    impl<St: State> State for SetAccount<St> {
         type Account = Set<members::account>;
     }
     /// Marker types for field names
@@ -87,87 +92,111 @@ pub mod enable_account_invites_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct EnableAccountInvitesBuilder<'a, S: enable_account_invites_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct EnableAccountInvitesBuilder<
+    St: enable_account_invites_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> EnableAccountInvites<'a> {
-    /// Create a new builder for this type
+impl EnableAccountInvites<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> EnableAccountInvitesBuilder<
-        'a,
         enable_account_invites_state::Empty,
+        DefaultStr,
     > {
         EnableAccountInvitesBuilder::new()
     }
 }
 
-impl<'a> EnableAccountInvitesBuilder<'a, enable_account_invites_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> EnableAccountInvites<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> EnableAccountInvitesBuilder<
+        enable_account_invites_state::Empty,
+        S,
+    > {
+        EnableAccountInvitesBuilder::builder()
+    }
+}
+
+impl EnableAccountInvitesBuilder<enable_account_invites_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         EnableAccountInvitesBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EnableAccountInvitesBuilder<'a, S>
+impl<S: BosStr> EnableAccountInvitesBuilder<enable_account_invites_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        EnableAccountInvitesBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> EnableAccountInvitesBuilder<St, S>
 where
-    S: enable_account_invites_state::State,
-    S::Account: enable_account_invites_state::IsUnset,
+    St: enable_account_invites_state::State,
+    St::Account: enable_account_invites_state::IsUnset,
 {
     /// Set the `account` field (required)
     pub fn account(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> EnableAccountInvitesBuilder<'a, enable_account_invites_state::SetAccount<S>> {
+        value: impl Into<Did<S>>,
+    ) -> EnableAccountInvitesBuilder<enable_account_invites_state::SetAccount<St>, S> {
         self._fields.0 = Option::Some(value.into());
         EnableAccountInvitesBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: enable_account_invites_state::State> EnableAccountInvitesBuilder<'a, S> {
+impl<
+    St: enable_account_invites_state::State,
+    S: BosStr,
+> EnableAccountInvitesBuilder<St, S> {
     /// Set the `note` field (optional)
-    pub fn note(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn note(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `note` field to an Option value (optional)
-    pub fn maybe_note(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_note(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> EnableAccountInvitesBuilder<'a, S>
+impl<St, S: BosStr> EnableAccountInvitesBuilder<St, S>
 where
-    S: enable_account_invites_state::State,
-    S::Account: enable_account_invites_state::IsSet,
+    St: enable_account_invites_state::State,
+    St::Account: enable_account_invites_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> EnableAccountInvites<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> EnableAccountInvites<S> {
         EnableAccountInvites {
             account: self._fields.0.unwrap(),
             note: self._fields.1,
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> EnableAccountInvites<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> EnableAccountInvites<S> {
         EnableAccountInvites {
             account: self._fields.0.unwrap(),
             note: self._fields.1,

@@ -10,16 +10,17 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 use jacquard_common::deps::bytes::Bytes;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UploadPartParams<'a> {
-    #[serde(borrow)]
-    pub job_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UploadPartParams<S: BosStr = DefaultStr> {
+    pub job_id: S,
     pub part_number: i64,
 }
 
@@ -31,16 +32,16 @@ pub struct UploadPart {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UploadPartOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UploadPartOutput<S: BosStr = DefaultStr> {
     pub part_number: i64,
     pub size_bytes: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -49,43 +50,44 @@ pub struct UploadPartOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum UploadPartError<'a> {
+pub enum UploadPartError {
     /// The job ID is unknown or aged out of retention; known terminal sessions are never reported as not found.
     #[serde(rename = "UploadNotFound")]
-    UploadNotFound(Option<CowStr<'a>>),
+    UploadNotFound(Option<SmolStr>),
     /// The upload session expired before completion.
     #[serde(rename = "UploadExpired")]
-    UploadExpired(Option<CowStr<'a>>),
+    UploadExpired(Option<SmolStr>),
     /// The part number is outside the upload's valid part range.
     #[serde(rename = "InvalidPartNumber")]
-    InvalidPartNumber(Option<CowStr<'a>>),
+    InvalidPartNumber(Option<SmolStr>),
     /// Content-Length does not exactly match the expected size for this part.
     #[serde(rename = "PartSizeMismatch")]
-    PartSizeMismatch(Option<CowStr<'a>>),
+    PartSizeMismatch(Option<SmolStr>),
     /// A finish is in progress; check getUploadStatus and retry.
     #[serde(rename = "UploadNotReady")]
-    UploadNotReady(Option<CowStr<'a>>),
+    UploadNotReady(Option<SmolStr>),
     /// The session is known to have failed; the error carries its failure reason.
     #[serde(rename = "UploadFailed")]
-    UploadFailed(Option<CowStr<'a>>),
+    UploadFailed(Option<SmolStr>),
     /// The session is known to have been aborted.
     #[serde(rename = "UploadAborted")]
-    UploadAborted(Option<CowStr<'a>>),
+    UploadAborted(Option<SmolStr>),
     /// The session is known to have already completed.
     #[serde(rename = "UploadAlreadyCompleted")]
-    UploadAlreadyCompleted(Option<CowStr<'a>>),
+    UploadAlreadyCompleted(Option<SmolStr>),
     /// The service is draining or temporarily at capacity; retry on another worker.
     #[serde(rename = "ServiceOverloaded")]
-    ServiceOverloaded(Option<CowStr<'a>>),
+    ServiceOverloaded(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for UploadPartError<'_> {
+impl core::fmt::Display for UploadPartError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::UploadNotFound(msg) => {
@@ -151,18 +153,26 @@ impl core::fmt::Display for UploadPartError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.video.uploadPart
+/** Response marker for the `app.bsky.video.uploadPart` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `UploadPartOutput<S>` for this endpoint.*/
 pub struct UploadPartResponse;
 impl jacquard_common::xrpc::XrpcResp for UploadPartResponse {
     const NSID: &'static str = "app.bsky.video.uploadPart";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = UploadPartOutput<'de>;
-    type Err<'de> = UploadPartError<'de>;
+    type Output<S: BosStr> = UploadPartOutput<S>;
+    type Err = UploadPartError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for UploadPart {
@@ -171,31 +181,37 @@ impl jacquard_common::xrpc::XrpcRequest for UploadPart {
         "application/octet-stream",
     );
     type Response = UploadPartResponse;
-    fn encode_body(&self) -> Result<Vec<u8>, jacquard_common::xrpc::EncodeError> {
-        Ok(self.body.to_vec())
+    fn encode_body(
+        &self,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), jacquard_common::xrpc::EncodeError>
+    where
+        Self: Serialize,
+    {
+        Ok(buffer.extend_from_slice(self.body.as_ref()))
     }
     fn decode_body<'de>(
         body: &'de [u8],
-    ) -> Result<Box<Self>, jacquard_common::error::DecodeError>
+    ) -> Result<Self, jacquard_common::error::DecodeError>
     where
-        Self: serde::Deserialize<'de>,
+        Self: Deserialize<'de>,
     {
-        Ok(
-            Box::new(Self {
-                body: jacquard_common::deps::bytes::Bytes::copy_from_slice(body),
-            }),
-        )
+        Ok(Self {
+            body: jacquard_common::deps::bytes::Bytes::copy_from_slice(body),
+        })
     }
 }
 
-/// Endpoint type for app.bsky.video.uploadPart
+/** Endpoint marker for the `app.bsky.video.uploadPart` procedure.
+
+Path: `/xrpc/app.bsky.video.uploadPart`. The request payload type is `UploadPart`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct UploadPartRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for UploadPartRequest {
     const PATH: &'static str = "/xrpc/app.bsky.video.uploadPart";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/octet-stream",
     );
-    type Request<'de> = UploadPart;
+    type Request<S: BosStr> = UploadPart;
     type Response = UploadPartResponse;
 }
 
@@ -220,17 +236,17 @@ pub mod upload_part_params_state {
         type PartNumber = Unset;
     }
     ///State transition - sets the `job_id` field to Set
-    pub struct SetJobId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetJobId<S> {}
-    impl<S: State> State for SetJobId<S> {
+    pub struct SetJobId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetJobId<St> {}
+    impl<St: State> State for SetJobId<St> {
         type JobId = Set<members::job_id>;
-        type PartNumber = S::PartNumber;
+        type PartNumber = St::PartNumber;
     }
     ///State transition - sets the `part_number` field to Set
-    pub struct SetPartNumber<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPartNumber<S> {}
-    impl<S: State> State for SetPartNumber<S> {
-        type JobId = S::JobId;
+    pub struct SetPartNumber<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPartNumber<St> {}
+    impl<St: State> State for SetPartNumber<St> {
+        type JobId = St::JobId;
         type PartNumber = Set<members::part_number>;
     }
     /// Marker types for field names
@@ -243,77 +259,101 @@ pub mod upload_part_params_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct UploadPartParamsBuilder<'a, S: upload_part_params_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct UploadPartParamsBuilder<
+    St: upload_part_params_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> UploadPartParams<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> UploadPartParamsBuilder<'a, upload_part_params_state::Empty> {
+impl UploadPartParams<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> UploadPartParamsBuilder<
+        upload_part_params_state::Empty,
+        DefaultStr,
+    > {
         UploadPartParamsBuilder::new()
     }
 }
 
-impl<'a> UploadPartParamsBuilder<'a, upload_part_params_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> UploadPartParams<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> UploadPartParamsBuilder<upload_part_params_state::Empty, S> {
+        UploadPartParamsBuilder::builder()
+    }
+}
+
+impl UploadPartParamsBuilder<upload_part_params_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         UploadPartParamsBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UploadPartParamsBuilder<'a, S>
+impl<S: BosStr> UploadPartParamsBuilder<upload_part_params_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        UploadPartParamsBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> UploadPartParamsBuilder<St, S>
 where
-    S: upload_part_params_state::State,
-    S::JobId: upload_part_params_state::IsUnset,
+    St: upload_part_params_state::State,
+    St::JobId: upload_part_params_state::IsUnset,
 {
     /// Set the `jobId` field (required)
     pub fn job_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> UploadPartParamsBuilder<'a, upload_part_params_state::SetJobId<S>> {
+        value: impl Into<S>,
+    ) -> UploadPartParamsBuilder<upload_part_params_state::SetJobId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         UploadPartParamsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UploadPartParamsBuilder<'a, S>
+impl<St, S: BosStr> UploadPartParamsBuilder<St, S>
 where
-    S: upload_part_params_state::State,
-    S::PartNumber: upload_part_params_state::IsUnset,
+    St: upload_part_params_state::State,
+    St::PartNumber: upload_part_params_state::IsUnset,
 {
     /// Set the `partNumber` field (required)
     pub fn part_number(
         mut self,
         value: impl Into<i64>,
-    ) -> UploadPartParamsBuilder<'a, upload_part_params_state::SetPartNumber<S>> {
+    ) -> UploadPartParamsBuilder<upload_part_params_state::SetPartNumber<St>, S> {
         self._fields.1 = Option::Some(value.into());
         UploadPartParamsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UploadPartParamsBuilder<'a, S>
+impl<St, S: BosStr> UploadPartParamsBuilder<St, S>
 where
-    S: upload_part_params_state::State,
-    S::JobId: upload_part_params_state::IsSet,
-    S::PartNumber: upload_part_params_state::IsSet,
+    St: upload_part_params_state::State,
+    St::JobId: upload_part_params_state::IsSet,
+    St::PartNumber: upload_part_params_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> UploadPartParams<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> UploadPartParams<S> {
         UploadPartParams {
             job_id: self._fields.0.unwrap(),
             part_number: self._fields.1.unwrap(),

@@ -6,12 +6,16 @@
 // Any manual changes will be overwritten on the next regeneration.
 
 #[allow(unused_imports)]
+use alloc::collections::BTreeMap;
+
+#[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
 use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -20,20 +24,21 @@ use serde::{Serialize, Deserialize};
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum DeleteSessionError<'a> {
+pub enum DeleteSessionError {
     #[serde(rename = "InvalidToken")]
-    InvalidToken(Option<CowStr<'a>>),
+    InvalidToken(Option<SmolStr>),
     #[serde(rename = "ExpiredToken")]
-    ExpiredToken(Option<CowStr<'a>>),
+    ExpiredToken(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for DeleteSessionError<'_> {
+impl core::fmt::Display for DeleteSessionError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidToken(msg) => {
@@ -50,22 +55,32 @@ impl core::fmt::Display for DeleteSessionError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// XRPC request marker type.
+/** Request marker for the `com.atproto.server.deleteSession` procedure.
+
+This endpoint has no request parameters or input body; send this marker with `jacquard::Client`.*/
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Copy)]
 pub struct DeleteSession;
-/// Response type for com.atproto.server.deleteSession
+/** Response marker for the `com.atproto.server.deleteSession` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `()` for this endpoint.*/
 pub struct DeleteSessionResponse;
 impl jacquard_common::xrpc::XrpcResp for DeleteSessionResponse {
     const NSID: &'static str = "com.atproto.server.deleteSession";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ();
-    type Err<'de> = DeleteSessionError<'de>;
+    type Output<S: BosStr> = ();
+    type Err = DeleteSessionError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for DeleteSession {
@@ -76,13 +91,15 @@ impl jacquard_common::xrpc::XrpcRequest for DeleteSession {
     type Response = DeleteSessionResponse;
 }
 
-/// Endpoint type for com.atproto.server.deleteSession
+/** Endpoint marker for the `com.atproto.server.deleteSession` procedure.
+
+Path: `/xrpc/com.atproto.server.deleteSession`. The request payload type is `DeleteSession`; use this marker with lower-level `XrpcEndpoint` APIs when you need endpoint metadata.*/
 pub struct DeleteSessionRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for DeleteSessionRequest {
     const PATH: &'static str = "/xrpc/com.atproto.server.deleteSession";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = DeleteSession;
+    type Request<S: BosStr> = DeleteSession;
     type Response = DeleteSessionResponse;
 }

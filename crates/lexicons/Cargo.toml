@@ -5,9 +5,9 @@ edition = "2024"
 
 [dependencies]
 # Keep in sync with the installed jacquard-lexgen (lex-fetch) version.
-jacquard-common = "0.11"
-jacquard-derive = "0.11"
-jacquard-lexicon = { version = "0.11", default-features = false }
+jacquard-common = "0.12"
+jacquard-derive = "0.12"
+jacquard-lexicon = { version = "0.12", default-features = false }
 miette = "7"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"

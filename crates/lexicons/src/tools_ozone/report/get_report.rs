@@ -6,8 +6,13 @@
 // Any manual changes will be overwritten on the next regeneration.
 
 #[allow(unused_imports)]
+use alloc::collections::BTreeMap;
+
+#[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
 use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::report::ReportView;
@@ -19,17 +24,16 @@ pub struct GetReport {
 }
 
 
-#[jacquard_derive::lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetReportOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetReportOutput<S: BosStr = DefaultStr> {
     #[serde(flatten)]
-    #[serde(borrow)]
-    pub value: ReportView<'a>,
+    pub value: ReportView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -38,19 +42,20 @@ pub struct GetReportOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetReportError<'a> {
+pub enum GetReportError {
     /// No report found.
     #[serde(rename = "NotFound")]
-    NotFound(Option<CowStr<'a>>),
+    NotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetReportError<'_> {
+impl core::fmt::Display for GetReportError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::NotFound(msg) => {
@@ -60,18 +65,26 @@ impl core::fmt::Display for GetReportError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for tools.ozone.report.getReport
+/** Response marker for the `tools.ozone.report.getReport` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetReportOutput<S>` for this endpoint.*/
 pub struct GetReportResponse;
 impl jacquard_common::xrpc::XrpcResp for GetReportResponse {
     const NSID: &'static str = "tools.ozone.report.getReport";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetReportOutput<'de>;
-    type Err<'de> = GetReportError<'de>;
+    type Output<S: BosStr> = GetReportOutput<S>;
+    type Err = GetReportError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for GetReport {
@@ -80,12 +93,14 @@ impl jacquard_common::xrpc::XrpcRequest for GetReport {
     type Response = GetReportResponse;
 }
 
-/// Endpoint type for tools.ozone.report.getReport
+/** Endpoint marker for the `tools.ozone.report.getReport` query.
+
+Path: `/xrpc/tools.ozone.report.getReport`. The request payload type is `GetReport`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetReportRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetReportRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.report.getReport";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetReport;
+    type Request<S: BosStr> = GetReport;
     type Response = GetReportResponse;
 }
 
@@ -108,9 +123,9 @@ pub mod get_report_state {
         type Id = Unset;
     }
     ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
         type Id = Set<members::id>;
     }
     /// Marker types for field names
@@ -121,21 +136,21 @@ pub mod get_report_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetReportBuilder<S: get_report_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct GetReportBuilder<St: get_report_state::State> {
+    _state: PhantomData<fn() -> St>,
     _fields: (Option<i64>,),
 }
 
 impl GetReport {
-    /// Create a new builder for this type
+    /// Create a new builder for this type.
     pub fn new() -> GetReportBuilder<get_report_state::Empty> {
         GetReportBuilder::new()
     }
 }
 
 impl GetReportBuilder<get_report_state::Empty> {
-    /// Create a new builder with all fields unset
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetReportBuilder {
             _state: PhantomData,
@@ -144,16 +159,26 @@ impl GetReportBuilder<get_report_state::Empty> {
     }
 }
 
-impl<S> GetReportBuilder<S>
+impl GetReportBuilder<get_report_state::Empty> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetReportBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+        }
+    }
+}
+
+impl<St> GetReportBuilder<St>
 where
-    S: get_report_state::State,
-    S::Id: get_report_state::IsUnset,
+    St: get_report_state::State,
+    St::Id: get_report_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
         value: impl Into<i64>,
-    ) -> GetReportBuilder<get_report_state::SetId<S>> {
+    ) -> GetReportBuilder<get_report_state::SetId<St>> {
         self._fields.0 = Option::Some(value.into());
         GetReportBuilder {
             _state: PhantomData,
@@ -162,12 +187,12 @@ where
     }
 }
 
-impl<S> GetReportBuilder<S>
+impl<St> GetReportBuilder<St>
 where
-    S: get_report_state::State,
-    S::Id: get_report_state::IsSet,
+    St: get_report_state::State,
+    St::Id: get_report_state::IsSet,
 {
-    /// Build the final struct
+    /// Build the final struct.
     pub fn build(self) -> GetReport {
         GetReport {
             id: self._fields.0.unwrap(),

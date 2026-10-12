@@ -10,8 +10,10 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::report::ReportView;
 
@@ -19,16 +21,15 @@ use crate::tools_ozone::report::ReportView;
 #[serde(rename_all = "camelCase")]
 pub struct GetLatestReport;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetLatestReportOutput<'a> {
-    #[serde(borrow)]
-    pub report: ReportView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetLatestReportOutput<S: BosStr = DefaultStr> {
+    pub report: ReportView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -37,19 +38,20 @@ pub struct GetLatestReportOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetLatestReportError<'a> {
+pub enum GetLatestReportError {
     /// No report found.
     #[serde(rename = "NotFound")]
-    NotFound(Option<CowStr<'a>>),
+    NotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetLatestReportError<'_> {
+impl core::fmt::Display for GetLatestReportError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::NotFound(msg) => {
@@ -59,18 +61,26 @@ impl core::fmt::Display for GetLatestReportError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for tools.ozone.report.getLatestReport
+/** Response marker for the `tools.ozone.report.getLatestReport` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetLatestReportOutput<S>` for this endpoint.*/
 pub struct GetLatestReportResponse;
 impl jacquard_common::xrpc::XrpcResp for GetLatestReportResponse {
     const NSID: &'static str = "tools.ozone.report.getLatestReport";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetLatestReportOutput<'de>;
-    type Err<'de> = GetLatestReportError<'de>;
+    type Output<S: BosStr> = GetLatestReportOutput<S>;
+    type Err = GetLatestReportError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for GetLatestReport {
@@ -79,11 +89,13 @@ impl jacquard_common::xrpc::XrpcRequest for GetLatestReport {
     type Response = GetLatestReportResponse;
 }
 
-/// Endpoint type for tools.ozone.report.getLatestReport
+/** Endpoint marker for the `tools.ozone.report.getLatestReport` query.
+
+Path: `/xrpc/tools.ozone.report.getLatestReport`. The request payload type is `GetLatestReport`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetLatestReportRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetLatestReportRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.report.getLatestReport";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetLatestReport;
+    type Request<S: BosStr> = GetLatestReport;
     type Response = GetLatestReportResponse;
 }

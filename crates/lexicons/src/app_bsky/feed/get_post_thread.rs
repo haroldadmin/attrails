@@ -10,9 +10,11 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::AtUri;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::feed::BlockedPost;
 use crate::app_bsky::feed::NotFoundPost;
@@ -20,47 +22,44 @@ use crate::app_bsky::feed::ThreadViewPost;
 use crate::app_bsky::feed::ThreadgateView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetPostThread<'a> {
-    ///Defaults to `6`. Min: 0. Max: 1000.
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetPostThread<S: BosStr = DefaultStr> {
+    /// Defaults to `6`. Min: 0. Max: 1000.
     #[serde(default = "_default_depth")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub depth: Option<i64>,
-    ///Defaults to `80`. Min: 0. Max: 1000.
+    /// Defaults to `80`. Min: 0. Max: 1000.
     #[serde(default = "_default_parent_height")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_height: Option<i64>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub uri: AtUri<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetPostThreadOutput<'a> {
-    #[serde(borrow)]
-    pub thread: GetPostThreadOutputThread<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetPostThreadOutput<S: BosStr = DefaultStr> {
+    pub thread: GetPostThreadOutputThread<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub threadgate: Option<ThreadgateView<'a>>,
+    pub threadgate: Option<ThreadgateView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum GetPostThreadOutputThread<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum GetPostThreadOutputThread<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.feed.defs#threadViewPost")]
-    ThreadViewPost(Box<ThreadViewPost<'a>>),
+    ThreadViewPost(Box<ThreadViewPost<S>>),
     #[serde(rename = "app.bsky.feed.defs#notFoundPost")]
-    NotFoundPost(Box<NotFoundPost<'a>>),
+    NotFoundPost(Box<NotFoundPost<S>>),
     #[serde(rename = "app.bsky.feed.defs#blockedPost")]
-    BlockedPost(Box<BlockedPost<'a>>),
+    BlockedPost(Box<BlockedPost<S>>),
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -69,18 +68,19 @@ pub enum GetPostThreadOutputThread<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetPostThreadError<'a> {
+pub enum GetPostThreadError {
     #[serde(rename = "NotFound")]
-    NotFound(Option<CowStr<'a>>),
+    NotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetPostThreadError<'_> {
+impl core::fmt::Display for GetPostThreadError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::NotFound(msg) => {
@@ -90,32 +90,42 @@ impl core::fmt::Display for GetPostThreadError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.feed.getPostThread
+/** Response marker for the `app.bsky.feed.getPostThread` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetPostThreadOutput<S>` for this endpoint.*/
 pub struct GetPostThreadResponse;
 impl jacquard_common::xrpc::XrpcResp for GetPostThreadResponse {
     const NSID: &'static str = "app.bsky.feed.getPostThread";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetPostThreadOutput<'de>;
-    type Err<'de> = GetPostThreadError<'de>;
+    type Output<S: BosStr> = GetPostThreadOutput<S>;
+    type Err = GetPostThreadError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetPostThread<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetPostThread<S> {
     const NSID: &'static str = "app.bsky.feed.getPostThread";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetPostThreadResponse;
 }
 
-/// Endpoint type for app.bsky.feed.getPostThread
+/** Endpoint marker for the `app.bsky.feed.getPostThread` query.
+
+Path: `/xrpc/app.bsky.feed.getPostThread`. The request payload type is `GetPostThread<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetPostThreadRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetPostThreadRequest {
     const PATH: &'static str = "/xrpc/app.bsky.feed.getPostThread";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetPostThread<'de>;
+    type Request<S: BosStr> = GetPostThread<S>;
     type Response = GetPostThreadResponse;
 }
 
@@ -146,9 +156,9 @@ pub mod get_post_thread_state {
         type Uri = Unset;
     }
     ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
         type Uri = Set<members::uri>;
     }
     /// Marker types for field names
@@ -159,32 +169,53 @@ pub mod get_post_thread_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetPostThreadBuilder<'a, S: get_post_thread_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<i64>, Option<i64>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetPostThreadBuilder<
+    St: get_post_thread_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<i64>, Option<i64>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetPostThread<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetPostThreadBuilder<'a, get_post_thread_state::Empty> {
+impl GetPostThread<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetPostThreadBuilder<get_post_thread_state::Empty, DefaultStr> {
         GetPostThreadBuilder::new()
     }
 }
 
-impl<'a> GetPostThreadBuilder<'a, get_post_thread_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetPostThread<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetPostThreadBuilder<get_post_thread_state::Empty, S> {
+        GetPostThreadBuilder::builder()
+    }
+}
+
+impl GetPostThreadBuilder<get_post_thread_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetPostThreadBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_post_thread_state::State> GetPostThreadBuilder<'a, S> {
+impl<S: BosStr> GetPostThreadBuilder<get_post_thread_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetPostThreadBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: get_post_thread_state::State, S: BosStr> GetPostThreadBuilder<St, S> {
     /// Set the `depth` field (optional)
     pub fn depth(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.0 = value.into();
@@ -197,7 +228,7 @@ impl<'a, S: get_post_thread_state::State> GetPostThreadBuilder<'a, S> {
     }
 }
 
-impl<'a, S: get_post_thread_state::State> GetPostThreadBuilder<'a, S> {
+impl<St: get_post_thread_state::State, S: BosStr> GetPostThreadBuilder<St, S> {
     /// Set the `parentHeight` field (optional)
     pub fn parent_height(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -210,32 +241,32 @@ impl<'a, S: get_post_thread_state::State> GetPostThreadBuilder<'a, S> {
     }
 }
 
-impl<'a, S> GetPostThreadBuilder<'a, S>
+impl<St, S: BosStr> GetPostThreadBuilder<St, S>
 where
-    S: get_post_thread_state::State,
-    S::Uri: get_post_thread_state::IsUnset,
+    St: get_post_thread_state::State,
+    St::Uri: get_post_thread_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> GetPostThreadBuilder<'a, get_post_thread_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> GetPostThreadBuilder<get_post_thread_state::SetUri<St>, S> {
         self._fields.2 = Option::Some(value.into());
         GetPostThreadBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetPostThreadBuilder<'a, S>
+impl<St, S: BosStr> GetPostThreadBuilder<St, S>
 where
-    S: get_post_thread_state::State,
-    S::Uri: get_post_thread_state::IsSet,
+    St: get_post_thread_state::State,
+    St::Uri: get_post_thread_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetPostThread<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetPostThread<S> {
         GetPostThread {
             depth: self._fields.0,
             parent_height: self._fields.1,

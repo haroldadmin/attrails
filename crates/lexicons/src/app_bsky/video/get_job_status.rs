@@ -10,48 +10,53 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::video::JobStatus;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetJobStatus<'a> {
-    #[serde(borrow)]
-    pub job_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetJobStatus<S: BosStr = DefaultStr> {
+    pub job_id: S,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetJobStatusOutput<'a> {
-    #[serde(borrow)]
-    pub job_status: JobStatus<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetJobStatusOutput<S: BosStr = DefaultStr> {
+    pub job_status: JobStatus<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.video.getJobStatus
+/** Response marker for the `app.bsky.video.getJobStatus` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetJobStatusOutput<S>` for this endpoint.*/
 pub struct GetJobStatusResponse;
 impl jacquard_common::xrpc::XrpcResp for GetJobStatusResponse {
     const NSID: &'static str = "app.bsky.video.getJobStatus";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetJobStatusOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetJobStatusOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetJobStatus<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetJobStatus<S> {
     const NSID: &'static str = "app.bsky.video.getJobStatus";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetJobStatusResponse;
 }
 
-/// Endpoint type for app.bsky.video.getJobStatus
+/** Endpoint marker for the `app.bsky.video.getJobStatus` query.
+
+Path: `/xrpc/app.bsky.video.getJobStatus`. The request payload type is `GetJobStatus<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetJobStatusRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetJobStatusRequest {
     const PATH: &'static str = "/xrpc/app.bsky.video.getJobStatus";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetJobStatus<'de>;
+    type Request<S: BosStr> = GetJobStatus<S>;
     type Response = GetJobStatusResponse;
 }
 
@@ -74,9 +79,9 @@ pub mod get_job_status_state {
         type JobId = Unset;
     }
     ///State transition - sets the `job_id` field to Set
-    pub struct SetJobId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetJobId<S> {}
-    impl<S: State> State for SetJobId<S> {
+    pub struct SetJobId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetJobId<St> {}
+    impl<St: State> State for SetJobId<St> {
         type JobId = Set<members::job_id>;
     }
     /// Marker types for field names
@@ -87,57 +92,75 @@ pub mod get_job_status_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetJobStatusBuilder<'a, S: get_job_status_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetJobStatusBuilder<St: get_job_status_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetJobStatus<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetJobStatusBuilder<'a, get_job_status_state::Empty> {
+impl GetJobStatus<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetJobStatusBuilder<get_job_status_state::Empty, DefaultStr> {
         GetJobStatusBuilder::new()
     }
 }
 
-impl<'a> GetJobStatusBuilder<'a, get_job_status_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetJobStatus<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetJobStatusBuilder<get_job_status_state::Empty, S> {
+        GetJobStatusBuilder::builder()
+    }
+}
+
+impl GetJobStatusBuilder<get_job_status_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetJobStatusBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetJobStatusBuilder<'a, S>
+impl<S: BosStr> GetJobStatusBuilder<get_job_status_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetJobStatusBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetJobStatusBuilder<St, S>
 where
-    S: get_job_status_state::State,
-    S::JobId: get_job_status_state::IsUnset,
+    St: get_job_status_state::State,
+    St::JobId: get_job_status_state::IsUnset,
 {
     /// Set the `jobId` field (required)
     pub fn job_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> GetJobStatusBuilder<'a, get_job_status_state::SetJobId<S>> {
+        value: impl Into<S>,
+    ) -> GetJobStatusBuilder<get_job_status_state::SetJobId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetJobStatusBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetJobStatusBuilder<'a, S>
+impl<St, S: BosStr> GetJobStatusBuilder<St, S>
 where
-    S: get_job_status_state::State,
-    S::JobId: get_job_status_state::IsSet,
+    St: get_job_status_state::State,
+    St::JobId: get_job_status_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetJobStatus<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetJobStatus<S> {
         GetJobStatus {
             job_id: self._fields.0.unwrap(),
         }

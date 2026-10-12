@@ -10,11 +10,13 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -25,38 +27,38 @@ use crate::chat_bsky::group::DisabledJoinLinkPreviewView;
 use crate::chat_bsky::group::InvalidJoinLinkPreviewView;
 use crate::chat_bsky::group::JoinLinkPreviewView;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct JoinLink<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct JoinLink<S: BosStr = DefaultStr> {
     ///The join link code.
-    #[serde(borrow)]
-    pub code: CowStr<'a>,
+    pub code: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct View<'a> {
-    #[serde(borrow)]
-    pub join_link_preview: ViewJoinLinkPreview<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct View<S: BosStr = DefaultStr> {
+    pub join_link_preview: ViewJoinLinkPreview<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ViewJoinLinkPreview<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ViewJoinLinkPreview<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.group.defs#joinLinkPreviewView")]
-    JoinLinkPreviewView(Box<JoinLinkPreviewView<'a>>),
+    JoinLinkPreviewView(Box<JoinLinkPreviewView<S>>),
     #[serde(rename = "chat.bsky.group.defs#disabledJoinLinkPreviewView")]
-    DisabledJoinLinkPreviewView(Box<DisabledJoinLinkPreviewView<'a>>),
+    DisabledJoinLinkPreviewView(Box<DisabledJoinLinkPreviewView<S>>),
     #[serde(rename = "chat.bsky.group.defs#invalidJoinLinkPreviewView")]
-    InvalidJoinLinkPreviewView(Box<InvalidJoinLinkPreviewView<'a>>),
+    InvalidJoinLinkPreviewView(Box<InvalidJoinLinkPreviewView<S>>),
 }
 
-impl<'a> LexiconSchema for JoinLink<'a> {
+impl<S: BosStr> LexiconSchema for JoinLink<S> {
     fn nsid() -> &'static str {
         "chat.bsky.embed.joinLink"
     }
@@ -71,7 +73,7 @@ impl<'a> LexiconSchema for JoinLink<'a> {
     }
 }
 
-impl<'a> LexiconSchema for View<'a> {
+impl<S: BosStr> LexiconSchema for View<S> {
     fn nsid() -> &'static str {
         "chat.bsky.embed.joinLink"
     }
@@ -165,9 +167,9 @@ pub mod view_state {
         type JoinLinkPreview = Unset;
     }
     ///State transition - sets the `join_link_preview` field to Set
-    pub struct SetJoinLinkPreview<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetJoinLinkPreview<S> {}
-    impl<S: State> State for SetJoinLinkPreview<S> {
+    pub struct SetJoinLinkPreview<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetJoinLinkPreview<St> {}
+    impl<St: State> State for SetJoinLinkPreview<St> {
         type JoinLinkPreview = Set<members::join_link_preview>;
     }
     /// Marker types for field names
@@ -178,70 +180,82 @@ pub mod view_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ViewBuilder<'a, S: view_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<ViewJoinLinkPreview<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ViewBuilder<St: view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<ViewJoinLinkPreview<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> View<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ViewBuilder<'a, view_state::Empty> {
+impl View<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ViewBuilder<view_state::Empty, DefaultStr> {
         ViewBuilder::new()
     }
 }
 
-impl<'a> ViewBuilder<'a, view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> View<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ViewBuilder<view_state::Empty, S> {
+        ViewBuilder::builder()
+    }
+}
+
+impl ViewBuilder<view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ViewBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewBuilder<'a, S>
+impl<S: BosStr> ViewBuilder<view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ViewBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ViewBuilder<St, S>
 where
-    S: view_state::State,
-    S::JoinLinkPreview: view_state::IsUnset,
+    St: view_state::State,
+    St::JoinLinkPreview: view_state::IsUnset,
 {
     /// Set the `joinLinkPreview` field (required)
     pub fn join_link_preview(
         mut self,
-        value: impl Into<ViewJoinLinkPreview<'a>>,
-    ) -> ViewBuilder<'a, view_state::SetJoinLinkPreview<S>> {
+        value: impl Into<ViewJoinLinkPreview<S>>,
+    ) -> ViewBuilder<view_state::SetJoinLinkPreview<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ViewBuilder<'a, S>
+impl<St, S: BosStr> ViewBuilder<St, S>
 where
-    S: view_state::State,
-    S::JoinLinkPreview: view_state::IsSet,
+    St: view_state::State,
+    St::JoinLinkPreview: view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> View<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> View<S> {
         View {
             join_link_preview: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> View<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> View<S> {
         View {
             join_link_preview: self._fields.0.unwrap(),
             extra_data: Some(extra_data),

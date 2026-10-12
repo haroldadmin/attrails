@@ -10,29 +10,29 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Handle};
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ResolveHandle<'a> {
-    #[serde(borrow)]
-    pub handle: Handle<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ResolveHandle<S: BosStr = DefaultStr> {
+    pub handle: Handle<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ResolveHandleOutput<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ResolveHandleOutput<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -41,19 +41,20 @@ pub struct ResolveHandleOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum ResolveHandleError<'a> {
+pub enum ResolveHandleError {
     /// The resolution process confirmed that the handle does not resolve to any DID.
     #[serde(rename = "HandleNotFound")]
-    HandleNotFound(Option<CowStr<'a>>),
+    HandleNotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for ResolveHandleError<'_> {
+impl core::fmt::Display for ResolveHandleError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::HandleNotFound(msg) => {
@@ -63,32 +64,42 @@ impl core::fmt::Display for ResolveHandleError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for com.atproto.identity.resolveHandle
+/** Response marker for the `com.atproto.identity.resolveHandle` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ResolveHandleOutput<S>` for this endpoint.*/
 pub struct ResolveHandleResponse;
 impl jacquard_common::xrpc::XrpcResp for ResolveHandleResponse {
     const NSID: &'static str = "com.atproto.identity.resolveHandle";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ResolveHandleOutput<'de>;
-    type Err<'de> = ResolveHandleError<'de>;
+    type Output<S: BosStr> = ResolveHandleOutput<S>;
+    type Err = ResolveHandleError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for ResolveHandle<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for ResolveHandle<S> {
     const NSID: &'static str = "com.atproto.identity.resolveHandle";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = ResolveHandleResponse;
 }
 
-/// Endpoint type for com.atproto.identity.resolveHandle
+/** Endpoint marker for the `com.atproto.identity.resolveHandle` query.
+
+Path: `/xrpc/com.atproto.identity.resolveHandle`. The request payload type is `ResolveHandle<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct ResolveHandleRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ResolveHandleRequest {
     const PATH: &'static str = "/xrpc/com.atproto.identity.resolveHandle";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = ResolveHandle<'de>;
+    type Request<S: BosStr> = ResolveHandle<S>;
     type Response = ResolveHandleResponse;
 }
 
@@ -111,9 +122,9 @@ pub mod resolve_handle_state {
         type Handle = Unset;
     }
     ///State transition - sets the `handle` field to Set
-    pub struct SetHandle<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHandle<S> {}
-    impl<S: State> State for SetHandle<S> {
+    pub struct SetHandle<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetHandle<St> {}
+    impl<St: State> State for SetHandle<St> {
         type Handle = Set<members::handle>;
     }
     /// Marker types for field names
@@ -124,57 +135,78 @@ pub mod resolve_handle_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ResolveHandleBuilder<'a, S: resolve_handle_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Handle<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ResolveHandleBuilder<
+    St: resolve_handle_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Handle<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ResolveHandle<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ResolveHandleBuilder<'a, resolve_handle_state::Empty> {
+impl ResolveHandle<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ResolveHandleBuilder<resolve_handle_state::Empty, DefaultStr> {
         ResolveHandleBuilder::new()
     }
 }
 
-impl<'a> ResolveHandleBuilder<'a, resolve_handle_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ResolveHandle<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ResolveHandleBuilder<resolve_handle_state::Empty, S> {
+        ResolveHandleBuilder::builder()
+    }
+}
+
+impl ResolveHandleBuilder<resolve_handle_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ResolveHandleBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ResolveHandleBuilder<'a, S>
+impl<S: BosStr> ResolveHandleBuilder<resolve_handle_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ResolveHandleBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ResolveHandleBuilder<St, S>
 where
-    S: resolve_handle_state::State,
-    S::Handle: resolve_handle_state::IsUnset,
+    St: resolve_handle_state::State,
+    St::Handle: resolve_handle_state::IsUnset,
 {
     /// Set the `handle` field (required)
     pub fn handle(
         mut self,
-        value: impl Into<Handle<'a>>,
-    ) -> ResolveHandleBuilder<'a, resolve_handle_state::SetHandle<S>> {
+        value: impl Into<Handle<S>>,
+    ) -> ResolveHandleBuilder<resolve_handle_state::SetHandle<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ResolveHandleBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ResolveHandleBuilder<'a, S>
+impl<St, S: BosStr> ResolveHandleBuilder<St, S>
 where
-    S: resolve_handle_state::State,
-    S::Handle: resolve_handle_state::IsSet,
+    St: resolve_handle_state::State,
+    St::Handle: resolve_handle_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ResolveHandle<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ResolveHandle<S> {
         ResolveHandle {
             handle: self._fields.0.unwrap(),
         }

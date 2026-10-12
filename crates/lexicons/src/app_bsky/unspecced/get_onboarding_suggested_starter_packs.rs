@@ -10,35 +10,40 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::graph::StarterPackView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
 pub struct GetOnboardingSuggestedStarterPacks {
-    ///Defaults to `10`. Min: 1. Max: 25.
+    /// Defaults to `10`. Min: 1. Max: 25.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetOnboardingSuggestedStarterPacksOutput<'a> {
-    #[serde(borrow)]
-    pub starter_packs: Vec<StarterPackView<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetOnboardingSuggestedStarterPacksOutput<S: BosStr = DefaultStr> {
+    pub starter_packs: Vec<StarterPackView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.unspecced.getOnboardingSuggestedStarterPacks
+/** Response marker for the `app.bsky.unspecced.getOnboardingSuggestedStarterPacks` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetOnboardingSuggestedStarterPacksOutput<S>` for this endpoint.*/
 pub struct GetOnboardingSuggestedStarterPacksResponse;
 impl jacquard_common::xrpc::XrpcResp for GetOnboardingSuggestedStarterPacksResponse {
     const NSID: &'static str = "app.bsky.unspecced.getOnboardingSuggestedStarterPacks";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetOnboardingSuggestedStarterPacksOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetOnboardingSuggestedStarterPacksOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for GetOnboardingSuggestedStarterPacks {
@@ -47,12 +52,14 @@ impl jacquard_common::xrpc::XrpcRequest for GetOnboardingSuggestedStarterPacks {
     type Response = GetOnboardingSuggestedStarterPacksResponse;
 }
 
-/// Endpoint type for app.bsky.unspecced.getOnboardingSuggestedStarterPacks
+/** Endpoint marker for the `app.bsky.unspecced.getOnboardingSuggestedStarterPacks` query.
+
+Path: `/xrpc/app.bsky.unspecced.getOnboardingSuggestedStarterPacks`. The request payload type is `GetOnboardingSuggestedStarterPacks`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetOnboardingSuggestedStarterPacksRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetOnboardingSuggestedStarterPacksRequest {
     const PATH: &'static str = "/xrpc/app.bsky.unspecced.getOnboardingSuggestedStarterPacks";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetOnboardingSuggestedStarterPacks;
+    type Request<S: BosStr> = GetOnboardingSuggestedStarterPacks;
     type Response = GetOnboardingSuggestedStarterPacksResponse;
 }
 
@@ -79,16 +86,16 @@ pub mod get_onboarding_suggested_starter_packs_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct GetOnboardingSuggestedStarterPacksBuilder<
-    S: get_onboarding_suggested_starter_packs_state::State,
+    St: get_onboarding_suggested_starter_packs_state::State,
 > {
-    _state: PhantomData<fn() -> S>,
+    _state: PhantomData<fn() -> St>,
     _fields: (Option<i64>,),
 }
 
 impl GetOnboardingSuggestedStarterPacks {
-    /// Create a new builder for this type
+    /// Create a new builder for this type.
     pub fn new() -> GetOnboardingSuggestedStarterPacksBuilder<
         get_onboarding_suggested_starter_packs_state::Empty,
     > {
@@ -99,7 +106,7 @@ impl GetOnboardingSuggestedStarterPacks {
 impl GetOnboardingSuggestedStarterPacksBuilder<
     get_onboarding_suggested_starter_packs_state::Empty,
 > {
-    /// Create a new builder with all fields unset
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetOnboardingSuggestedStarterPacksBuilder {
             _state: PhantomData,
@@ -108,9 +115,21 @@ impl GetOnboardingSuggestedStarterPacksBuilder<
     }
 }
 
+impl GetOnboardingSuggestedStarterPacksBuilder<
+    get_onboarding_suggested_starter_packs_state::Empty,
+> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetOnboardingSuggestedStarterPacksBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+        }
+    }
+}
+
 impl<
-    S: get_onboarding_suggested_starter_packs_state::State,
-> GetOnboardingSuggestedStarterPacksBuilder<S> {
+    St: get_onboarding_suggested_starter_packs_state::State,
+> GetOnboardingSuggestedStarterPacksBuilder<St> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.0 = value.into();
@@ -123,11 +142,11 @@ impl<
     }
 }
 
-impl<S> GetOnboardingSuggestedStarterPacksBuilder<S>
+impl<St> GetOnboardingSuggestedStarterPacksBuilder<St>
 where
-    S: get_onboarding_suggested_starter_packs_state::State,
+    St: get_onboarding_suggested_starter_packs_state::State,
 {
-    /// Build the final struct
+    /// Build the final struct.
     pub fn build(self) -> GetOnboardingSuggestedStarterPacks {
         GetOnboardingSuggestedStarterPacks {
             limit: self._fields.0,

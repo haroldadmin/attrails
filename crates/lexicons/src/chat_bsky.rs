@@ -3,7 +3,9 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `chat.bsky` Lexicon namespace/module.
 pub mod actor;
+pub mod auth_full_chat_client;
 pub mod convo;
 pub mod embed;
 pub mod group;

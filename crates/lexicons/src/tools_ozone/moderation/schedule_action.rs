@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Datetime};
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -25,66 +27,58 @@ use serde::{Serialize, Deserialize};
 use crate::tools_ozone::moderation::ModTool;
 use crate::tools_ozone::moderation::schedule_action;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct FailedScheduling<'a> {
-    #[serde(borrow)]
-    pub error: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct FailedScheduling<S: BosStr = DefaultStr> {
+    pub error: S,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub error_code: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub subject: Did<'a>,
+    pub error_code: Option<S>,
+    pub subject: Did<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ScheduleAction<'a> {
-    #[serde(borrow)]
-    pub action: schedule_action::Takedown<'a>,
-    #[serde(borrow)]
-    pub created_by: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ScheduleAction<S: BosStr = DefaultStr> {
+    pub action: schedule_action::Takedown<S>,
+    pub created_by: Did<S>,
     ///This will be propagated to the moderation event when it is applied
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub mod_tool: Option<ModTool<'a>>,
-    #[serde(borrow)]
-    pub scheduling: schedule_action::SchedulingConfig<'a>,
+    pub mod_tool: Option<ModTool<S>>,
+    pub scheduling: schedule_action::SchedulingConfig<S>,
     ///Array of DID subjects to schedule the action for
-    #[serde(borrow)]
-    pub subjects: Vec<Did<'a>>,
+    pub subjects: Vec<Did<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ScheduleActionOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ScheduleActionOutput<S: BosStr = DefaultStr> {
     #[serde(flatten)]
-    #[serde(borrow)]
-    pub value: jacquard_common::types::value::Data<'a>,
+    pub value: Data<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ScheduledActionResults<'a> {
-    #[serde(borrow)]
-    pub failed: Vec<schedule_action::FailedScheduling<'a>>,
-    #[serde(borrow)]
-    pub succeeded: Vec<Did<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ScheduledActionResults<S: BosStr = DefaultStr> {
+    pub failed: Vec<schedule_action::FailedScheduling<S>>,
+    pub succeeded: Vec<Did<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Configuration for when the action should be executed
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SchedulingConfig<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SchedulingConfig<S: BosStr = DefaultStr> {
     ///Earliest time to execute the action (for randomized scheduling)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execute_after: Option<Datetime>,
@@ -94,48 +88,46 @@ pub struct SchedulingConfig<'a> {
     ///Latest time to execute the action (for randomized scheduling)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execute_until: Option<Datetime>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Schedule a takedown action
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Takedown<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Takedown<S: BosStr = DefaultStr> {
     ///If true, all other reports on content authored by this account will be resolved (acknowledged).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub acknowledge_account_subjects: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub comment: Option<CowStr<'a>>,
+    pub comment: Option<S>,
     ///Indicates how long the takedown should be in effect before automatically expiring.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_in_hours: Option<i64>,
     ///Email content to be sent to the user upon takedown.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub email_content: Option<CowStr<'a>>,
+    pub email_content: Option<S>,
     ///Subject of the email to be sent to the user upon takedown.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub email_subject: Option<CowStr<'a>>,
+    pub email_subject: Option<S>,
     ///Names/Keywords of the policies that drove the decision.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub policies: Option<Vec<CowStr<'a>>>,
+    pub policies: Option<Vec<S>>,
     ///Severity level of the violation (e.g., 'sev-0', 'sev-1', 'sev-2', etc.).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub severity_level: Option<CowStr<'a>>,
+    pub severity_level: Option<S>,
     ///Number of strikes to assign to the user when takedown is applied.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strike_count: Option<i64>,
     ///When the strike should expire. If not provided, the strike never expires.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strike_expires_at: Option<Datetime>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for FailedScheduling<'a> {
+impl<S: BosStr> LexiconSchema for FailedScheduling<S> {
     fn nsid() -> &'static str {
         "tools.ozone.moderation.scheduleAction"
     }
@@ -150,16 +142,18 @@ impl<'a> LexiconSchema for FailedScheduling<'a> {
     }
 }
 
-/// Response type for tools.ozone.moderation.scheduleAction
+/** Response marker for the `tools.ozone.moderation.scheduleAction` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ScheduleActionOutput<S>` for this endpoint.*/
 pub struct ScheduleActionResponse;
 impl jacquard_common::xrpc::XrpcResp for ScheduleActionResponse {
     const NSID: &'static str = "tools.ozone.moderation.scheduleAction";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ScheduleActionOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ScheduleActionOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for ScheduleAction<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for ScheduleAction<S> {
     const NSID: &'static str = "tools.ozone.moderation.scheduleAction";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -167,18 +161,20 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for ScheduleAction<'a> {
     type Response = ScheduleActionResponse;
 }
 
-/// Endpoint type for tools.ozone.moderation.scheduleAction
+/** Endpoint marker for the `tools.ozone.moderation.scheduleAction` procedure.
+
+Path: `/xrpc/tools.ozone.moderation.scheduleAction`. The request payload type is `ScheduleAction<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct ScheduleActionRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ScheduleActionRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.moderation.scheduleAction";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = ScheduleAction<'de>;
+    type Request<S: BosStr> = ScheduleAction<S>;
     type Response = ScheduleActionResponse;
 }
 
-impl<'a> LexiconSchema for ScheduledActionResults<'a> {
+impl<S: BosStr> LexiconSchema for ScheduledActionResults<S> {
     fn nsid() -> &'static str {
         "tools.ozone.moderation.scheduleAction"
     }
@@ -193,7 +189,7 @@ impl<'a> LexiconSchema for ScheduledActionResults<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SchedulingConfig<'a> {
+impl<S: BosStr> LexiconSchema for SchedulingConfig<S> {
     fn nsid() -> &'static str {
         "tools.ozone.moderation.scheduleAction"
     }
@@ -208,7 +204,7 @@ impl<'a> LexiconSchema for SchedulingConfig<'a> {
     }
 }
 
-impl<'a> LexiconSchema for Takedown<'a> {
+impl<S: BosStr> LexiconSchema for Takedown<S> {
     fn nsid() -> &'static str {
         "tools.ozone.moderation.scheduleAction"
     }
@@ -243,124 +239,145 @@ pub mod failed_scheduling_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Subject;
         type Error;
+        type Subject;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Subject = Unset;
         type Error = Unset;
-    }
-    ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
-        type Subject = Set<members::subject>;
-        type Error = S::Error;
+        type Subject = Unset;
     }
     ///State transition - sets the `error` field to Set
-    pub struct SetError<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetError<S> {}
-    impl<S: State> State for SetError<S> {
-        type Subject = S::Subject;
+    pub struct SetError<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetError<St> {}
+    impl<St: State> State for SetError<St> {
         type Error = Set<members::error>;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `subject` field to Set
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
+        type Error = St::Error;
+        type Subject = Set<members::subject>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `subject` field
-        pub struct subject(());
         ///Marker type for the `error` field
         pub struct error(());
+        ///Marker type for the `subject` field
+        pub struct subject(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct FailedSchedulingBuilder<'a, S: failed_scheduling_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<CowStr<'a>>, Option<Did<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct FailedSchedulingBuilder<
+    St: failed_scheduling_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<S>, Option<Did<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> FailedScheduling<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> FailedSchedulingBuilder<'a, failed_scheduling_state::Empty> {
+impl FailedScheduling<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> FailedSchedulingBuilder<failed_scheduling_state::Empty, DefaultStr> {
         FailedSchedulingBuilder::new()
     }
 }
 
-impl<'a> FailedSchedulingBuilder<'a, failed_scheduling_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> FailedScheduling<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> FailedSchedulingBuilder<failed_scheduling_state::Empty, S> {
+        FailedSchedulingBuilder::builder()
+    }
+}
+
+impl FailedSchedulingBuilder<failed_scheduling_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         FailedSchedulingBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> FailedSchedulingBuilder<'a, S>
+impl<S: BosStr> FailedSchedulingBuilder<failed_scheduling_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        FailedSchedulingBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> FailedSchedulingBuilder<St, S>
 where
-    S: failed_scheduling_state::State,
-    S::Error: failed_scheduling_state::IsUnset,
+    St: failed_scheduling_state::State,
+    St::Error: failed_scheduling_state::IsUnset,
 {
     /// Set the `error` field (required)
     pub fn error(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> FailedSchedulingBuilder<'a, failed_scheduling_state::SetError<S>> {
+        value: impl Into<S>,
+    ) -> FailedSchedulingBuilder<failed_scheduling_state::SetError<St>, S> {
         self._fields.0 = Option::Some(value.into());
         FailedSchedulingBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: failed_scheduling_state::State> FailedSchedulingBuilder<'a, S> {
+impl<St: failed_scheduling_state::State, S: BosStr> FailedSchedulingBuilder<St, S> {
     /// Set the `errorCode` field (optional)
-    pub fn error_code(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn error_code(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `errorCode` field to an Option value (optional)
-    pub fn maybe_error_code(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_error_code(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> FailedSchedulingBuilder<'a, S>
+impl<St, S: BosStr> FailedSchedulingBuilder<St, S>
 where
-    S: failed_scheduling_state::State,
-    S::Subject: failed_scheduling_state::IsUnset,
+    St: failed_scheduling_state::State,
+    St::Subject: failed_scheduling_state::IsUnset,
 {
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> FailedSchedulingBuilder<'a, failed_scheduling_state::SetSubject<S>> {
+        value: impl Into<Did<S>>,
+    ) -> FailedSchedulingBuilder<failed_scheduling_state::SetSubject<St>, S> {
         self._fields.2 = Option::Some(value.into());
         FailedSchedulingBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> FailedSchedulingBuilder<'a, S>
+impl<St, S: BosStr> FailedSchedulingBuilder<St, S>
 where
-    S: failed_scheduling_state::State,
-    S::Subject: failed_scheduling_state::IsSet,
-    S::Error: failed_scheduling_state::IsSet,
+    St: failed_scheduling_state::State,
+    St::Error: failed_scheduling_state::IsSet,
+    St::Subject: failed_scheduling_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> FailedScheduling<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> FailedScheduling<S> {
         FailedScheduling {
             error: self._fields.0.unwrap(),
             error_code: self._fields.1,
@@ -368,14 +385,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> FailedScheduling<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> FailedScheduling<S> {
         FailedScheduling {
             error: self._fields.0.unwrap(),
             error_code: self._fields.1,
@@ -698,199 +712,220 @@ pub mod schedule_action_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type Action;
+        type CreatedBy;
         type Scheduling;
         type Subjects;
-        type CreatedBy;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type Action = Unset;
+        type CreatedBy = Unset;
         type Scheduling = Unset;
         type Subjects = Unset;
-        type CreatedBy = Unset;
     }
     ///State transition - sets the `action` field to Set
-    pub struct SetAction<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAction<S> {}
-    impl<S: State> State for SetAction<S> {
+    pub struct SetAction<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAction<St> {}
+    impl<St: State> State for SetAction<St> {
         type Action = Set<members::action>;
-        type Scheduling = S::Scheduling;
-        type Subjects = S::Subjects;
-        type CreatedBy = S::CreatedBy;
-    }
-    ///State transition - sets the `scheduling` field to Set
-    pub struct SetScheduling<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetScheduling<S> {}
-    impl<S: State> State for SetScheduling<S> {
-        type Action = S::Action;
-        type Scheduling = Set<members::scheduling>;
-        type Subjects = S::Subjects;
-        type CreatedBy = S::CreatedBy;
-    }
-    ///State transition - sets the `subjects` field to Set
-    pub struct SetSubjects<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubjects<S> {}
-    impl<S: State> State for SetSubjects<S> {
-        type Action = S::Action;
-        type Scheduling = S::Scheduling;
-        type Subjects = Set<members::subjects>;
-        type CreatedBy = S::CreatedBy;
+        type CreatedBy = St::CreatedBy;
+        type Scheduling = St::Scheduling;
+        type Subjects = St::Subjects;
     }
     ///State transition - sets the `created_by` field to Set
-    pub struct SetCreatedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedBy<S> {}
-    impl<S: State> State for SetCreatedBy<S> {
-        type Action = S::Action;
-        type Scheduling = S::Scheduling;
-        type Subjects = S::Subjects;
+    pub struct SetCreatedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedBy<St> {}
+    impl<St: State> State for SetCreatedBy<St> {
+        type Action = St::Action;
         type CreatedBy = Set<members::created_by>;
+        type Scheduling = St::Scheduling;
+        type Subjects = St::Subjects;
+    }
+    ///State transition - sets the `scheduling` field to Set
+    pub struct SetScheduling<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetScheduling<St> {}
+    impl<St: State> State for SetScheduling<St> {
+        type Action = St::Action;
+        type CreatedBy = St::CreatedBy;
+        type Scheduling = Set<members::scheduling>;
+        type Subjects = St::Subjects;
+    }
+    ///State transition - sets the `subjects` field to Set
+    pub struct SetSubjects<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubjects<St> {}
+    impl<St: State> State for SetSubjects<St> {
+        type Action = St::Action;
+        type CreatedBy = St::CreatedBy;
+        type Scheduling = St::Scheduling;
+        type Subjects = Set<members::subjects>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
         ///Marker type for the `action` field
         pub struct action(());
+        ///Marker type for the `created_by` field
+        pub struct created_by(());
         ///Marker type for the `scheduling` field
         pub struct scheduling(());
         ///Marker type for the `subjects` field
         pub struct subjects(());
-        ///Marker type for the `created_by` field
-        pub struct created_by(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ScheduleActionBuilder<'a, S: schedule_action_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ScheduleActionBuilder<
+    St: schedule_action_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<schedule_action::Takedown<'a>>,
-        Option<Did<'a>>,
-        Option<ModTool<'a>>,
-        Option<schedule_action::SchedulingConfig<'a>>,
-        Option<Vec<Did<'a>>>,
+        Option<schedule_action::Takedown<S>>,
+        Option<Did<S>>,
+        Option<ModTool<S>>,
+        Option<schedule_action::SchedulingConfig<S>>,
+        Option<Vec<Did<S>>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ScheduleAction<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ScheduleActionBuilder<'a, schedule_action_state::Empty> {
+impl ScheduleAction<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ScheduleActionBuilder<schedule_action_state::Empty, DefaultStr> {
         ScheduleActionBuilder::new()
     }
 }
 
-impl<'a> ScheduleActionBuilder<'a, schedule_action_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ScheduleAction<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ScheduleActionBuilder<schedule_action_state::Empty, S> {
+        ScheduleActionBuilder::builder()
+    }
+}
+
+impl ScheduleActionBuilder<schedule_action_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ScheduleActionBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ScheduleActionBuilder<'a, S>
+impl<S: BosStr> ScheduleActionBuilder<schedule_action_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ScheduleActionBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ScheduleActionBuilder<St, S>
 where
-    S: schedule_action_state::State,
-    S::Action: schedule_action_state::IsUnset,
+    St: schedule_action_state::State,
+    St::Action: schedule_action_state::IsUnset,
 {
     /// Set the `action` field (required)
     pub fn action(
         mut self,
-        value: impl Into<schedule_action::Takedown<'a>>,
-    ) -> ScheduleActionBuilder<'a, schedule_action_state::SetAction<S>> {
+        value: impl Into<schedule_action::Takedown<S>>,
+    ) -> ScheduleActionBuilder<schedule_action_state::SetAction<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ScheduleActionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ScheduleActionBuilder<'a, S>
+impl<St, S: BosStr> ScheduleActionBuilder<St, S>
 where
-    S: schedule_action_state::State,
-    S::CreatedBy: schedule_action_state::IsUnset,
+    St: schedule_action_state::State,
+    St::CreatedBy: schedule_action_state::IsUnset,
 {
     /// Set the `createdBy` field (required)
     pub fn created_by(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> ScheduleActionBuilder<'a, schedule_action_state::SetCreatedBy<S>> {
+        value: impl Into<Did<S>>,
+    ) -> ScheduleActionBuilder<schedule_action_state::SetCreatedBy<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ScheduleActionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: schedule_action_state::State> ScheduleActionBuilder<'a, S> {
+impl<St: schedule_action_state::State, S: BosStr> ScheduleActionBuilder<St, S> {
     /// Set the `modTool` field (optional)
-    pub fn mod_tool(mut self, value: impl Into<Option<ModTool<'a>>>) -> Self {
+    pub fn mod_tool(mut self, value: impl Into<Option<ModTool<S>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `modTool` field to an Option value (optional)
-    pub fn maybe_mod_tool(mut self, value: Option<ModTool<'a>>) -> Self {
+    pub fn maybe_mod_tool(mut self, value: Option<ModTool<S>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> ScheduleActionBuilder<'a, S>
+impl<St, S: BosStr> ScheduleActionBuilder<St, S>
 where
-    S: schedule_action_state::State,
-    S::Scheduling: schedule_action_state::IsUnset,
+    St: schedule_action_state::State,
+    St::Scheduling: schedule_action_state::IsUnset,
 {
     /// Set the `scheduling` field (required)
     pub fn scheduling(
         mut self,
-        value: impl Into<schedule_action::SchedulingConfig<'a>>,
-    ) -> ScheduleActionBuilder<'a, schedule_action_state::SetScheduling<S>> {
+        value: impl Into<schedule_action::SchedulingConfig<S>>,
+    ) -> ScheduleActionBuilder<schedule_action_state::SetScheduling<St>, S> {
         self._fields.3 = Option::Some(value.into());
         ScheduleActionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ScheduleActionBuilder<'a, S>
+impl<St, S: BosStr> ScheduleActionBuilder<St, S>
 where
-    S: schedule_action_state::State,
-    S::Subjects: schedule_action_state::IsUnset,
+    St: schedule_action_state::State,
+    St::Subjects: schedule_action_state::IsUnset,
 {
     /// Set the `subjects` field (required)
     pub fn subjects(
         mut self,
-        value: impl Into<Vec<Did<'a>>>,
-    ) -> ScheduleActionBuilder<'a, schedule_action_state::SetSubjects<S>> {
+        value: impl Into<Vec<Did<S>>>,
+    ) -> ScheduleActionBuilder<schedule_action_state::SetSubjects<St>, S> {
         self._fields.4 = Option::Some(value.into());
         ScheduleActionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ScheduleActionBuilder<'a, S>
+impl<St, S: BosStr> ScheduleActionBuilder<St, S>
 where
-    S: schedule_action_state::State,
-    S::Action: schedule_action_state::IsSet,
-    S::Scheduling: schedule_action_state::IsSet,
-    S::Subjects: schedule_action_state::IsSet,
-    S::CreatedBy: schedule_action_state::IsSet,
+    St: schedule_action_state::State,
+    St::Action: schedule_action_state::IsSet,
+    St::CreatedBy: schedule_action_state::IsSet,
+    St::Scheduling: schedule_action_state::IsSet,
+    St::Subjects: schedule_action_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ScheduleAction<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ScheduleAction<S> {
         ScheduleAction {
             action: self._fields.0.unwrap(),
             created_by: self._fields.1.unwrap(),
@@ -900,14 +935,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ScheduleAction<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ScheduleAction<S> {
         ScheduleAction {
             action: self._fields.0.unwrap(),
             created_by: self._fields.1.unwrap(),
@@ -929,134 +961,155 @@ pub mod scheduled_action_results_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Succeeded;
         type Failed;
+        type Succeeded;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Succeeded = Unset;
         type Failed = Unset;
-    }
-    ///State transition - sets the `succeeded` field to Set
-    pub struct SetSucceeded<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSucceeded<S> {}
-    impl<S: State> State for SetSucceeded<S> {
-        type Succeeded = Set<members::succeeded>;
-        type Failed = S::Failed;
+        type Succeeded = Unset;
     }
     ///State transition - sets the `failed` field to Set
-    pub struct SetFailed<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetFailed<S> {}
-    impl<S: State> State for SetFailed<S> {
-        type Succeeded = S::Succeeded;
+    pub struct SetFailed<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetFailed<St> {}
+    impl<St: State> State for SetFailed<St> {
         type Failed = Set<members::failed>;
+        type Succeeded = St::Succeeded;
+    }
+    ///State transition - sets the `succeeded` field to Set
+    pub struct SetSucceeded<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSucceeded<St> {}
+    impl<St: State> State for SetSucceeded<St> {
+        type Failed = St::Failed;
+        type Succeeded = Set<members::succeeded>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `succeeded` field
-        pub struct succeeded(());
         ///Marker type for the `failed` field
         pub struct failed(());
+        ///Marker type for the `succeeded` field
+        pub struct succeeded(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ScheduledActionResultsBuilder<'a, S: scheduled_action_results_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<schedule_action::FailedScheduling<'a>>>, Option<Vec<Did<'a>>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ScheduledActionResultsBuilder<
+    St: scheduled_action_results_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<schedule_action::FailedScheduling<S>>>, Option<Vec<Did<S>>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ScheduledActionResults<'a> {
-    /// Create a new builder for this type
+impl ScheduledActionResults<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> ScheduledActionResultsBuilder<
-        'a,
         scheduled_action_results_state::Empty,
+        DefaultStr,
     > {
         ScheduledActionResultsBuilder::new()
     }
 }
 
-impl<'a> ScheduledActionResultsBuilder<'a, scheduled_action_results_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ScheduledActionResults<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ScheduledActionResultsBuilder<
+        scheduled_action_results_state::Empty,
+        S,
+    > {
+        ScheduledActionResultsBuilder::builder()
+    }
+}
+
+impl ScheduledActionResultsBuilder<scheduled_action_results_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ScheduledActionResultsBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ScheduledActionResultsBuilder<'a, S>
+impl<S: BosStr> ScheduledActionResultsBuilder<scheduled_action_results_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ScheduledActionResultsBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ScheduledActionResultsBuilder<St, S>
 where
-    S: scheduled_action_results_state::State,
-    S::Failed: scheduled_action_results_state::IsUnset,
+    St: scheduled_action_results_state::State,
+    St::Failed: scheduled_action_results_state::IsUnset,
 {
     /// Set the `failed` field (required)
     pub fn failed(
         mut self,
-        value: impl Into<Vec<schedule_action::FailedScheduling<'a>>>,
+        value: impl Into<Vec<schedule_action::FailedScheduling<S>>>,
     ) -> ScheduledActionResultsBuilder<
-        'a,
-        scheduled_action_results_state::SetFailed<S>,
+        scheduled_action_results_state::SetFailed<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         ScheduledActionResultsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ScheduledActionResultsBuilder<'a, S>
+impl<St, S: BosStr> ScheduledActionResultsBuilder<St, S>
 where
-    S: scheduled_action_results_state::State,
-    S::Succeeded: scheduled_action_results_state::IsUnset,
+    St: scheduled_action_results_state::State,
+    St::Succeeded: scheduled_action_results_state::IsUnset,
 {
     /// Set the `succeeded` field (required)
     pub fn succeeded(
         mut self,
-        value: impl Into<Vec<Did<'a>>>,
+        value: impl Into<Vec<Did<S>>>,
     ) -> ScheduledActionResultsBuilder<
-        'a,
-        scheduled_action_results_state::SetSucceeded<S>,
+        scheduled_action_results_state::SetSucceeded<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         ScheduledActionResultsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ScheduledActionResultsBuilder<'a, S>
+impl<St, S: BosStr> ScheduledActionResultsBuilder<St, S>
 where
-    S: scheduled_action_results_state::State,
-    S::Succeeded: scheduled_action_results_state::IsSet,
-    S::Failed: scheduled_action_results_state::IsSet,
+    St: scheduled_action_results_state::State,
+    St::Failed: scheduled_action_results_state::IsSet,
+    St::Succeeded: scheduled_action_results_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ScheduledActionResults<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ScheduledActionResults<S> {
         ScheduledActionResults {
             failed: self._fields.0.unwrap(),
             succeeded: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ScheduledActionResults<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ScheduledActionResults<S> {
         ScheduledActionResults {
             failed: self._fields.0.unwrap(),
             succeeded: self._fields.1.unwrap(),

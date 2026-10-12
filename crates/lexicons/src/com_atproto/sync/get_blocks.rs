@@ -6,20 +6,23 @@
 // Any manual changes will be overwritten on the next regeneration.
 
 #[allow(unused_imports)]
+use alloc::collections::BTreeMap;
+
+#[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 use jacquard_common::deps::bytes::Bytes;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Cid};
+use jacquard_common::types::value::Data;
 use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetBlocks<'a> {
-    #[serde(borrow)]
-    pub cids: Vec<Cid<'a>>,
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetBlocks<S: BosStr = DefaultStr> {
+    pub cids: Vec<Cid<S>>,
+    pub did: Did<S>,
 }
 
 
@@ -30,7 +33,6 @@ pub struct GetBlocksOutput {
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -39,26 +41,27 @@ pub struct GetBlocksOutput {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetBlocksError<'a> {
+pub enum GetBlocksError {
     #[serde(rename = "BlockNotFound")]
-    BlockNotFound(Option<CowStr<'a>>),
+    BlockNotFound(Option<SmolStr>),
     #[serde(rename = "RepoNotFound")]
-    RepoNotFound(Option<CowStr<'a>>),
+    RepoNotFound(Option<SmolStr>),
     #[serde(rename = "RepoTakendown")]
-    RepoTakendown(Option<CowStr<'a>>),
+    RepoTakendown(Option<SmolStr>),
     #[serde(rename = "RepoSuspended")]
-    RepoSuspended(Option<CowStr<'a>>),
+    RepoSuspended(Option<SmolStr>),
     #[serde(rename = "RepoDeactivated")]
-    RepoDeactivated(Option<CowStr<'a>>),
+    RepoDeactivated(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetBlocksError<'_> {
+impl core::fmt::Display for GetBlocksError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::BlockNotFound(msg) => {
@@ -96,28 +99,40 @@ impl core::fmt::Display for GetBlocksError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for com.atproto.sync.getBlocks
+/** Response marker for the `com.atproto.sync.getBlocks` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetBlocksOutput` for this endpoint.*/
 pub struct GetBlocksResponse;
 impl jacquard_common::xrpc::XrpcResp for GetBlocksResponse {
     const NSID: &'static str = "com.atproto.sync.getBlocks";
     const ENCODING: &'static str = "application/vnd.ipld.car";
-    type Output<'de> = GetBlocksOutput;
-    type Err<'de> = GetBlocksError<'de>;
-    fn encode_output(
-        output: &Self::Output<'_>,
-    ) -> Result<Vec<u8>, jacquard_common::xrpc::EncodeError> {
+    type Output<S: BosStr> = GetBlocksOutput;
+    type Err = GetBlocksError;
+    fn encode_output<S: BosStr>(
+        output: &Self::Output<S>,
+    ) -> Result<Vec<u8>, jacquard_common::xrpc::EncodeError>
+    where
+        Self::Output<S>: Serialize,
+    {
         Ok(output.body.to_vec())
     }
-    fn decode_output<'de>(
+    fn decode_output<'de, S>(
         body: &'de [u8],
-    ) -> Result<Self::Output<'de>, jacquard_common::error::DecodeError>
+    ) -> Result<Self::Output<S>, jacquard_common::error::DecodeError>
     where
-        Self::Output<'de>: serde::Deserialize<'de>,
+        S: BosStr + Deserialize<'de>,
+        Self::Output<S>: Deserialize<'de>,
     {
         Ok(GetBlocksOutput {
             body: jacquard_common::deps::bytes::Bytes::copy_from_slice(body),
@@ -125,18 +140,20 @@ impl jacquard_common::xrpc::XrpcResp for GetBlocksResponse {
     }
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetBlocks<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetBlocks<S> {
     const NSID: &'static str = "com.atproto.sync.getBlocks";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetBlocksResponse;
 }
 
-/// Endpoint type for com.atproto.sync.getBlocks
+/** Endpoint marker for the `com.atproto.sync.getBlocks` query.
+
+Path: `/xrpc/com.atproto.sync.getBlocks`. The request payload type is `GetBlocks<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetBlocksRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetBlocksRequest {
     const PATH: &'static str = "/xrpc/com.atproto.sync.getBlocks";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetBlocks<'de>;
+    type Request<S: BosStr> = GetBlocks<S>;
     type Response = GetBlocksResponse;
 }
 
@@ -161,17 +178,17 @@ pub mod get_blocks_state {
         type Did = Unset;
     }
     ///State transition - sets the `cids` field to Set
-    pub struct SetCids<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCids<S> {}
-    impl<S: State> State for SetCids<S> {
+    pub struct SetCids<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCids<St> {}
+    impl<St: State> State for SetCids<St> {
         type Cids = Set<members::cids>;
-        type Did = S::Did;
+        type Did = St::Did;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
-        type Cids = S::Cids;
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
+        type Cids = St::Cids;
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -184,77 +201,95 @@ pub mod get_blocks_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetBlocksBuilder<'a, S: get_blocks_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<Cid<'a>>>, Option<Did<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetBlocksBuilder<St: get_blocks_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<Cid<S>>>, Option<Did<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetBlocks<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetBlocksBuilder<'a, get_blocks_state::Empty> {
+impl GetBlocks<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetBlocksBuilder<get_blocks_state::Empty, DefaultStr> {
         GetBlocksBuilder::new()
     }
 }
 
-impl<'a> GetBlocksBuilder<'a, get_blocks_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetBlocks<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetBlocksBuilder<get_blocks_state::Empty, S> {
+        GetBlocksBuilder::builder()
+    }
+}
+
+impl GetBlocksBuilder<get_blocks_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetBlocksBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetBlocksBuilder<'a, S>
+impl<S: BosStr> GetBlocksBuilder<get_blocks_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetBlocksBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetBlocksBuilder<St, S>
 where
-    S: get_blocks_state::State,
-    S::Cids: get_blocks_state::IsUnset,
+    St: get_blocks_state::State,
+    St::Cids: get_blocks_state::IsUnset,
 {
     /// Set the `cids` field (required)
     pub fn cids(
         mut self,
-        value: impl Into<Vec<Cid<'a>>>,
-    ) -> GetBlocksBuilder<'a, get_blocks_state::SetCids<S>> {
+        value: impl Into<Vec<Cid<S>>>,
+    ) -> GetBlocksBuilder<get_blocks_state::SetCids<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetBlocksBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetBlocksBuilder<'a, S>
+impl<St, S: BosStr> GetBlocksBuilder<St, S>
 where
-    S: get_blocks_state::State,
-    S::Did: get_blocks_state::IsUnset,
+    St: get_blocks_state::State,
+    St::Did: get_blocks_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> GetBlocksBuilder<'a, get_blocks_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> GetBlocksBuilder<get_blocks_state::SetDid<St>, S> {
         self._fields.1 = Option::Some(value.into());
         GetBlocksBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetBlocksBuilder<'a, S>
+impl<St, S: BosStr> GetBlocksBuilder<St, S>
 where
-    S: get_blocks_state::State,
-    S::Cids: get_blocks_state::IsSet,
-    S::Did: get_blocks_state::IsSet,
+    St: get_blocks_state::State,
+    St::Cids: get_blocks_state::IsSet,
+    St::Did: get_blocks_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetBlocks<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetBlocks<S> {
         GetBlocks {
             cids: self._fields.0.unwrap(),
             did: self._fields.1.unwrap(),

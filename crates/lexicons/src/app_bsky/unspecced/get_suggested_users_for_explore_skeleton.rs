@@ -10,60 +10,64 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetSuggestedUsersForExploreSkeleton<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetSuggestedUsersForExploreSkeleton<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub category: Option<CowStr<'a>>,
-    ///Defaults to `25`. Min: 1. Max: 50.
+    pub category: Option<S>,
+    /// Defaults to `25`. Min: 1. Max: 50.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub viewer: Option<Did<'a>>,
+    pub viewer: Option<Did<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetSuggestedUsersForExploreSkeletonOutput<'a> {
-    #[serde(borrow)]
-    pub dids: Vec<Did<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetSuggestedUsersForExploreSkeletonOutput<S: BosStr = DefaultStr> {
+    pub dids: Vec<Did<S>>,
     ///Snowflake for this recommendation, use when submitting recommendation events.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub rec_id_str: Option<CowStr<'a>>,
+    pub rec_id_str: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.unspecced.getSuggestedUsersForExploreSkeleton
+/** Response marker for the `app.bsky.unspecced.getSuggestedUsersForExploreSkeleton` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetSuggestedUsersForExploreSkeletonOutput<S>` for this endpoint.*/
 pub struct GetSuggestedUsersForExploreSkeletonResponse;
 impl jacquard_common::xrpc::XrpcResp for GetSuggestedUsersForExploreSkeletonResponse {
     const NSID: &'static str = "app.bsky.unspecced.getSuggestedUsersForExploreSkeleton";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetSuggestedUsersForExploreSkeletonOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetSuggestedUsersForExploreSkeletonOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetSuggestedUsersForExploreSkeleton<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest
+for GetSuggestedUsersForExploreSkeleton<S> {
     const NSID: &'static str = "app.bsky.unspecced.getSuggestedUsersForExploreSkeleton";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetSuggestedUsersForExploreSkeletonResponse;
 }
 
-/// Endpoint type for app.bsky.unspecced.getSuggestedUsersForExploreSkeleton
+/** Endpoint marker for the `app.bsky.unspecced.getSuggestedUsersForExploreSkeleton` query.
+
+Path: `/xrpc/app.bsky.unspecced.getSuggestedUsersForExploreSkeleton`. The request payload type is `GetSuggestedUsersForExploreSkeleton<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetSuggestedUsersForExploreSkeletonRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetSuggestedUsersForExploreSkeletonRequest {
     const PATH: &'static str = "/xrpc/app.bsky.unspecced.getSuggestedUsersForExploreSkeleton";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetSuggestedUsersForExploreSkeleton<'de>;
+    type Request<S: BosStr> = GetSuggestedUsersForExploreSkeleton<S>;
     type Response = GetSuggestedUsersForExploreSkeletonResponse;
 }
 
@@ -90,62 +94,86 @@ pub mod get_suggested_users_for_explore_skeleton_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct GetSuggestedUsersForExploreSkeletonBuilder<
-    'a,
-    S: get_suggested_users_for_explore_skeleton_state::State,
+    St: get_suggested_users_for_explore_skeleton_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>, Option<Did<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>, Option<Did<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetSuggestedUsersForExploreSkeleton<'a> {
-    /// Create a new builder for this type
+impl GetSuggestedUsersForExploreSkeleton<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> GetSuggestedUsersForExploreSkeletonBuilder<
-        'a,
         get_suggested_users_for_explore_skeleton_state::Empty,
+        DefaultStr,
     > {
         GetSuggestedUsersForExploreSkeletonBuilder::new()
     }
 }
 
-impl<
-    'a,
-> GetSuggestedUsersForExploreSkeletonBuilder<
-    'a,
+impl<S: BosStr> GetSuggestedUsersForExploreSkeleton<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetSuggestedUsersForExploreSkeletonBuilder<
+        get_suggested_users_for_explore_skeleton_state::Empty,
+        S,
+    > {
+        GetSuggestedUsersForExploreSkeletonBuilder::builder()
+    }
+}
+
+impl GetSuggestedUsersForExploreSkeletonBuilder<
     get_suggested_users_for_explore_skeleton_state::Empty,
+    DefaultStr,
 > {
-    /// Create a new builder with all fields unset
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetSuggestedUsersForExploreSkeletonBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
 impl<
-    'a,
-    S: get_suggested_users_for_explore_skeleton_state::State,
-> GetSuggestedUsersForExploreSkeletonBuilder<'a, S> {
+    S: BosStr,
+> GetSuggestedUsersForExploreSkeletonBuilder<
+    get_suggested_users_for_explore_skeleton_state::Empty,
+    S,
+> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetSuggestedUsersForExploreSkeletonBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: get_suggested_users_for_explore_skeleton_state::State,
+    S: BosStr,
+> GetSuggestedUsersForExploreSkeletonBuilder<St, S> {
     /// Set the `category` field (optional)
-    pub fn category(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn category(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `category` field to an Option value (optional)
-    pub fn maybe_category(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_category(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
 impl<
-    'a,
-    S: get_suggested_users_for_explore_skeleton_state::State,
-> GetSuggestedUsersForExploreSkeletonBuilder<'a, S> {
+    St: get_suggested_users_for_explore_skeleton_state::State,
+    S: BosStr,
+> GetSuggestedUsersForExploreSkeletonBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -159,27 +187,27 @@ impl<
 }
 
 impl<
-    'a,
-    S: get_suggested_users_for_explore_skeleton_state::State,
-> GetSuggestedUsersForExploreSkeletonBuilder<'a, S> {
+    St: get_suggested_users_for_explore_skeleton_state::State,
+    S: BosStr,
+> GetSuggestedUsersForExploreSkeletonBuilder<St, S> {
     /// Set the `viewer` field (optional)
-    pub fn viewer(mut self, value: impl Into<Option<Did<'a>>>) -> Self {
+    pub fn viewer(mut self, value: impl Into<Option<Did<S>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `viewer` field to an Option value (optional)
-    pub fn maybe_viewer(mut self, value: Option<Did<'a>>) -> Self {
+    pub fn maybe_viewer(mut self, value: Option<Did<S>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> GetSuggestedUsersForExploreSkeletonBuilder<'a, S>
+impl<St, S: BosStr> GetSuggestedUsersForExploreSkeletonBuilder<St, S>
 where
-    S: get_suggested_users_for_explore_skeleton_state::State,
+    St: get_suggested_users_for_explore_skeleton_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetSuggestedUsersForExploreSkeleton<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetSuggestedUsersForExploreSkeleton<S> {
         GetSuggestedUsersForExploreSkeleton {
             category: self._fields.0,
             limit: self._fields.1,

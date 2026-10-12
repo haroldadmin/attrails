@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `app.bsky.draft` Lexicon namespace/module.
 pub mod create_draft;
 pub mod delete_draft;
 pub mod get_drafts;
@@ -16,12 +17,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Tid, Datetime, Language, UriValue};
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -38,193 +41,180 @@ use crate::com_atproto::repo::strong_ref::StrongRef;
 use crate::app_bsky::draft;
 /// A draft containing an array of draft posts.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Draft<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Draft<S: BosStr = DefaultStr> {
     ///UUIDv4 identifier of the device that created this draft.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub device_id: Option<CowStr<'a>>,
+    pub device_id: Option<S>,
     ///The device and/or platform on which the draft was created.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub device_name: Option<CowStr<'a>>,
+    pub device_name: Option<S>,
     ///Indicates human language of posts primary text content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub langs: Option<Vec<Language>>,
     ///Embedding rules for the postgates to be created when this draft is published.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub postgate_embedding_rules: Option<Vec<DisableRule<'a>>>,
+    pub postgate_embedding_rules: Option<Vec<DisableRule<S>>>,
     ///Array of draft posts that compose this draft.
-    #[serde(borrow)]
-    pub posts: Vec<draft::DraftPost<'a>>,
+    pub posts: Vec<draft::DraftPost<S>>,
     ///Allow-rules for the threadgate to be created when this draft is published.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub threadgate_allow: Option<Vec<DraftThreadgateAllowItem<'a>>>,
+    pub threadgate_allow: Option<Vec<DraftThreadgateAllowItem<S>>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum DraftThreadgateAllowItem<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum DraftThreadgateAllowItem<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.feed.threadgate#mentionRule")]
-    ThreadgateMentionRule(Box<MentionRule<'a>>),
+    ThreadgateMentionRule(Box<MentionRule<S>>),
     #[serde(rename = "app.bsky.feed.threadgate#followerRule")]
-    ThreadgateFollowerRule(Box<FollowerRule<'a>>),
+    ThreadgateFollowerRule(Box<FollowerRule<S>>),
     #[serde(rename = "app.bsky.feed.threadgate#followingRule")]
-    ThreadgateFollowingRule(Box<FollowingRule<'a>>),
+    ThreadgateFollowingRule(Box<FollowingRule<S>>),
     #[serde(rename = "app.bsky.feed.threadgate#listRule")]
-    ThreadgateListRule(Box<ListRule<'a>>),
+    ThreadgateListRule(Box<ListRule<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftEmbedCaption<'a> {
-    #[serde(borrow)]
-    pub content: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftEmbedCaption<S: BosStr = DefaultStr> {
+    pub content: S,
     pub lang: Language,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftEmbedExternal<'a> {
-    #[serde(borrow)]
-    pub uri: UriValue<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftEmbedExternal<S: BosStr = DefaultStr> {
+    pub uri: UriValue<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftEmbedGallery<'a> {
-    #[serde(borrow)]
-    pub items: draft::DraftEmbedGalleryItems<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftEmbedGallery<S: BosStr = DefaultStr> {
+    pub items: draft::DraftEmbedGalleryItems<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum DraftEmbedGalleryItemsItem<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum DraftEmbedGalleryItemsItem<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.draft.defs#draftEmbedImage")]
-    DraftEmbedImage(Box<draft::DraftEmbedImage<'a>>),
+    DraftEmbedImage(Box<draft::DraftEmbedImage<S>>),
 }
 
 /// The schema-level maxLength of 20 is a future-proof ceiling. Clients should currently enforce a soft limit of 10 items in authoring UIs.
-pub type DraftEmbedGalleryItems<'a> = Vec<DraftEmbedGalleryItemsItem<'a>>;
+pub type DraftEmbedGalleryItems<S = DefaultStr> = Vec<DraftEmbedGalleryItemsItem<S>>;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftEmbedImage<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftEmbedImage<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub alt: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub local_ref: draft::DraftEmbedLocalRef<'a>,
+    pub alt: Option<S>,
+    pub local_ref: draft::DraftEmbedLocalRef<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftEmbedLocalRef<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftEmbedLocalRef<S: BosStr = DefaultStr> {
     ///Local, on-device ref to file to be embedded. Embeds are currently device-bound for drafts.
-    #[serde(borrow)]
-    pub path: CowStr<'a>,
+    pub path: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftEmbedRecord<'a> {
-    #[serde(borrow)]
-    pub record: StrongRef<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftEmbedRecord<S: BosStr = DefaultStr> {
+    pub record: StrongRef<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftEmbedVideo<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftEmbedVideo<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub alt: Option<CowStr<'a>>,
+    pub alt: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub captions: Option<Vec<draft::DraftEmbedCaption<'a>>>,
-    #[serde(borrow)]
-    pub local_ref: draft::DraftEmbedLocalRef<'a>,
+    pub captions: Option<Vec<draft::DraftEmbedCaption<S>>>,
+    pub local_ref: draft::DraftEmbedLocalRef<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// One of the posts that compose a draft.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftPost<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftPost<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embed_externals: Option<Vec<draft::DraftEmbedExternal<'a>>>,
+    pub embed_externals: Option<Vec<draft::DraftEmbedExternal<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embed_gallery: Option<draft::DraftEmbedGallery<'a>>,
+    pub embed_gallery: Option<draft::DraftEmbedGallery<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embed_images: Option<Vec<draft::DraftEmbedImage<'a>>>,
+    pub embed_images: Option<Vec<draft::DraftEmbedImage<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embed_records: Option<Vec<draft::DraftEmbedRecord<'a>>>,
+    pub embed_records: Option<Vec<draft::DraftEmbedRecord<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embed_videos: Option<Vec<draft::DraftEmbedVideo<'a>>>,
+    pub embed_videos: Option<Vec<draft::DraftEmbedVideo<S>>>,
     ///Self-label values for this post. Effectively content warnings.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub labels: Option<SelfLabels<'a>>,
+    pub labels: Option<SelfLabels<S>>,
     ///The primary post content. It has a higher limit than post contents to allow storing a larger text that can later be refined into smaller posts.
-    #[serde(borrow)]
-    pub text: CowStr<'a>,
+    pub text: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// View to present drafts data to users.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftView<S: BosStr = DefaultStr> {
     ///The time the draft was created.
     pub created_at: Datetime,
-    #[serde(borrow)]
-    pub draft: draft::Draft<'a>,
+    pub draft: draft::Draft<S>,
     ///A TID to be used as a draft identifier.
     pub id: Tid,
     ///The time the draft was last updated.
     pub updated_at: Datetime,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// A draft with an identifier, used to store drafts in private storage (stash).
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DraftWithId<'a> {
-    #[serde(borrow)]
-    pub draft: draft::Draft<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DraftWithId<S: BosStr = DefaultStr> {
+    pub draft: draft::Draft<S>,
     ///A TID to be used as a draft identifier.
     pub id: Tid,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for Draft<'a> {
+impl<S: BosStr> LexiconSchema for Draft<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -311,7 +301,7 @@ impl<'a> LexiconSchema for Draft<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DraftEmbedCaption<'a> {
+impl<S: BosStr> LexiconSchema for DraftEmbedCaption<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -337,7 +327,7 @@ impl<'a> LexiconSchema for DraftEmbedCaption<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DraftEmbedExternal<'a> {
+impl<S: BosStr> LexiconSchema for DraftEmbedExternal<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -352,7 +342,7 @@ impl<'a> LexiconSchema for DraftEmbedExternal<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DraftEmbedGallery<'a> {
+impl<S: BosStr> LexiconSchema for DraftEmbedGallery<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -363,11 +353,22 @@ impl<'a> LexiconSchema for DraftEmbedGallery<'a> {
         lexicon_doc_app_bsky_draft_defs()
     }
     fn validate(&self) -> Result<(), ConstraintError> {
+        {
+            let value = &self.items;
+            #[allow(unused_comparisons)]
+            if value.len() > 20usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("items"),
+                    max: 20usize,
+                    actual: value.len(),
+                });
+            }
+        }
         Ok(())
     }
 }
 
-impl<'a> LexiconSchema for DraftEmbedImage<'a> {
+impl<S: BosStr> LexiconSchema for DraftEmbedImage<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -394,7 +395,7 @@ impl<'a> LexiconSchema for DraftEmbedImage<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DraftEmbedLocalRef<'a> {
+impl<S: BosStr> LexiconSchema for DraftEmbedLocalRef<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -431,7 +432,7 @@ impl<'a> LexiconSchema for DraftEmbedLocalRef<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DraftEmbedRecord<'a> {
+impl<S: BosStr> LexiconSchema for DraftEmbedRecord<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -446,7 +447,7 @@ impl<'a> LexiconSchema for DraftEmbedRecord<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DraftEmbedVideo<'a> {
+impl<S: BosStr> LexiconSchema for DraftEmbedVideo<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -483,7 +484,7 @@ impl<'a> LexiconSchema for DraftEmbedVideo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DraftPost<'a> {
+impl<S: BosStr> LexiconSchema for DraftPost<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -562,7 +563,7 @@ impl<'a> LexiconSchema for DraftPost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DraftView<'a> {
+impl<S: BosStr> LexiconSchema for DraftView<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -577,7 +578,7 @@ impl<'a> LexiconSchema for DraftView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DraftWithId<'a> {
+impl<S: BosStr> LexiconSchema for DraftWithId<S> {
     fn nsid() -> &'static str {
         "app.bsky.draft.defs"
     }
@@ -611,9 +612,9 @@ pub mod draft_state {
         type Posts = Unset;
     }
     ///State transition - sets the `posts` field to Set
-    pub struct SetPosts<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPosts<S> {}
-    impl<S: State> State for SetPosts<S> {
+    pub struct SetPosts<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPosts<St> {}
+    impl<St: State> State for SetPosts<St> {
         type Posts = Set<members::posts>;
     }
     /// Marker types for field names
@@ -624,65 +625,83 @@ pub mod draft_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DraftBuilder<'a, S: draft_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct DraftBuilder<St: draft_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<S>,
         Option<Vec<Language>>,
-        Option<Vec<DisableRule<'a>>>,
-        Option<Vec<draft::DraftPost<'a>>>,
-        Option<Vec<DraftThreadgateAllowItem<'a>>>,
+        Option<Vec<DisableRule<S>>>,
+        Option<Vec<draft::DraftPost<S>>>,
+        Option<Vec<DraftThreadgateAllowItem<S>>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Draft<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DraftBuilder<'a, draft_state::Empty> {
+impl Draft<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DraftBuilder<draft_state::Empty, DefaultStr> {
         DraftBuilder::new()
     }
 }
 
-impl<'a> DraftBuilder<'a, draft_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Draft<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DraftBuilder<draft_state::Empty, S> {
+        DraftBuilder::builder()
+    }
+}
+
+impl DraftBuilder<draft_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DraftBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: draft_state::State> DraftBuilder<'a, S> {
+impl<S: BosStr> DraftBuilder<draft_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DraftBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: draft_state::State, S: BosStr> DraftBuilder<St, S> {
     /// Set the `deviceId` field (optional)
-    pub fn device_id(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn device_id(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `deviceId` field to an Option value (optional)
-    pub fn maybe_device_id(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_device_id(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: draft_state::State> DraftBuilder<'a, S> {
+impl<St: draft_state::State, S: BosStr> DraftBuilder<St, S> {
     /// Set the `deviceName` field (optional)
-    pub fn device_name(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn device_name(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `deviceName` field to an Option value (optional)
-    pub fn maybe_device_name(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_device_name(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: draft_state::State> DraftBuilder<'a, S> {
+impl<St: draft_state::State, S: BosStr> DraftBuilder<St, S> {
     /// Set the `langs` field (optional)
     pub fn langs(mut self, value: impl Into<Option<Vec<Language>>>) -> Self {
         self._fields.2 = value.into();
@@ -695,11 +714,11 @@ impl<'a, S: draft_state::State> DraftBuilder<'a, S> {
     }
 }
 
-impl<'a, S: draft_state::State> DraftBuilder<'a, S> {
+impl<St: draft_state::State, S: BosStr> DraftBuilder<St, S> {
     /// Set the `postgateEmbeddingRules` field (optional)
     pub fn postgate_embedding_rules(
         mut self,
-        value: impl Into<Option<Vec<DisableRule<'a>>>>,
+        value: impl Into<Option<Vec<DisableRule<S>>>>,
     ) -> Self {
         self._fields.3 = value.into();
         self
@@ -707,37 +726,37 @@ impl<'a, S: draft_state::State> DraftBuilder<'a, S> {
     /// Set the `postgateEmbeddingRules` field to an Option value (optional)
     pub fn maybe_postgate_embedding_rules(
         mut self,
-        value: Option<Vec<DisableRule<'a>>>,
+        value: Option<Vec<DisableRule<S>>>,
     ) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> DraftBuilder<'a, S>
+impl<St, S: BosStr> DraftBuilder<St, S>
 where
-    S: draft_state::State,
-    S::Posts: draft_state::IsUnset,
+    St: draft_state::State,
+    St::Posts: draft_state::IsUnset,
 {
     /// Set the `posts` field (required)
     pub fn posts(
         mut self,
-        value: impl Into<Vec<draft::DraftPost<'a>>>,
-    ) -> DraftBuilder<'a, draft_state::SetPosts<S>> {
+        value: impl Into<Vec<draft::DraftPost<S>>>,
+    ) -> DraftBuilder<draft_state::SetPosts<St>, S> {
         self._fields.4 = Option::Some(value.into());
         DraftBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: draft_state::State> DraftBuilder<'a, S> {
+impl<St: draft_state::State, S: BosStr> DraftBuilder<St, S> {
     /// Set the `threadgateAllow` field (optional)
     pub fn threadgate_allow(
         mut self,
-        value: impl Into<Option<Vec<DraftThreadgateAllowItem<'a>>>>,
+        value: impl Into<Option<Vec<DraftThreadgateAllowItem<S>>>>,
     ) -> Self {
         self._fields.5 = value.into();
         self
@@ -745,20 +764,20 @@ impl<'a, S: draft_state::State> DraftBuilder<'a, S> {
     /// Set the `threadgateAllow` field to an Option value (optional)
     pub fn maybe_threadgate_allow(
         mut self,
-        value: Option<Vec<DraftThreadgateAllowItem<'a>>>,
+        value: Option<Vec<DraftThreadgateAllowItem<S>>>,
     ) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S> DraftBuilder<'a, S>
+impl<St, S: BosStr> DraftBuilder<St, S>
 where
-    S: draft_state::State,
-    S::Posts: draft_state::IsSet,
+    St: draft_state::State,
+    St::Posts: draft_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Draft<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Draft<S> {
         Draft {
             device_id: self._fields.0,
             device_name: self._fields.1,
@@ -769,14 +788,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Draft<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Draft<S> {
         Draft {
             device_id: self._fields.0,
             device_name: self._fields.1,
@@ -1312,17 +1325,17 @@ pub mod draft_embed_caption_state {
         type Lang = Unset;
     }
     ///State transition - sets the `content` field to Set
-    pub struct SetContent<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetContent<S> {}
-    impl<S: State> State for SetContent<S> {
+    pub struct SetContent<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetContent<St> {}
+    impl<St: State> State for SetContent<St> {
         type Content = Set<members::content>;
-        type Lang = S::Lang;
+        type Lang = St::Lang;
     }
     ///State transition - sets the `lang` field to Set
-    pub struct SetLang<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLang<S> {}
-    impl<S: State> State for SetLang<S> {
-        type Content = S::Content;
+    pub struct SetLang<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLang<St> {}
+    impl<St: State> State for SetLang<St> {
+        type Content = St::Content;
         type Lang = Set<members::lang>;
     }
     /// Marker types for field names
@@ -1335,91 +1348,112 @@ pub mod draft_embed_caption_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DraftEmbedCaptionBuilder<'a, S: draft_embed_caption_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<Language>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct DraftEmbedCaptionBuilder<
+    St: draft_embed_caption_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<Language>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DraftEmbedCaption<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DraftEmbedCaptionBuilder<'a, draft_embed_caption_state::Empty> {
+impl DraftEmbedCaption<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DraftEmbedCaptionBuilder<
+        draft_embed_caption_state::Empty,
+        DefaultStr,
+    > {
         DraftEmbedCaptionBuilder::new()
     }
 }
 
-impl<'a> DraftEmbedCaptionBuilder<'a, draft_embed_caption_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DraftEmbedCaption<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DraftEmbedCaptionBuilder<draft_embed_caption_state::Empty, S> {
+        DraftEmbedCaptionBuilder::builder()
+    }
+}
+
+impl DraftEmbedCaptionBuilder<draft_embed_caption_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DraftEmbedCaptionBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedCaptionBuilder<'a, S>
+impl<S: BosStr> DraftEmbedCaptionBuilder<draft_embed_caption_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DraftEmbedCaptionBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> DraftEmbedCaptionBuilder<St, S>
 where
-    S: draft_embed_caption_state::State,
-    S::Content: draft_embed_caption_state::IsUnset,
+    St: draft_embed_caption_state::State,
+    St::Content: draft_embed_caption_state::IsUnset,
 {
     /// Set the `content` field (required)
     pub fn content(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> DraftEmbedCaptionBuilder<'a, draft_embed_caption_state::SetContent<S>> {
+        value: impl Into<S>,
+    ) -> DraftEmbedCaptionBuilder<draft_embed_caption_state::SetContent<St>, S> {
         self._fields.0 = Option::Some(value.into());
         DraftEmbedCaptionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedCaptionBuilder<'a, S>
+impl<St, S: BosStr> DraftEmbedCaptionBuilder<St, S>
 where
-    S: draft_embed_caption_state::State,
-    S::Lang: draft_embed_caption_state::IsUnset,
+    St: draft_embed_caption_state::State,
+    St::Lang: draft_embed_caption_state::IsUnset,
 {
     /// Set the `lang` field (required)
     pub fn lang(
         mut self,
         value: impl Into<Language>,
-    ) -> DraftEmbedCaptionBuilder<'a, draft_embed_caption_state::SetLang<S>> {
+    ) -> DraftEmbedCaptionBuilder<draft_embed_caption_state::SetLang<St>, S> {
         self._fields.1 = Option::Some(value.into());
         DraftEmbedCaptionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedCaptionBuilder<'a, S>
+impl<St, S: BosStr> DraftEmbedCaptionBuilder<St, S>
 where
-    S: draft_embed_caption_state::State,
-    S::Content: draft_embed_caption_state::IsSet,
-    S::Lang: draft_embed_caption_state::IsSet,
+    St: draft_embed_caption_state::State,
+    St::Content: draft_embed_caption_state::IsSet,
+    St::Lang: draft_embed_caption_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DraftEmbedCaption<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DraftEmbedCaption<S> {
         DraftEmbedCaption {
             content: self._fields.0.unwrap(),
             lang: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DraftEmbedCaption<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DraftEmbedCaption<S> {
         DraftEmbedCaption {
             content: self._fields.0.unwrap(),
             lang: self._fields.1.unwrap(),
@@ -1447,9 +1481,9 @@ pub mod draft_embed_external_state {
         type Uri = Unset;
     }
     ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
         type Uri = Set<members::uri>;
     }
     /// Marker types for field names
@@ -1460,70 +1494,91 @@ pub mod draft_embed_external_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DraftEmbedExternalBuilder<'a, S: draft_embed_external_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<UriValue<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct DraftEmbedExternalBuilder<
+    St: draft_embed_external_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<UriValue<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DraftEmbedExternal<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DraftEmbedExternalBuilder<'a, draft_embed_external_state::Empty> {
+impl DraftEmbedExternal<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DraftEmbedExternalBuilder<
+        draft_embed_external_state::Empty,
+        DefaultStr,
+    > {
         DraftEmbedExternalBuilder::new()
     }
 }
 
-impl<'a> DraftEmbedExternalBuilder<'a, draft_embed_external_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DraftEmbedExternal<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DraftEmbedExternalBuilder<draft_embed_external_state::Empty, S> {
+        DraftEmbedExternalBuilder::builder()
+    }
+}
+
+impl DraftEmbedExternalBuilder<draft_embed_external_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DraftEmbedExternalBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedExternalBuilder<'a, S>
+impl<S: BosStr> DraftEmbedExternalBuilder<draft_embed_external_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DraftEmbedExternalBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> DraftEmbedExternalBuilder<St, S>
 where
-    S: draft_embed_external_state::State,
-    S::Uri: draft_embed_external_state::IsUnset,
+    St: draft_embed_external_state::State,
+    St::Uri: draft_embed_external_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<UriValue<'a>>,
-    ) -> DraftEmbedExternalBuilder<'a, draft_embed_external_state::SetUri<S>> {
+        value: impl Into<UriValue<S>>,
+    ) -> DraftEmbedExternalBuilder<draft_embed_external_state::SetUri<St>, S> {
         self._fields.0 = Option::Some(value.into());
         DraftEmbedExternalBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedExternalBuilder<'a, S>
+impl<St, S: BosStr> DraftEmbedExternalBuilder<St, S>
 where
-    S: draft_embed_external_state::State,
-    S::Uri: draft_embed_external_state::IsSet,
+    St: draft_embed_external_state::State,
+    St::Uri: draft_embed_external_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DraftEmbedExternal<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DraftEmbedExternal<S> {
         DraftEmbedExternal {
             uri: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DraftEmbedExternal<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DraftEmbedExternal<S> {
         DraftEmbedExternal {
             uri: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -1550,9 +1605,9 @@ pub mod draft_embed_gallery_state {
         type Items = Unset;
     }
     ///State transition - sets the `items` field to Set
-    pub struct SetItems<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetItems<S> {}
-    impl<S: State> State for SetItems<S> {
+    pub struct SetItems<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetItems<St> {}
+    impl<St: State> State for SetItems<St> {
         type Items = Set<members::items>;
     }
     /// Marker types for field names
@@ -1563,70 +1618,91 @@ pub mod draft_embed_gallery_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DraftEmbedGalleryBuilder<'a, S: draft_embed_gallery_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<draft::DraftEmbedGalleryItems<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct DraftEmbedGalleryBuilder<
+    St: draft_embed_gallery_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<draft::DraftEmbedGalleryItems<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DraftEmbedGallery<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DraftEmbedGalleryBuilder<'a, draft_embed_gallery_state::Empty> {
+impl DraftEmbedGallery<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DraftEmbedGalleryBuilder<
+        draft_embed_gallery_state::Empty,
+        DefaultStr,
+    > {
         DraftEmbedGalleryBuilder::new()
     }
 }
 
-impl<'a> DraftEmbedGalleryBuilder<'a, draft_embed_gallery_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DraftEmbedGallery<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DraftEmbedGalleryBuilder<draft_embed_gallery_state::Empty, S> {
+        DraftEmbedGalleryBuilder::builder()
+    }
+}
+
+impl DraftEmbedGalleryBuilder<draft_embed_gallery_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DraftEmbedGalleryBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedGalleryBuilder<'a, S>
+impl<S: BosStr> DraftEmbedGalleryBuilder<draft_embed_gallery_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DraftEmbedGalleryBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> DraftEmbedGalleryBuilder<St, S>
 where
-    S: draft_embed_gallery_state::State,
-    S::Items: draft_embed_gallery_state::IsUnset,
+    St: draft_embed_gallery_state::State,
+    St::Items: draft_embed_gallery_state::IsUnset,
 {
     /// Set the `items` field (required)
     pub fn items(
         mut self,
-        value: impl Into<draft::DraftEmbedGalleryItems<'a>>,
-    ) -> DraftEmbedGalleryBuilder<'a, draft_embed_gallery_state::SetItems<S>> {
+        value: impl Into<draft::DraftEmbedGalleryItems<S>>,
+    ) -> DraftEmbedGalleryBuilder<draft_embed_gallery_state::SetItems<St>, S> {
         self._fields.0 = Option::Some(value.into());
         DraftEmbedGalleryBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedGalleryBuilder<'a, S>
+impl<St, S: BosStr> DraftEmbedGalleryBuilder<St, S>
 where
-    S: draft_embed_gallery_state::State,
-    S::Items: draft_embed_gallery_state::IsSet,
+    St: draft_embed_gallery_state::State,
+    St::Items: draft_embed_gallery_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DraftEmbedGallery<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DraftEmbedGallery<S> {
         DraftEmbedGallery {
             items: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DraftEmbedGallery<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DraftEmbedGallery<S> {
         DraftEmbedGallery {
             items: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -1653,9 +1729,9 @@ pub mod draft_embed_image_state {
         type LocalRef = Unset;
     }
     ///State transition - sets the `local_ref` field to Set
-    pub struct SetLocalRef<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLocalRef<S> {}
-    impl<S: State> State for SetLocalRef<S> {
+    pub struct SetLocalRef<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLocalRef<St> {}
+    impl<St: State> State for SetLocalRef<St> {
         type LocalRef = Set<members::local_ref>;
     }
     /// Marker types for field names
@@ -1666,84 +1742,102 @@ pub mod draft_embed_image_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DraftEmbedImageBuilder<'a, S: draft_embed_image_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<draft::DraftEmbedLocalRef<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct DraftEmbedImageBuilder<
+    St: draft_embed_image_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<draft::DraftEmbedLocalRef<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DraftEmbedImage<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DraftEmbedImageBuilder<'a, draft_embed_image_state::Empty> {
+impl DraftEmbedImage<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DraftEmbedImageBuilder<draft_embed_image_state::Empty, DefaultStr> {
         DraftEmbedImageBuilder::new()
     }
 }
 
-impl<'a> DraftEmbedImageBuilder<'a, draft_embed_image_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DraftEmbedImage<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DraftEmbedImageBuilder<draft_embed_image_state::Empty, S> {
+        DraftEmbedImageBuilder::builder()
+    }
+}
+
+impl DraftEmbedImageBuilder<draft_embed_image_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DraftEmbedImageBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: draft_embed_image_state::State> DraftEmbedImageBuilder<'a, S> {
+impl<S: BosStr> DraftEmbedImageBuilder<draft_embed_image_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DraftEmbedImageBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: draft_embed_image_state::State, S: BosStr> DraftEmbedImageBuilder<St, S> {
     /// Set the `alt` field (optional)
-    pub fn alt(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn alt(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `alt` field to an Option value (optional)
-    pub fn maybe_alt(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_alt(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> DraftEmbedImageBuilder<'a, S>
+impl<St, S: BosStr> DraftEmbedImageBuilder<St, S>
 where
-    S: draft_embed_image_state::State,
-    S::LocalRef: draft_embed_image_state::IsUnset,
+    St: draft_embed_image_state::State,
+    St::LocalRef: draft_embed_image_state::IsUnset,
 {
     /// Set the `localRef` field (required)
     pub fn local_ref(
         mut self,
-        value: impl Into<draft::DraftEmbedLocalRef<'a>>,
-    ) -> DraftEmbedImageBuilder<'a, draft_embed_image_state::SetLocalRef<S>> {
+        value: impl Into<draft::DraftEmbedLocalRef<S>>,
+    ) -> DraftEmbedImageBuilder<draft_embed_image_state::SetLocalRef<St>, S> {
         self._fields.1 = Option::Some(value.into());
         DraftEmbedImageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedImageBuilder<'a, S>
+impl<St, S: BosStr> DraftEmbedImageBuilder<St, S>
 where
-    S: draft_embed_image_state::State,
-    S::LocalRef: draft_embed_image_state::IsSet,
+    St: draft_embed_image_state::State,
+    St::LocalRef: draft_embed_image_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DraftEmbedImage<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DraftEmbedImage<S> {
         DraftEmbedImage {
             alt: self._fields.0,
             local_ref: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DraftEmbedImage<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DraftEmbedImage<S> {
         DraftEmbedImage {
             alt: self._fields.0,
             local_ref: self._fields.1.unwrap(),
@@ -1771,9 +1865,9 @@ pub mod draft_embed_record_state {
         type Record = Unset;
     }
     ///State transition - sets the `record` field to Set
-    pub struct SetRecord<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRecord<S> {}
-    impl<S: State> State for SetRecord<S> {
+    pub struct SetRecord<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRecord<St> {}
+    impl<St: State> State for SetRecord<St> {
         type Record = Set<members::record>;
     }
     /// Marker types for field names
@@ -1784,70 +1878,91 @@ pub mod draft_embed_record_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DraftEmbedRecordBuilder<'a, S: draft_embed_record_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<StrongRef<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct DraftEmbedRecordBuilder<
+    St: draft_embed_record_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<StrongRef<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DraftEmbedRecord<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DraftEmbedRecordBuilder<'a, draft_embed_record_state::Empty> {
+impl DraftEmbedRecord<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DraftEmbedRecordBuilder<
+        draft_embed_record_state::Empty,
+        DefaultStr,
+    > {
         DraftEmbedRecordBuilder::new()
     }
 }
 
-impl<'a> DraftEmbedRecordBuilder<'a, draft_embed_record_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DraftEmbedRecord<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DraftEmbedRecordBuilder<draft_embed_record_state::Empty, S> {
+        DraftEmbedRecordBuilder::builder()
+    }
+}
+
+impl DraftEmbedRecordBuilder<draft_embed_record_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DraftEmbedRecordBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedRecordBuilder<'a, S>
+impl<S: BosStr> DraftEmbedRecordBuilder<draft_embed_record_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DraftEmbedRecordBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> DraftEmbedRecordBuilder<St, S>
 where
-    S: draft_embed_record_state::State,
-    S::Record: draft_embed_record_state::IsUnset,
+    St: draft_embed_record_state::State,
+    St::Record: draft_embed_record_state::IsUnset,
 {
     /// Set the `record` field (required)
     pub fn record(
         mut self,
-        value: impl Into<StrongRef<'a>>,
-    ) -> DraftEmbedRecordBuilder<'a, draft_embed_record_state::SetRecord<S>> {
+        value: impl Into<StrongRef<S>>,
+    ) -> DraftEmbedRecordBuilder<draft_embed_record_state::SetRecord<St>, S> {
         self._fields.0 = Option::Some(value.into());
         DraftEmbedRecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedRecordBuilder<'a, S>
+impl<St, S: BosStr> DraftEmbedRecordBuilder<St, S>
 where
-    S: draft_embed_record_state::State,
-    S::Record: draft_embed_record_state::IsSet,
+    St: draft_embed_record_state::State,
+    St::Record: draft_embed_record_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DraftEmbedRecord<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DraftEmbedRecord<S> {
         DraftEmbedRecord {
             record: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DraftEmbedRecord<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DraftEmbedRecord<S> {
         DraftEmbedRecord {
             record: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -1874,9 +1989,9 @@ pub mod draft_embed_video_state {
         type LocalRef = Unset;
     }
     ///State transition - sets the `local_ref` field to Set
-    pub struct SetLocalRef<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLocalRef<S> {}
-    impl<S: State> State for SetLocalRef<S> {
+    pub struct SetLocalRef<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLocalRef<St> {}
+    impl<St: State> State for SetLocalRef<St> {
         type LocalRef = Set<members::local_ref>;
     }
     /// Marker types for field names
@@ -1887,53 +2002,74 @@ pub mod draft_embed_video_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DraftEmbedVideoBuilder<'a, S: draft_embed_video_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct DraftEmbedVideoBuilder<
+    St: draft_embed_video_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<Vec<draft::DraftEmbedCaption<'a>>>,
-        Option<draft::DraftEmbedLocalRef<'a>>,
+        Option<S>,
+        Option<Vec<draft::DraftEmbedCaption<S>>>,
+        Option<draft::DraftEmbedLocalRef<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DraftEmbedVideo<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DraftEmbedVideoBuilder<'a, draft_embed_video_state::Empty> {
+impl DraftEmbedVideo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DraftEmbedVideoBuilder<draft_embed_video_state::Empty, DefaultStr> {
         DraftEmbedVideoBuilder::new()
     }
 }
 
-impl<'a> DraftEmbedVideoBuilder<'a, draft_embed_video_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DraftEmbedVideo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DraftEmbedVideoBuilder<draft_embed_video_state::Empty, S> {
+        DraftEmbedVideoBuilder::builder()
+    }
+}
+
+impl DraftEmbedVideoBuilder<draft_embed_video_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DraftEmbedVideoBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: draft_embed_video_state::State> DraftEmbedVideoBuilder<'a, S> {
+impl<S: BosStr> DraftEmbedVideoBuilder<draft_embed_video_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DraftEmbedVideoBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: draft_embed_video_state::State, S: BosStr> DraftEmbedVideoBuilder<St, S> {
     /// Set the `alt` field (optional)
-    pub fn alt(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn alt(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `alt` field to an Option value (optional)
-    pub fn maybe_alt(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_alt(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: draft_embed_video_state::State> DraftEmbedVideoBuilder<'a, S> {
+impl<St: draft_embed_video_state::State, S: BosStr> DraftEmbedVideoBuilder<St, S> {
     /// Set the `captions` field (optional)
     pub fn captions(
         mut self,
-        value: impl Into<Option<Vec<draft::DraftEmbedCaption<'a>>>>,
+        value: impl Into<Option<Vec<draft::DraftEmbedCaption<S>>>>,
     ) -> Self {
         self._fields.1 = value.into();
         self
@@ -1941,39 +2077,39 @@ impl<'a, S: draft_embed_video_state::State> DraftEmbedVideoBuilder<'a, S> {
     /// Set the `captions` field to an Option value (optional)
     pub fn maybe_captions(
         mut self,
-        value: Option<Vec<draft::DraftEmbedCaption<'a>>>,
+        value: Option<Vec<draft::DraftEmbedCaption<S>>>,
     ) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> DraftEmbedVideoBuilder<'a, S>
+impl<St, S: BosStr> DraftEmbedVideoBuilder<St, S>
 where
-    S: draft_embed_video_state::State,
-    S::LocalRef: draft_embed_video_state::IsUnset,
+    St: draft_embed_video_state::State,
+    St::LocalRef: draft_embed_video_state::IsUnset,
 {
     /// Set the `localRef` field (required)
     pub fn local_ref(
         mut self,
-        value: impl Into<draft::DraftEmbedLocalRef<'a>>,
-    ) -> DraftEmbedVideoBuilder<'a, draft_embed_video_state::SetLocalRef<S>> {
+        value: impl Into<draft::DraftEmbedLocalRef<S>>,
+    ) -> DraftEmbedVideoBuilder<draft_embed_video_state::SetLocalRef<St>, S> {
         self._fields.2 = Option::Some(value.into());
         DraftEmbedVideoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftEmbedVideoBuilder<'a, S>
+impl<St, S: BosStr> DraftEmbedVideoBuilder<St, S>
 where
-    S: draft_embed_video_state::State,
-    S::LocalRef: draft_embed_video_state::IsSet,
+    St: draft_embed_video_state::State,
+    St::LocalRef: draft_embed_video_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DraftEmbedVideo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DraftEmbedVideo<S> {
         DraftEmbedVideo {
             alt: self._fields.0,
             captions: self._fields.1,
@@ -1981,14 +2117,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DraftEmbedVideo<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DraftEmbedVideo<S> {
         DraftEmbedVideo {
             alt: self._fields.0,
             captions: self._fields.1,
@@ -2008,181 +2141,199 @@ pub mod draft_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type CreatedAt;
+        type Draft;
         type Id;
         type UpdatedAt;
-        type Draft;
-        type CreatedAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type CreatedAt = Unset;
+        type Draft = Unset;
         type Id = Unset;
         type UpdatedAt = Unset;
-        type Draft = Unset;
-        type CreatedAt = Unset;
-    }
-    ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type Id = Set<members::id>;
-        type UpdatedAt = S::UpdatedAt;
-        type Draft = S::Draft;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `updated_at` field to Set
-    pub struct SetUpdatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUpdatedAt<S> {}
-    impl<S: State> State for SetUpdatedAt<S> {
-        type Id = S::Id;
-        type UpdatedAt = Set<members::updated_at>;
-        type Draft = S::Draft;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `draft` field to Set
-    pub struct SetDraft<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDraft<S> {}
-    impl<S: State> State for SetDraft<S> {
-        type Id = S::Id;
-        type UpdatedAt = S::UpdatedAt;
-        type Draft = Set<members::draft>;
-        type CreatedAt = S::CreatedAt;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Id = S::Id;
-        type UpdatedAt = S::UpdatedAt;
-        type Draft = S::Draft;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
+        type Draft = St::Draft;
+        type Id = St::Id;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `draft` field to Set
+    pub struct SetDraft<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDraft<St> {}
+    impl<St: State> State for SetDraft<St> {
+        type CreatedAt = St::CreatedAt;
+        type Draft = Set<members::draft>;
+        type Id = St::Id;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `id` field to Set
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type CreatedAt = St::CreatedAt;
+        type Draft = St::Draft;
+        type Id = Set<members::id>;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `updated_at` field to Set
+    pub struct SetUpdatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUpdatedAt<St> {}
+    impl<St: State> State for SetUpdatedAt<St> {
+        type CreatedAt = St::CreatedAt;
+        type Draft = St::Draft;
+        type Id = St::Id;
+        type UpdatedAt = Set<members::updated_at>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `created_at` field
+        pub struct created_at(());
+        ///Marker type for the `draft` field
+        pub struct draft(());
         ///Marker type for the `id` field
         pub struct id(());
         ///Marker type for the `updated_at` field
         pub struct updated_at(());
-        ///Marker type for the `draft` field
-        pub struct draft(());
-        ///Marker type for the `created_at` field
-        pub struct created_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DraftViewBuilder<'a, S: draft_view_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Datetime>, Option<draft::Draft<'a>>, Option<Tid>, Option<Datetime>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct DraftViewBuilder<St: draft_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Datetime>, Option<draft::Draft<S>>, Option<Tid>, Option<Datetime>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DraftView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DraftViewBuilder<'a, draft_view_state::Empty> {
+impl DraftView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DraftViewBuilder<draft_view_state::Empty, DefaultStr> {
         DraftViewBuilder::new()
     }
 }
 
-impl<'a> DraftViewBuilder<'a, draft_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DraftView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DraftViewBuilder<draft_view_state::Empty, S> {
+        DraftViewBuilder::builder()
+    }
+}
+
+impl DraftViewBuilder<draft_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DraftViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftViewBuilder<'a, S>
+impl<S: BosStr> DraftViewBuilder<draft_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DraftViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> DraftViewBuilder<St, S>
 where
-    S: draft_view_state::State,
-    S::CreatedAt: draft_view_state::IsUnset,
+    St: draft_view_state::State,
+    St::CreatedAt: draft_view_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> DraftViewBuilder<'a, draft_view_state::SetCreatedAt<S>> {
+    ) -> DraftViewBuilder<draft_view_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         DraftViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftViewBuilder<'a, S>
+impl<St, S: BosStr> DraftViewBuilder<St, S>
 where
-    S: draft_view_state::State,
-    S::Draft: draft_view_state::IsUnset,
+    St: draft_view_state::State,
+    St::Draft: draft_view_state::IsUnset,
 {
     /// Set the `draft` field (required)
     pub fn draft(
         mut self,
-        value: impl Into<draft::Draft<'a>>,
-    ) -> DraftViewBuilder<'a, draft_view_state::SetDraft<S>> {
+        value: impl Into<draft::Draft<S>>,
+    ) -> DraftViewBuilder<draft_view_state::SetDraft<St>, S> {
         self._fields.1 = Option::Some(value.into());
         DraftViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftViewBuilder<'a, S>
+impl<St, S: BosStr> DraftViewBuilder<St, S>
 where
-    S: draft_view_state::State,
-    S::Id: draft_view_state::IsUnset,
+    St: draft_view_state::State,
+    St::Id: draft_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
         value: impl Into<Tid>,
-    ) -> DraftViewBuilder<'a, draft_view_state::SetId<S>> {
+    ) -> DraftViewBuilder<draft_view_state::SetId<St>, S> {
         self._fields.2 = Option::Some(value.into());
         DraftViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftViewBuilder<'a, S>
+impl<St, S: BosStr> DraftViewBuilder<St, S>
 where
-    S: draft_view_state::State,
-    S::UpdatedAt: draft_view_state::IsUnset,
+    St: draft_view_state::State,
+    St::UpdatedAt: draft_view_state::IsUnset,
 {
     /// Set the `updatedAt` field (required)
     pub fn updated_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> DraftViewBuilder<'a, draft_view_state::SetUpdatedAt<S>> {
+    ) -> DraftViewBuilder<draft_view_state::SetUpdatedAt<St>, S> {
         self._fields.3 = Option::Some(value.into());
         DraftViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftViewBuilder<'a, S>
+impl<St, S: BosStr> DraftViewBuilder<St, S>
 where
-    S: draft_view_state::State,
-    S::Id: draft_view_state::IsSet,
-    S::UpdatedAt: draft_view_state::IsSet,
-    S::Draft: draft_view_state::IsSet,
-    S::CreatedAt: draft_view_state::IsSet,
+    St: draft_view_state::State,
+    St::CreatedAt: draft_view_state::IsSet,
+    St::Draft: draft_view_state::IsSet,
+    St::Id: draft_view_state::IsSet,
+    St::UpdatedAt: draft_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DraftView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DraftView<S> {
         DraftView {
             created_at: self._fields.0.unwrap(),
             draft: self._fields.1.unwrap(),
@@ -2191,14 +2342,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DraftView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DraftView<S> {
         DraftView {
             created_at: self._fields.0.unwrap(),
             draft: self._fields.1.unwrap(),
@@ -2230,17 +2378,17 @@ pub mod draft_with_id_state {
         type Id = Unset;
     }
     ///State transition - sets the `draft` field to Set
-    pub struct SetDraft<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDraft<S> {}
-    impl<S: State> State for SetDraft<S> {
+    pub struct SetDraft<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDraft<St> {}
+    impl<St: State> State for SetDraft<St> {
         type Draft = Set<members::draft>;
-        type Id = S::Id;
+        type Id = St::Id;
     }
     ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type Draft = S::Draft;
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type Draft = St::Draft;
         type Id = Set<members::id>;
     }
     /// Marker types for field names
@@ -2253,91 +2401,106 @@ pub mod draft_with_id_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DraftWithIdBuilder<'a, S: draft_with_id_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<draft::Draft<'a>>, Option<Tid>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct DraftWithIdBuilder<St: draft_with_id_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<draft::Draft<S>>, Option<Tid>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DraftWithId<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DraftWithIdBuilder<'a, draft_with_id_state::Empty> {
+impl DraftWithId<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DraftWithIdBuilder<draft_with_id_state::Empty, DefaultStr> {
         DraftWithIdBuilder::new()
     }
 }
 
-impl<'a> DraftWithIdBuilder<'a, draft_with_id_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DraftWithId<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DraftWithIdBuilder<draft_with_id_state::Empty, S> {
+        DraftWithIdBuilder::builder()
+    }
+}
+
+impl DraftWithIdBuilder<draft_with_id_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DraftWithIdBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftWithIdBuilder<'a, S>
+impl<S: BosStr> DraftWithIdBuilder<draft_with_id_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DraftWithIdBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> DraftWithIdBuilder<St, S>
 where
-    S: draft_with_id_state::State,
-    S::Draft: draft_with_id_state::IsUnset,
+    St: draft_with_id_state::State,
+    St::Draft: draft_with_id_state::IsUnset,
 {
     /// Set the `draft` field (required)
     pub fn draft(
         mut self,
-        value: impl Into<draft::Draft<'a>>,
-    ) -> DraftWithIdBuilder<'a, draft_with_id_state::SetDraft<S>> {
+        value: impl Into<draft::Draft<S>>,
+    ) -> DraftWithIdBuilder<draft_with_id_state::SetDraft<St>, S> {
         self._fields.0 = Option::Some(value.into());
         DraftWithIdBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftWithIdBuilder<'a, S>
+impl<St, S: BosStr> DraftWithIdBuilder<St, S>
 where
-    S: draft_with_id_state::State,
-    S::Id: draft_with_id_state::IsUnset,
+    St: draft_with_id_state::State,
+    St::Id: draft_with_id_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
         value: impl Into<Tid>,
-    ) -> DraftWithIdBuilder<'a, draft_with_id_state::SetId<S>> {
+    ) -> DraftWithIdBuilder<draft_with_id_state::SetId<St>, S> {
         self._fields.1 = Option::Some(value.into());
         DraftWithIdBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DraftWithIdBuilder<'a, S>
+impl<St, S: BosStr> DraftWithIdBuilder<St, S>
 where
-    S: draft_with_id_state::State,
-    S::Draft: draft_with_id_state::IsSet,
-    S::Id: draft_with_id_state::IsSet,
+    St: draft_with_id_state::State,
+    St::Draft: draft_with_id_state::IsSet,
+    St::Id: draft_with_id_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DraftWithId<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DraftWithId<S> {
         DraftWithId {
             draft: self._fields.0.unwrap(),
             id: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DraftWithId<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DraftWithId<S> {
         DraftWithId {
             draft: self._fields.0.unwrap(),
             id: self._fields.1.unwrap(),

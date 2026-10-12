@@ -10,78 +10,71 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::notification::ChatPreference;
 use crate::app_bsky::notification::FilterablePreference;
 use crate::app_bsky::notification::Preference;
 use crate::app_bsky::notification::Preferences;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PutPreferencesV2<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct PutPreferencesV2<S: BosStr = DefaultStr> {
     ///Deprecated: use chat.bsky.notification preferences instead. Setting this won't stick and the default values will be returned.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub chat: Option<ChatPreference<'a>>,
+    pub chat: Option<ChatPreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub follow: Option<FilterablePreference<'a>>,
+    pub follow: Option<FilterablePreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub like: Option<FilterablePreference<'a>>,
+    pub like: Option<FilterablePreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub like_via_repost: Option<FilterablePreference<'a>>,
+    pub like_via_repost: Option<FilterablePreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub mention: Option<FilterablePreference<'a>>,
+    pub mention: Option<FilterablePreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub quote: Option<FilterablePreference<'a>>,
+    pub quote: Option<FilterablePreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reply: Option<FilterablePreference<'a>>,
+    pub reply: Option<FilterablePreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub repost: Option<FilterablePreference<'a>>,
+    pub repost: Option<FilterablePreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub repost_via_repost: Option<FilterablePreference<'a>>,
+    pub repost_via_repost: Option<FilterablePreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub starterpack_joined: Option<Preference<'a>>,
+    pub starterpack_joined: Option<Preference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub subscribed_post: Option<Preference<'a>>,
+    pub subscribed_post: Option<Preference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub unverified: Option<Preference<'a>>,
+    pub unverified: Option<Preference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub verified: Option<Preference<'a>>,
+    pub verified: Option<Preference<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct PutPreferencesV2Output<'a> {
-    #[serde(borrow)]
-    pub preferences: Preferences<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct PutPreferencesV2Output<S: BosStr = DefaultStr> {
+    pub preferences: Preferences<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.notification.putPreferencesV2
+/** Response marker for the `app.bsky.notification.putPreferencesV2` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `PutPreferencesV2Output<S>` for this endpoint.*/
 pub struct PutPreferencesV2Response;
 impl jacquard_common::xrpc::XrpcResp for PutPreferencesV2Response {
     const NSID: &'static str = "app.bsky.notification.putPreferencesV2";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = PutPreferencesV2Output<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = PutPreferencesV2Output<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for PutPreferencesV2<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for PutPreferencesV2<S> {
     const NSID: &'static str = "app.bsky.notification.putPreferencesV2";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -89,13 +82,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for PutPreferencesV2<'a> {
     type Response = PutPreferencesV2Response;
 }
 
-/// Endpoint type for app.bsky.notification.putPreferencesV2
+/** Endpoint marker for the `app.bsky.notification.putPreferencesV2` procedure.
+
+Path: `/xrpc/app.bsky.notification.putPreferencesV2`. The request payload type is `PutPreferencesV2<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct PutPreferencesV2Request;
 impl jacquard_common::xrpc::XrpcEndpoint for PutPreferencesV2Request {
     const PATH: &'static str = "/xrpc/app.bsky.notification.putPreferencesV2";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = PutPreferencesV2<'de>;
+    type Request<S: BosStr> = PutPreferencesV2<S>;
     type Response = PutPreferencesV2Response;
 }

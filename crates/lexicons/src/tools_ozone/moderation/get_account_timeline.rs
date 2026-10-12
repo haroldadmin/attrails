@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -25,23 +27,21 @@ use serde::{Serialize, Deserialize};
 use crate::tools_ozone::moderation::get_account_timeline;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetAccountTimeline<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetAccountTimeline<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetAccountTimelineOutput<'a> {
-    #[serde(borrow)]
-    pub timeline: Vec<get_account_timeline::TimelineItem<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetAccountTimelineOutput<S: BosStr = DefaultStr> {
+    pub timeline: Vec<get_account_timeline::TimelineItem<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -50,18 +50,19 @@ pub struct GetAccountTimelineOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetAccountTimelineError<'a> {
+pub enum GetAccountTimelineError {
     #[serde(rename = "RepoNotFound")]
-    RepoNotFound(Option<CowStr<'a>>),
+    RepoNotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetAccountTimelineError<'_> {
+impl core::fmt::Display for GetAccountTimelineError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::RepoNotFound(msg) => {
@@ -71,44 +72,48 @@ impl core::fmt::Display for GetAccountTimelineError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct TimelineItem<'a> {
-    #[serde(borrow)]
-    pub day: CowStr<'a>,
-    #[serde(borrow)]
-    pub summary: Vec<get_account_timeline::TimelineItemSummary<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct TimelineItem<S: BosStr = DefaultStr> {
+    pub day: S,
+    pub summary: Vec<get_account_timeline::TimelineItemSummary<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct TimelineItemSummary<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct TimelineItemSummary<S: BosStr = DefaultStr> {
     pub count: i64,
-    #[serde(borrow)]
-    pub event_subject_type: TimelineItemSummaryEventSubjectType<'a>,
-    #[serde(borrow)]
-    pub event_type: TimelineItemSummaryEventType<'a>,
+    pub event_subject_type: TimelineItemSummaryEventSubjectType<S>,
+    pub event_type: TimelineItemSummaryEventType<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TimelineItemSummaryEventSubjectType<'a> {
+pub enum TimelineItemSummaryEventSubjectType<S: BosStr = DefaultStr> {
     Account,
     Record,
     Chat,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> TimelineItemSummaryEventSubjectType<'a> {
+impl<S: BosStr> TimelineItemSummaryEventSubjectType<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Account => "account",
@@ -117,72 +122,61 @@ impl<'a> TimelineItemSummaryEventSubjectType<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for TimelineItemSummaryEventSubjectType<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "account" => Self::Account,
             "record" => Self::Record,
             "chat" => Self::Chat,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for TimelineItemSummaryEventSubjectType<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "account" => Self::Account,
-            "record" => Self::Record,
-            "chat" => Self::Chat,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for TimelineItemSummaryEventSubjectType<'a> {
+impl<S: BosStr> core::fmt::Display for TimelineItemSummaryEventSubjectType<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for TimelineItemSummaryEventSubjectType<'a> {
+impl<S: BosStr> AsRef<str> for TimelineItemSummaryEventSubjectType<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for TimelineItemSummaryEventSubjectType<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for TimelineItemSummaryEventSubjectType<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for TimelineItemSummaryEventSubjectType<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for TimelineItemSummaryEventSubjectType<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for TimelineItemSummaryEventSubjectType<'a> {
+impl<S: BosStr + Default> Default for TimelineItemSummaryEventSubjectType<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for TimelineItemSummaryEventSubjectType<'_> {
-    type Output = TimelineItemSummaryEventSubjectType<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for TimelineItemSummaryEventSubjectType<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = TimelineItemSummaryEventSubjectType<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             TimelineItemSummaryEventSubjectType::Account => {
@@ -203,7 +197,7 @@ impl jacquard_common::IntoStatic for TimelineItemSummaryEventSubjectType<'_> {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TimelineItemSummaryEventType<'a> {
+pub enum TimelineItemSummaryEventType<S: BosStr = DefaultStr> {
     ModEventTakedown,
     ModEventReverseTakedown,
     ModEventComment,
@@ -235,10 +229,10 @@ pub enum TimelineItemSummaryEventType<'a> {
     HandleUpdated,
     ScheduleTakedownEvent,
     CancelScheduledTakedownEvent,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> TimelineItemSummaryEventType<'a> {
+impl<S: BosStr> TimelineItemSummaryEventType<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::ModEventTakedown => "tools.ozone.moderation.defs#modEventTakedown",
@@ -307,11 +301,9 @@ impl<'a> TimelineItemSummaryEventType<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for TimelineItemSummaryEventType<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "tools.ozone.moderation.defs#modEventTakedown" => Self::ModEventTakedown,
             "tools.ozone.moderation.defs#modEventReverseTakedown" => {
                 Self::ModEventReverseTakedown
@@ -375,124 +367,55 @@ impl<'a> From<&'a str> for TimelineItemSummaryEventType<'a> {
             "tools.ozone.moderation.defs#cancelScheduledTakedownEvent" => {
                 Self::CancelScheduledTakedownEvent
             }
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for TimelineItemSummaryEventType<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "tools.ozone.moderation.defs#modEventTakedown" => Self::ModEventTakedown,
-            "tools.ozone.moderation.defs#modEventReverseTakedown" => {
-                Self::ModEventReverseTakedown
-            }
-            "tools.ozone.moderation.defs#modEventComment" => Self::ModEventComment,
-            "tools.ozone.moderation.defs#modEventReport" => Self::ModEventReport,
-            "tools.ozone.moderation.defs#modEventLabel" => Self::ModEventLabel,
-            "tools.ozone.moderation.defs#modEventAcknowledge" => {
-                Self::ModEventAcknowledge
-            }
-            "tools.ozone.moderation.defs#modEventEscalate" => Self::ModEventEscalate,
-            "tools.ozone.moderation.defs#modEventMute" => Self::ModEventMute,
-            "tools.ozone.moderation.defs#modEventUnmute" => Self::ModEventUnmute,
-            "tools.ozone.moderation.defs#modEventMuteReporter" => {
-                Self::ModEventMuteReporter
-            }
-            "tools.ozone.moderation.defs#modEventUnmuteReporter" => {
-                Self::ModEventUnmuteReporter
-            }
-            "tools.ozone.moderation.defs#modEventEmail" => Self::ModEventEmail,
-            "tools.ozone.moderation.defs#modEventResolveAppeal" => {
-                Self::ModEventResolveAppeal
-            }
-            "tools.ozone.moderation.defs#modEventDivert" => Self::ModEventDivert,
-            "tools.ozone.moderation.defs#modEventTag" => Self::ModEventTag,
-            "tools.ozone.moderation.defs#accountEvent" => Self::AccountEvent,
-            "tools.ozone.moderation.defs#identityEvent" => Self::IdentityEvent,
-            "tools.ozone.moderation.defs#recordEvent" => Self::RecordEvent,
-            "tools.ozone.moderation.defs#modEventPriorityScore" => {
-                Self::ModEventPriorityScore
-            }
-            "tools.ozone.moderation.defs#revokeAccountCredentialsEvent" => {
-                Self::RevokeAccountCredentialsEvent
-            }
-            "tools.ozone.moderation.defs#ageAssuranceEvent" => Self::AgeAssuranceEvent,
-            "tools.ozone.moderation.defs#ageAssuranceOverrideEvent" => {
-                Self::AgeAssuranceOverrideEvent
-            }
-            "tools.ozone.moderation.defs#timelineEventPlcCreate" => {
-                Self::TimelineEventPlcCreate
-            }
-            "tools.ozone.moderation.defs#timelineEventPlcOperation" => {
-                Self::TimelineEventPlcOperation
-            }
-            "tools.ozone.moderation.defs#timelineEventPlcTombstone" => {
-                Self::TimelineEventPlcTombstone
-            }
-            "tools.ozone.hosting.getAccountHistory#accountCreated" => {
-                Self::AccountCreated
-            }
-            "tools.ozone.hosting.getAccountHistory#emailConfirmed" => {
-                Self::EmailConfirmed
-            }
-            "tools.ozone.hosting.getAccountHistory#passwordUpdated" => {
-                Self::PasswordUpdated
-            }
-            "tools.ozone.hosting.getAccountHistory#handleUpdated" => Self::HandleUpdated,
-            "tools.ozone.moderation.defs#scheduleTakedownEvent" => {
-                Self::ScheduleTakedownEvent
-            }
-            "tools.ozone.moderation.defs#cancelScheduledTakedownEvent" => {
-                Self::CancelScheduledTakedownEvent
-            }
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for TimelineItemSummaryEventType<'a> {
+impl<S: BosStr> core::fmt::Display for TimelineItemSummaryEventType<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for TimelineItemSummaryEventType<'a> {
+impl<S: BosStr> AsRef<str> for TimelineItemSummaryEventType<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for TimelineItemSummaryEventType<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for TimelineItemSummaryEventType<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for TimelineItemSummaryEventType<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for TimelineItemSummaryEventType<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for TimelineItemSummaryEventType<'a> {
+impl<S: BosStr + Default> Default for TimelineItemSummaryEventType<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for TimelineItemSummaryEventType<'_> {
-    type Output = TimelineItemSummaryEventType<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for TimelineItemSummaryEventType<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = TimelineItemSummaryEventType<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             TimelineItemSummaryEventType::ModEventTakedown => {
@@ -595,31 +518,35 @@ impl jacquard_common::IntoStatic for TimelineItemSummaryEventType<'_> {
     }
 }
 
-/// Response type for tools.ozone.moderation.getAccountTimeline
+/** Response marker for the `tools.ozone.moderation.getAccountTimeline` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetAccountTimelineOutput<S>` for this endpoint.*/
 pub struct GetAccountTimelineResponse;
 impl jacquard_common::xrpc::XrpcResp for GetAccountTimelineResponse {
     const NSID: &'static str = "tools.ozone.moderation.getAccountTimeline";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetAccountTimelineOutput<'de>;
-    type Err<'de> = GetAccountTimelineError<'de>;
+    type Output<S: BosStr> = GetAccountTimelineOutput<S>;
+    type Err = GetAccountTimelineError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetAccountTimeline<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetAccountTimeline<S> {
     const NSID: &'static str = "tools.ozone.moderation.getAccountTimeline";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetAccountTimelineResponse;
 }
 
-/// Endpoint type for tools.ozone.moderation.getAccountTimeline
+/** Endpoint marker for the `tools.ozone.moderation.getAccountTimeline` query.
+
+Path: `/xrpc/tools.ozone.moderation.getAccountTimeline`. The request payload type is `GetAccountTimeline<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetAccountTimelineRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetAccountTimelineRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.moderation.getAccountTimeline";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetAccountTimeline<'de>;
+    type Request<S: BosStr> = GetAccountTimeline<S>;
     type Response = GetAccountTimelineResponse;
 }
 
-impl<'a> LexiconSchema for TimelineItem<'a> {
+impl<S: BosStr> LexiconSchema for TimelineItem<S> {
     fn nsid() -> &'static str {
         "tools.ozone.moderation.getAccountTimeline"
     }
@@ -634,7 +561,7 @@ impl<'a> LexiconSchema for TimelineItem<'a> {
     }
 }
 
-impl<'a> LexiconSchema for TimelineItemSummary<'a> {
+impl<S: BosStr> LexiconSchema for TimelineItemSummary<S> {
     fn nsid() -> &'static str {
         "tools.ozone.moderation.getAccountTimeline"
     }
@@ -668,9 +595,9 @@ pub mod get_account_timeline_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -681,57 +608,81 @@ pub mod get_account_timeline_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetAccountTimelineBuilder<'a, S: get_account_timeline_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetAccountTimelineBuilder<
+    St: get_account_timeline_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetAccountTimeline<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetAccountTimelineBuilder<'a, get_account_timeline_state::Empty> {
+impl GetAccountTimeline<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetAccountTimelineBuilder<
+        get_account_timeline_state::Empty,
+        DefaultStr,
+    > {
         GetAccountTimelineBuilder::new()
     }
 }
 
-impl<'a> GetAccountTimelineBuilder<'a, get_account_timeline_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetAccountTimeline<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetAccountTimelineBuilder<get_account_timeline_state::Empty, S> {
+        GetAccountTimelineBuilder::builder()
+    }
+}
+
+impl GetAccountTimelineBuilder<get_account_timeline_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetAccountTimelineBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetAccountTimelineBuilder<'a, S>
+impl<S: BosStr> GetAccountTimelineBuilder<get_account_timeline_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetAccountTimelineBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetAccountTimelineBuilder<St, S>
 where
-    S: get_account_timeline_state::State,
-    S::Did: get_account_timeline_state::IsUnset,
+    St: get_account_timeline_state::State,
+    St::Did: get_account_timeline_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> GetAccountTimelineBuilder<'a, get_account_timeline_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> GetAccountTimelineBuilder<get_account_timeline_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetAccountTimelineBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetAccountTimelineBuilder<'a, S>
+impl<St, S: BosStr> GetAccountTimelineBuilder<St, S>
 where
-    S: get_account_timeline_state::State,
-    S::Did: get_account_timeline_state::IsSet,
+    St: get_account_timeline_state::State,
+    St::Did: get_account_timeline_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetAccountTimeline<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetAccountTimeline<S> {
         GetAccountTimeline {
             did: self._fields.0.unwrap(),
         }
@@ -748,128 +699,140 @@ pub mod timeline_item_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Summary;
         type Day;
+        type Summary;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Summary = Unset;
         type Day = Unset;
-    }
-    ///State transition - sets the `summary` field to Set
-    pub struct SetSummary<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSummary<S> {}
-    impl<S: State> State for SetSummary<S> {
-        type Summary = Set<members::summary>;
-        type Day = S::Day;
+        type Summary = Unset;
     }
     ///State transition - sets the `day` field to Set
-    pub struct SetDay<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDay<S> {}
-    impl<S: State> State for SetDay<S> {
-        type Summary = S::Summary;
+    pub struct SetDay<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDay<St> {}
+    impl<St: State> State for SetDay<St> {
         type Day = Set<members::day>;
+        type Summary = St::Summary;
+    }
+    ///State transition - sets the `summary` field to Set
+    pub struct SetSummary<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSummary<St> {}
+    impl<St: State> State for SetSummary<St> {
+        type Day = St::Day;
+        type Summary = Set<members::summary>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `summary` field
-        pub struct summary(());
         ///Marker type for the `day` field
         pub struct day(());
+        ///Marker type for the `summary` field
+        pub struct summary(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct TimelineItemBuilder<'a, S: timeline_item_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<Vec<get_account_timeline::TimelineItemSummary<'a>>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct TimelineItemBuilder<St: timeline_item_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<Vec<get_account_timeline::TimelineItemSummary<S>>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> TimelineItem<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> TimelineItemBuilder<'a, timeline_item_state::Empty> {
+impl TimelineItem<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> TimelineItemBuilder<timeline_item_state::Empty, DefaultStr> {
         TimelineItemBuilder::new()
     }
 }
 
-impl<'a> TimelineItemBuilder<'a, timeline_item_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> TimelineItem<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> TimelineItemBuilder<timeline_item_state::Empty, S> {
+        TimelineItemBuilder::builder()
+    }
+}
+
+impl TimelineItemBuilder<timeline_item_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         TimelineItemBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TimelineItemBuilder<'a, S>
+impl<S: BosStr> TimelineItemBuilder<timeline_item_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        TimelineItemBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> TimelineItemBuilder<St, S>
 where
-    S: timeline_item_state::State,
-    S::Day: timeline_item_state::IsUnset,
+    St: timeline_item_state::State,
+    St::Day: timeline_item_state::IsUnset,
 {
     /// Set the `day` field (required)
     pub fn day(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> TimelineItemBuilder<'a, timeline_item_state::SetDay<S>> {
+        value: impl Into<S>,
+    ) -> TimelineItemBuilder<timeline_item_state::SetDay<St>, S> {
         self._fields.0 = Option::Some(value.into());
         TimelineItemBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TimelineItemBuilder<'a, S>
+impl<St, S: BosStr> TimelineItemBuilder<St, S>
 where
-    S: timeline_item_state::State,
-    S::Summary: timeline_item_state::IsUnset,
+    St: timeline_item_state::State,
+    St::Summary: timeline_item_state::IsUnset,
 {
     /// Set the `summary` field (required)
     pub fn summary(
         mut self,
-        value: impl Into<Vec<get_account_timeline::TimelineItemSummary<'a>>>,
-    ) -> TimelineItemBuilder<'a, timeline_item_state::SetSummary<S>> {
+        value: impl Into<Vec<get_account_timeline::TimelineItemSummary<S>>>,
+    ) -> TimelineItemBuilder<timeline_item_state::SetSummary<St>, S> {
         self._fields.1 = Option::Some(value.into());
         TimelineItemBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TimelineItemBuilder<'a, S>
+impl<St, S: BosStr> TimelineItemBuilder<St, S>
 where
-    S: timeline_item_state::State,
-    S::Summary: timeline_item_state::IsSet,
-    S::Day: timeline_item_state::IsSet,
+    St: timeline_item_state::State,
+    St::Day: timeline_item_state::IsSet,
+    St::Summary: timeline_item_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> TimelineItem<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> TimelineItem<S> {
         TimelineItem {
             day: self._fields.0.unwrap(),
             summary: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> TimelineItem<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> TimelineItem<S> {
         TimelineItem {
             day: self._fields.0.unwrap(),
             summary: self._fields.1.unwrap(),
@@ -988,152 +951,179 @@ pub mod timeline_item_summary_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type EventSubjectType;
         type Count;
+        type EventSubjectType;
         type EventType;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type EventSubjectType = Unset;
         type Count = Unset;
+        type EventSubjectType = Unset;
         type EventType = Unset;
     }
-    ///State transition - sets the `event_subject_type` field to Set
-    pub struct SetEventSubjectType<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEventSubjectType<S> {}
-    impl<S: State> State for SetEventSubjectType<S> {
-        type EventSubjectType = Set<members::event_subject_type>;
-        type Count = S::Count;
-        type EventType = S::EventType;
-    }
     ///State transition - sets the `count` field to Set
-    pub struct SetCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCount<S> {}
-    impl<S: State> State for SetCount<S> {
-        type EventSubjectType = S::EventSubjectType;
+    pub struct SetCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCount<St> {}
+    impl<St: State> State for SetCount<St> {
         type Count = Set<members::count>;
-        type EventType = S::EventType;
+        type EventSubjectType = St::EventSubjectType;
+        type EventType = St::EventType;
+    }
+    ///State transition - sets the `event_subject_type` field to Set
+    pub struct SetEventSubjectType<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetEventSubjectType<St> {}
+    impl<St: State> State for SetEventSubjectType<St> {
+        type Count = St::Count;
+        type EventSubjectType = Set<members::event_subject_type>;
+        type EventType = St::EventType;
     }
     ///State transition - sets the `event_type` field to Set
-    pub struct SetEventType<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEventType<S> {}
-    impl<S: State> State for SetEventType<S> {
-        type EventSubjectType = S::EventSubjectType;
-        type Count = S::Count;
+    pub struct SetEventType<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetEventType<St> {}
+    impl<St: State> State for SetEventType<St> {
+        type Count = St::Count;
+        type EventSubjectType = St::EventSubjectType;
         type EventType = Set<members::event_type>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `event_subject_type` field
-        pub struct event_subject_type(());
         ///Marker type for the `count` field
         pub struct count(());
+        ///Marker type for the `event_subject_type` field
+        pub struct event_subject_type(());
         ///Marker type for the `event_type` field
         pub struct event_type(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct TimelineItemSummaryBuilder<'a, S: timeline_item_summary_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct TimelineItemSummaryBuilder<
+    St: timeline_item_summary_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<i64>,
-        Option<TimelineItemSummaryEventSubjectType<'a>>,
-        Option<TimelineItemSummaryEventType<'a>>,
+        Option<TimelineItemSummaryEventSubjectType<S>>,
+        Option<TimelineItemSummaryEventType<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> TimelineItemSummary<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> TimelineItemSummaryBuilder<'a, timeline_item_summary_state::Empty> {
+impl TimelineItemSummary<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> TimelineItemSummaryBuilder<
+        timeline_item_summary_state::Empty,
+        DefaultStr,
+    > {
         TimelineItemSummaryBuilder::new()
     }
 }
 
-impl<'a> TimelineItemSummaryBuilder<'a, timeline_item_summary_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> TimelineItemSummary<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> TimelineItemSummaryBuilder<
+        timeline_item_summary_state::Empty,
+        S,
+    > {
+        TimelineItemSummaryBuilder::builder()
+    }
+}
+
+impl TimelineItemSummaryBuilder<timeline_item_summary_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         TimelineItemSummaryBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TimelineItemSummaryBuilder<'a, S>
+impl<S: BosStr> TimelineItemSummaryBuilder<timeline_item_summary_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        TimelineItemSummaryBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> TimelineItemSummaryBuilder<St, S>
 where
-    S: timeline_item_summary_state::State,
-    S::Count: timeline_item_summary_state::IsUnset,
+    St: timeline_item_summary_state::State,
+    St::Count: timeline_item_summary_state::IsUnset,
 {
     /// Set the `count` field (required)
     pub fn count(
         mut self,
         value: impl Into<i64>,
-    ) -> TimelineItemSummaryBuilder<'a, timeline_item_summary_state::SetCount<S>> {
+    ) -> TimelineItemSummaryBuilder<timeline_item_summary_state::SetCount<St>, S> {
         self._fields.0 = Option::Some(value.into());
         TimelineItemSummaryBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TimelineItemSummaryBuilder<'a, S>
+impl<St, S: BosStr> TimelineItemSummaryBuilder<St, S>
 where
-    S: timeline_item_summary_state::State,
-    S::EventSubjectType: timeline_item_summary_state::IsUnset,
+    St: timeline_item_summary_state::State,
+    St::EventSubjectType: timeline_item_summary_state::IsUnset,
 {
     /// Set the `eventSubjectType` field (required)
     pub fn event_subject_type(
         mut self,
-        value: impl Into<TimelineItemSummaryEventSubjectType<'a>>,
+        value: impl Into<TimelineItemSummaryEventSubjectType<S>>,
     ) -> TimelineItemSummaryBuilder<
-        'a,
-        timeline_item_summary_state::SetEventSubjectType<S>,
+        timeline_item_summary_state::SetEventSubjectType<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         TimelineItemSummaryBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TimelineItemSummaryBuilder<'a, S>
+impl<St, S: BosStr> TimelineItemSummaryBuilder<St, S>
 where
-    S: timeline_item_summary_state::State,
-    S::EventType: timeline_item_summary_state::IsUnset,
+    St: timeline_item_summary_state::State,
+    St::EventType: timeline_item_summary_state::IsUnset,
 {
     /// Set the `eventType` field (required)
     pub fn event_type(
         mut self,
-        value: impl Into<TimelineItemSummaryEventType<'a>>,
-    ) -> TimelineItemSummaryBuilder<'a, timeline_item_summary_state::SetEventType<S>> {
+        value: impl Into<TimelineItemSummaryEventType<S>>,
+    ) -> TimelineItemSummaryBuilder<timeline_item_summary_state::SetEventType<St>, S> {
         self._fields.2 = Option::Some(value.into());
         TimelineItemSummaryBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TimelineItemSummaryBuilder<'a, S>
+impl<St, S: BosStr> TimelineItemSummaryBuilder<St, S>
 where
-    S: timeline_item_summary_state::State,
-    S::EventSubjectType: timeline_item_summary_state::IsSet,
-    S::Count: timeline_item_summary_state::IsSet,
-    S::EventType: timeline_item_summary_state::IsSet,
+    St: timeline_item_summary_state::State,
+    St::Count: timeline_item_summary_state::IsSet,
+    St::EventSubjectType: timeline_item_summary_state::IsSet,
+    St::EventType: timeline_item_summary_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> TimelineItemSummary<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> TimelineItemSummary<S> {
         TimelineItemSummary {
             count: self._fields.0.unwrap(),
             event_subject_type: self._fields.1.unwrap(),
@@ -1141,14 +1131,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> TimelineItemSummary<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> TimelineItemSummary<S> {
         TimelineItemSummary {
             count: self._fields.0.unwrap(),
             event_subject_type: self._fields.1.unwrap(),

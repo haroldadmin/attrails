@@ -10,49 +10,46 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::ident::AtIdentifier;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::feed::FeedViewPost;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetAuthorFeed<'a> {
-    #[serde(borrow)]
-    pub actor: AtIdentifier<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetAuthorFeed<S: BosStr = DefaultStr> {
+    pub actor: AtIdentifier<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `"posts_with_replies"`.
+    pub cursor: Option<S>,
+    /// Defaults to `"posts_with_replies"`.
     #[serde(default = "_default_filter")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub filter: Option<CowStr<'a>>,
-    /// Defaults to `false`.
+    pub filter: Option<S>,
+    ///  Defaults to `false`.
     #[serde(default = "_default_include_pins")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_pins: Option<bool>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetAuthorFeedOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetAuthorFeedOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub feed: Vec<FeedViewPost<'a>>,
+    pub cursor: Option<S>,
+    pub feed: Vec<FeedViewPost<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -61,20 +58,21 @@ pub struct GetAuthorFeedOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetAuthorFeedError<'a> {
+pub enum GetAuthorFeedError {
     #[serde(rename = "BlockedActor")]
-    BlockedActor(Option<CowStr<'a>>),
+    BlockedActor(Option<SmolStr>),
     #[serde(rename = "BlockedByActor")]
-    BlockedByActor(Option<CowStr<'a>>),
+    BlockedByActor(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetAuthorFeedError<'_> {
+impl core::fmt::Display for GetAuthorFeedError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::BlockedActor(msg) => {
@@ -91,37 +89,47 @@ impl core::fmt::Display for GetAuthorFeedError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.feed.getAuthorFeed
+/** Response marker for the `app.bsky.feed.getAuthorFeed` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetAuthorFeedOutput<S>` for this endpoint.*/
 pub struct GetAuthorFeedResponse;
 impl jacquard_common::xrpc::XrpcResp for GetAuthorFeedResponse {
     const NSID: &'static str = "app.bsky.feed.getAuthorFeed";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetAuthorFeedOutput<'de>;
-    type Err<'de> = GetAuthorFeedError<'de>;
+    type Output<S: BosStr> = GetAuthorFeedOutput<S>;
+    type Err = GetAuthorFeedError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetAuthorFeed<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetAuthorFeed<S> {
     const NSID: &'static str = "app.bsky.feed.getAuthorFeed";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetAuthorFeedResponse;
 }
 
-/// Endpoint type for app.bsky.feed.getAuthorFeed
+/** Endpoint marker for the `app.bsky.feed.getAuthorFeed` query.
+
+Path: `/xrpc/app.bsky.feed.getAuthorFeed`. The request payload type is `GetAuthorFeed<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetAuthorFeedRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetAuthorFeedRequest {
     const PATH: &'static str = "/xrpc/app.bsky.feed.getAuthorFeed";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetAuthorFeed<'de>;
+    type Request<S: BosStr> = GetAuthorFeed<S>;
     type Response = GetAuthorFeedResponse;
 }
 
-fn _default_filter() -> Option<CowStr<'static>> {
-    Some(CowStr::from("posts_with_replies"))
+fn _default_filter<S: jacquard_common::FromStaticStr>() -> Option<S> {
+    Some(S::from_static("posts_with_replies"))
 }
 
 fn _default_include_pins() -> Option<bool> {
@@ -151,9 +159,9 @@ pub mod get_author_feed_state {
         type Actor = Unset;
     }
     ///State transition - sets the `actor` field to Set
-    pub struct SetActor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetActor<S> {}
-    impl<S: State> State for SetActor<S> {
+    pub struct SetActor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetActor<St> {}
+    impl<St: State> State for SetActor<St> {
         type Actor = Set<members::actor>;
     }
     /// Marker types for field names
@@ -164,83 +172,98 @@ pub mod get_author_feed_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetAuthorFeedBuilder<'a, S: get_author_feed_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<AtIdentifier<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<bool>,
-        Option<i64>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetAuthorFeedBuilder<
+    St: get_author_feed_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtIdentifier<S>>, Option<S>, Option<S>, Option<bool>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetAuthorFeed<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetAuthorFeedBuilder<'a, get_author_feed_state::Empty> {
+impl GetAuthorFeed<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetAuthorFeedBuilder<get_author_feed_state::Empty, DefaultStr> {
         GetAuthorFeedBuilder::new()
     }
 }
 
-impl<'a> GetAuthorFeedBuilder<'a, get_author_feed_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetAuthorFeed<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetAuthorFeedBuilder<get_author_feed_state::Empty, S> {
+        GetAuthorFeedBuilder::builder()
+    }
+}
+
+impl GetAuthorFeedBuilder<get_author_feed_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetAuthorFeedBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetAuthorFeedBuilder<'a, S>
+impl<S: BosStr> GetAuthorFeedBuilder<get_author_feed_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetAuthorFeedBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetAuthorFeedBuilder<St, S>
 where
-    S: get_author_feed_state::State,
-    S::Actor: get_author_feed_state::IsUnset,
+    St: get_author_feed_state::State,
+    St::Actor: get_author_feed_state::IsUnset,
 {
     /// Set the `actor` field (required)
     pub fn actor(
         mut self,
-        value: impl Into<AtIdentifier<'a>>,
-    ) -> GetAuthorFeedBuilder<'a, get_author_feed_state::SetActor<S>> {
+        value: impl Into<AtIdentifier<S>>,
+    ) -> GetAuthorFeedBuilder<get_author_feed_state::SetActor<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetAuthorFeedBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_author_feed_state::State> GetAuthorFeedBuilder<'a, S> {
+impl<St: get_author_feed_state::State, S: BosStr> GetAuthorFeedBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: get_author_feed_state::State> GetAuthorFeedBuilder<'a, S> {
+impl<St: get_author_feed_state::State, S: BosStr> GetAuthorFeedBuilder<St, S> {
     /// Set the `filter` field (optional)
-    pub fn filter(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn filter(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `filter` field to an Option value (optional)
-    pub fn maybe_filter(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_filter(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: get_author_feed_state::State> GetAuthorFeedBuilder<'a, S> {
+impl<St: get_author_feed_state::State, S: BosStr> GetAuthorFeedBuilder<St, S> {
     /// Set the `includePins` field (optional)
     pub fn include_pins(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.3 = value.into();
@@ -253,7 +276,7 @@ impl<'a, S: get_author_feed_state::State> GetAuthorFeedBuilder<'a, S> {
     }
 }
 
-impl<'a, S: get_author_feed_state::State> GetAuthorFeedBuilder<'a, S> {
+impl<St: get_author_feed_state::State, S: BosStr> GetAuthorFeedBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.4 = value.into();
@@ -266,13 +289,13 @@ impl<'a, S: get_author_feed_state::State> GetAuthorFeedBuilder<'a, S> {
     }
 }
 
-impl<'a, S> GetAuthorFeedBuilder<'a, S>
+impl<St, S: BosStr> GetAuthorFeedBuilder<St, S>
 where
-    S: get_author_feed_state::State,
-    S::Actor: get_author_feed_state::IsSet,
+    St: get_author_feed_state::State,
+    St::Actor: get_author_feed_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetAuthorFeed<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetAuthorFeed<S> {
         GetAuthorFeed {
             actor: self._fields.0.unwrap(),
             cursor: self._fields.1,

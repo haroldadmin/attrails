@@ -10,28 +10,33 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::actor::Preferences;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct PutPreferences<'a> {
-    #[serde(borrow)]
-    pub preferences: Preferences<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct PutPreferences<S: BosStr = DefaultStr> {
+    pub preferences: Preferences<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.actor.putPreferences
+/** Response marker for the `app.bsky.actor.putPreferences` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `()` for this endpoint.*/
 pub struct PutPreferencesResponse;
 impl jacquard_common::xrpc::XrpcResp for PutPreferencesResponse {
     const NSID: &'static str = "app.bsky.actor.putPreferences";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ();
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ();
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for PutPreferences<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for PutPreferences<S> {
     const NSID: &'static str = "app.bsky.actor.putPreferences";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -39,14 +44,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for PutPreferences<'a> {
     type Response = PutPreferencesResponse;
 }
 
-/// Endpoint type for app.bsky.actor.putPreferences
+/** Endpoint marker for the `app.bsky.actor.putPreferences` procedure.
+
+Path: `/xrpc/app.bsky.actor.putPreferences`. The request payload type is `PutPreferences<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct PutPreferencesRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for PutPreferencesRequest {
     const PATH: &'static str = "/xrpc/app.bsky.actor.putPreferences";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = PutPreferences<'de>;
+    type Request<S: BosStr> = PutPreferences<S>;
     type Response = PutPreferencesResponse;
 }
 
@@ -69,9 +76,9 @@ pub mod put_preferences_state {
         type Preferences = Unset;
     }
     ///State transition - sets the `preferences` field to Set
-    pub struct SetPreferences<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPreferences<S> {}
-    impl<S: State> State for SetPreferences<S> {
+    pub struct SetPreferences<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPreferences<St> {}
+    impl<St: State> State for SetPreferences<St> {
         type Preferences = Set<members::preferences>;
     }
     /// Marker types for field names
@@ -82,70 +89,88 @@ pub mod put_preferences_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct PutPreferencesBuilder<'a, S: put_preferences_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Preferences<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct PutPreferencesBuilder<
+    St: put_preferences_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Preferences<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> PutPreferences<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> PutPreferencesBuilder<'a, put_preferences_state::Empty> {
+impl PutPreferences<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> PutPreferencesBuilder<put_preferences_state::Empty, DefaultStr> {
         PutPreferencesBuilder::new()
     }
 }
 
-impl<'a> PutPreferencesBuilder<'a, put_preferences_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> PutPreferences<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> PutPreferencesBuilder<put_preferences_state::Empty, S> {
+        PutPreferencesBuilder::builder()
+    }
+}
+
+impl PutPreferencesBuilder<put_preferences_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         PutPreferencesBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> PutPreferencesBuilder<'a, S>
+impl<S: BosStr> PutPreferencesBuilder<put_preferences_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        PutPreferencesBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> PutPreferencesBuilder<St, S>
 where
-    S: put_preferences_state::State,
-    S::Preferences: put_preferences_state::IsUnset,
+    St: put_preferences_state::State,
+    St::Preferences: put_preferences_state::IsUnset,
 {
     /// Set the `preferences` field (required)
     pub fn preferences(
         mut self,
-        value: impl Into<Preferences<'a>>,
-    ) -> PutPreferencesBuilder<'a, put_preferences_state::SetPreferences<S>> {
+        value: impl Into<Preferences<S>>,
+    ) -> PutPreferencesBuilder<put_preferences_state::SetPreferences<St>, S> {
         self._fields.0 = Option::Some(value.into());
         PutPreferencesBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> PutPreferencesBuilder<'a, S>
+impl<St, S: BosStr> PutPreferencesBuilder<St, S>
 where
-    S: put_preferences_state::State,
-    S::Preferences: put_preferences_state::IsSet,
+    St: put_preferences_state::State,
+    St::Preferences: put_preferences_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> PutPreferences<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> PutPreferences<S> {
         PutPreferences {
             preferences: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> PutPreferences<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> PutPreferences<S> {
         PutPreferences {
             preferences: self._fields.0.unwrap(),
             extra_data: Some(extra_data),

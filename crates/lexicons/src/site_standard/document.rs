@@ -10,10 +10,11 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::blob::BlobRef;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{Did, AtUri, Cid, Datetime, UriValue};
@@ -31,101 +32,88 @@ use crate::com_atproto::label::SelfLabels;
 use crate::com_atproto::repo::strong_ref::StrongRef;
 use crate::site_standard::document;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Contributor<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Contributor<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub display_name: Option<CowStr<'a>>,
+    pub display_name: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub role: Option<CowStr<'a>>,
+    pub role: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// A document record representing a published article, blog post, or other content. Documents can belong to a publication or exist independently.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase", rename = "site.standard.document", tag = "$type")]
-pub struct Document<'a> {
+#[serde(
+    rename_all = "camelCase",
+    rename = "site.standard.document",
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct Document<S: BosStr = DefaultStr> {
     ///Strong reference to a Bluesky post. Useful to keep track of comments off-platform.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub bsky_post_ref: Option<StrongRef<'a>>,
+    pub bsky_post_ref: Option<StrongRef<S>>,
     ///Open union used to define the record's content. Each entry must specify a $type and may be extended with other lexicons to support additional content formats.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub content: Option<Data<'a>>,
+    pub content: Option<Data<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub contributors: Option<Vec<document::Contributor<'a>>>,
+    pub contributors: Option<Vec<document::Contributor<S>>>,
     ///Image to used for thumbnail or cover image. Less than 1MB is size.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cover_image: Option<BlobRef<'a>>,
+    pub cover_image: Option<BlobRef<S>>,
     ///A brief description or excerpt from the document.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
+    pub description: Option<S>,
     ///Self-label values for this post. Effectively content warnings.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub labels: Option<SelfLabels<'a>>,
+    pub labels: Option<SelfLabels<S>>,
     ///Array of values describing relationships between this document and external resources
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub links: Option<Data<'a>>,
+    pub links: Option<Data<S>>,
     ///Combine with site or publication url to construct a canonical URL to the document. Prepend with a leading slash.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub path: Option<CowStr<'a>>,
+    pub path: Option<S>,
     ///Timestamp of the documents publish time.
     pub published_at: Datetime,
     ///Points to a publication record (at://) or a publication url (https://) for loose documents. Avoid trailing slashes.
-    #[serde(borrow)]
-    pub site: UriValue<'a>,
+    pub site: UriValue<S>,
     ///Array of strings used to tag or categorize the document. Avoid prepending tags with hashtags.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub tags: Option<Vec<CowStr<'a>>>,
+    pub tags: Option<Vec<S>>,
     ///Plaintext representation of the documents contents. Should not contain markdown or other formatting.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub text_content: Option<CowStr<'a>>,
+    pub text_content: Option<S>,
     ///Title of the document.
-    #[serde(borrow)]
-    pub title: CowStr<'a>,
+    pub title: S,
     ///Timestamp of the documents last edit.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<Datetime>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct DocumentGetRecordOutput<'a> {
+pub struct DocumentGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Document<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Document<S>,
 }
 
-impl<'a> Document<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, DocumentRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Document<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, DocumentRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
-impl<'a> LexiconSchema for Contributor<'a> {
+impl<S: BosStr> LexiconSchema for Contributor<S> {
     fn nsid() -> &'static str {
         "site.standard.document"
     }
@@ -191,18 +179,17 @@ pub struct DocumentRecord;
 impl XrpcResp for DocumentRecord {
     const NSID: &'static str = "site.standard.document";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = DocumentGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = DocumentGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<DocumentGetRecordOutput<'_>> for Document<'_> {
-    fn from(output: DocumentGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<DocumentGetRecordOutput<S>> for Document<S> {
+    fn from(output: DocumentGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Document<'_> {
+impl<S: BosStr> Collection for Document<S> {
     const NSID: &'static str = "site.standard.document";
     type Record = DocumentRecord;
 }
@@ -212,7 +199,7 @@ impl Collection for DocumentRecord {
     type Record = DocumentRecord;
 }
 
-impl<'a> LexiconSchema for Document<'a> {
+impl<S: BosStr> LexiconSchema for Document<S> {
     fn nsid() -> &'static str {
         "site.standard.document"
     }
@@ -283,6 +270,33 @@ impl<'a> LexiconSchema for Document<'a> {
                 }
             }
         }
+        if let Some(values) = &self.tags {
+            for value in values {
+                #[allow(unused_comparisons)]
+                if <str>::len(value.as_ref()) > 1280usize {
+                    return Err(ConstraintError::MaxLength {
+                        path: ValidationPath::from_field("tags"),
+                        max: 1280usize,
+                        actual: <str>::len(value.as_ref()),
+                    });
+                }
+            }
+        }
+        if let Some(values) = &self.tags {
+            for value in values {
+                {
+                    let count = UnicodeSegmentation::graphemes(value.as_ref(), true)
+                        .count();
+                    if count > 128usize {
+                        return Err(ConstraintError::MaxGraphemes {
+                            path: ValidationPath::from_field("tags"),
+                            max: 128usize,
+                            actual: count,
+                        });
+                    }
+                }
+            }
+        }
         {
             let value = &self.title;
             #[allow(unused_comparisons)]
@@ -330,9 +344,9 @@ pub mod contributor_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -343,83 +357,101 @@ pub mod contributor_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ContributorBuilder<'a, S: contributor_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>, Option<CowStr<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ContributorBuilder<St: contributor_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>, Option<S>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Contributor<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ContributorBuilder<'a, contributor_state::Empty> {
+impl Contributor<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ContributorBuilder<contributor_state::Empty, DefaultStr> {
         ContributorBuilder::new()
     }
 }
 
-impl<'a> ContributorBuilder<'a, contributor_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Contributor<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ContributorBuilder<contributor_state::Empty, S> {
+        ContributorBuilder::builder()
+    }
+}
+
+impl ContributorBuilder<contributor_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ContributorBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ContributorBuilder<'a, S>
+impl<S: BosStr> ContributorBuilder<contributor_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ContributorBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ContributorBuilder<St, S>
 where
-    S: contributor_state::State,
-    S::Did: contributor_state::IsUnset,
+    St: contributor_state::State,
+    St::Did: contributor_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> ContributorBuilder<'a, contributor_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> ContributorBuilder<contributor_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ContributorBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: contributor_state::State> ContributorBuilder<'a, S> {
+impl<St: contributor_state::State, S: BosStr> ContributorBuilder<St, S> {
     /// Set the `displayName` field (optional)
-    pub fn display_name(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn display_name(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `displayName` field to an Option value (optional)
-    pub fn maybe_display_name(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_display_name(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: contributor_state::State> ContributorBuilder<'a, S> {
+impl<St: contributor_state::State, S: BosStr> ContributorBuilder<St, S> {
     /// Set the `role` field (optional)
-    pub fn role(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn role(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `role` field to an Option value (optional)
-    pub fn maybe_role(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_role(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> ContributorBuilder<'a, S>
+impl<St, S: BosStr> ContributorBuilder<St, S>
 where
-    S: contributor_state::State,
-    S::Did: contributor_state::IsSet,
+    St: contributor_state::State,
+    St::Did: contributor_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Contributor<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Contributor<S> {
         Contributor {
             did: self._fields.0.unwrap(),
             display_name: self._fields.1,
@@ -427,11 +459,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> Contributor<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> Contributor<S> {
         Contributor {
             did: self._fields.0.unwrap(),
             display_name: self._fields.1,
@@ -684,85 +716,92 @@ pub mod document_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Title;
-        type Site;
         type PublishedAt;
+        type Site;
+        type Title;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Title = Unset;
-        type Site = Unset;
         type PublishedAt = Unset;
-    }
-    ///State transition - sets the `title` field to Set
-    pub struct SetTitle<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetTitle<S> {}
-    impl<S: State> State for SetTitle<S> {
-        type Title = Set<members::title>;
-        type Site = S::Site;
-        type PublishedAt = S::PublishedAt;
-    }
-    ///State transition - sets the `site` field to Set
-    pub struct SetSite<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSite<S> {}
-    impl<S: State> State for SetSite<S> {
-        type Title = S::Title;
-        type Site = Set<members::site>;
-        type PublishedAt = S::PublishedAt;
+        type Site = Unset;
+        type Title = Unset;
     }
     ///State transition - sets the `published_at` field to Set
-    pub struct SetPublishedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPublishedAt<S> {}
-    impl<S: State> State for SetPublishedAt<S> {
-        type Title = S::Title;
-        type Site = S::Site;
+    pub struct SetPublishedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPublishedAt<St> {}
+    impl<St: State> State for SetPublishedAt<St> {
         type PublishedAt = Set<members::published_at>;
+        type Site = St::Site;
+        type Title = St::Title;
+    }
+    ///State transition - sets the `site` field to Set
+    pub struct SetSite<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSite<St> {}
+    impl<St: State> State for SetSite<St> {
+        type PublishedAt = St::PublishedAt;
+        type Site = Set<members::site>;
+        type Title = St::Title;
+    }
+    ///State transition - sets the `title` field to Set
+    pub struct SetTitle<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetTitle<St> {}
+    impl<St: State> State for SetTitle<St> {
+        type PublishedAt = St::PublishedAt;
+        type Site = St::Site;
+        type Title = Set<members::title>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `title` field
-        pub struct title(());
-        ///Marker type for the `site` field
-        pub struct site(());
         ///Marker type for the `published_at` field
         pub struct published_at(());
+        ///Marker type for the `site` field
+        pub struct site(());
+        ///Marker type for the `title` field
+        pub struct title(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DocumentBuilder<'a, S: document_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct DocumentBuilder<St: document_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<StrongRef<'a>>,
-        Option<Data<'a>>,
-        Option<Vec<document::Contributor<'a>>>,
-        Option<BlobRef<'a>>,
-        Option<CowStr<'a>>,
-        Option<SelfLabels<'a>>,
-        Option<Data<'a>>,
-        Option<CowStr<'a>>,
+        Option<StrongRef<S>>,
+        Option<Data<S>>,
+        Option<Vec<document::Contributor<S>>>,
+        Option<BlobRef<S>>,
+        Option<S>,
+        Option<SelfLabels<S>>,
+        Option<Data<S>>,
+        Option<S>,
         Option<Datetime>,
-        Option<UriValue<'a>>,
-        Option<Vec<CowStr<'a>>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
+        Option<UriValue<S>>,
+        Option<Vec<S>>,
+        Option<S>,
+        Option<S>,
         Option<Datetime>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Document<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DocumentBuilder<'a, document_state::Empty> {
+impl Document<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DocumentBuilder<document_state::Empty, DefaultStr> {
         DocumentBuilder::new()
     }
 }
 
-impl<'a> DocumentBuilder<'a, document_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Document<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DocumentBuilder<document_state::Empty, S> {
+        DocumentBuilder::builder()
+    }
+}
+
+impl DocumentBuilder<document_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DocumentBuilder {
             _state: PhantomData,
@@ -782,42 +821,68 @@ impl<'a> DocumentBuilder<'a, document_state::Empty> {
                 None,
                 None,
             ),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<S: BosStr> DocumentBuilder<document_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DocumentBuilder {
+            _state: PhantomData,
+            _fields: (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `bskyPostRef` field (optional)
-    pub fn bsky_post_ref(mut self, value: impl Into<Option<StrongRef<'a>>>) -> Self {
+    pub fn bsky_post_ref(mut self, value: impl Into<Option<StrongRef<S>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `bskyPostRef` field to an Option value (optional)
-    pub fn maybe_bsky_post_ref(mut self, value: Option<StrongRef<'a>>) -> Self {
+    pub fn maybe_bsky_post_ref(mut self, value: Option<StrongRef<S>>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `content` field (optional)
-    pub fn content(mut self, value: impl Into<Option<Data<'a>>>) -> Self {
+    pub fn content(mut self, value: impl Into<Option<Data<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `content` field to an Option value (optional)
-    pub fn maybe_content(mut self, value: Option<Data<'a>>) -> Self {
+    pub fn maybe_content(mut self, value: Option<Data<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `contributors` field (optional)
     pub fn contributors(
         mut self,
-        value: impl Into<Option<Vec<document::Contributor<'a>>>>,
+        value: impl Into<Option<Vec<document::Contributor<S>>>>,
     ) -> Self {
         self._fields.2 = value.into();
         self
@@ -825,162 +890,162 @@ impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
     /// Set the `contributors` field to an Option value (optional)
     pub fn maybe_contributors(
         mut self,
-        value: Option<Vec<document::Contributor<'a>>>,
+        value: Option<Vec<document::Contributor<S>>>,
     ) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `coverImage` field (optional)
-    pub fn cover_image(mut self, value: impl Into<Option<BlobRef<'a>>>) -> Self {
+    pub fn cover_image(mut self, value: impl Into<Option<BlobRef<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `coverImage` field to an Option value (optional)
-    pub fn maybe_cover_image(mut self, value: Option<BlobRef<'a>>) -> Self {
+    pub fn maybe_cover_image(mut self, value: Option<BlobRef<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `description` field (optional)
-    pub fn description(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn description(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `description` field to an Option value (optional)
-    pub fn maybe_description(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_description(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `labels` field (optional)
-    pub fn labels(mut self, value: impl Into<Option<SelfLabels<'a>>>) -> Self {
+    pub fn labels(mut self, value: impl Into<Option<SelfLabels<S>>>) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `labels` field to an Option value (optional)
-    pub fn maybe_labels(mut self, value: Option<SelfLabels<'a>>) -> Self {
+    pub fn maybe_labels(mut self, value: Option<SelfLabels<S>>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `links` field (optional)
-    pub fn links(mut self, value: impl Into<Option<Data<'a>>>) -> Self {
+    pub fn links(mut self, value: impl Into<Option<Data<S>>>) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `links` field to an Option value (optional)
-    pub fn maybe_links(mut self, value: Option<Data<'a>>) -> Self {
+    pub fn maybe_links(mut self, value: Option<Data<S>>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `path` field (optional)
-    pub fn path(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn path(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.7 = value.into();
         self
     }
     /// Set the `path` field to an Option value (optional)
-    pub fn maybe_path(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_path(mut self, value: Option<S>) -> Self {
         self._fields.7 = value;
         self
     }
 }
 
-impl<'a, S> DocumentBuilder<'a, S>
+impl<St, S: BosStr> DocumentBuilder<St, S>
 where
-    S: document_state::State,
-    S::PublishedAt: document_state::IsUnset,
+    St: document_state::State,
+    St::PublishedAt: document_state::IsUnset,
 {
     /// Set the `publishedAt` field (required)
     pub fn published_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> DocumentBuilder<'a, document_state::SetPublishedAt<S>> {
+    ) -> DocumentBuilder<document_state::SetPublishedAt<St>, S> {
         self._fields.8 = Option::Some(value.into());
         DocumentBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DocumentBuilder<'a, S>
+impl<St, S: BosStr> DocumentBuilder<St, S>
 where
-    S: document_state::State,
-    S::Site: document_state::IsUnset,
+    St: document_state::State,
+    St::Site: document_state::IsUnset,
 {
     /// Set the `site` field (required)
     pub fn site(
         mut self,
-        value: impl Into<UriValue<'a>>,
-    ) -> DocumentBuilder<'a, document_state::SetSite<S>> {
+        value: impl Into<UriValue<S>>,
+    ) -> DocumentBuilder<document_state::SetSite<St>, S> {
         self._fields.9 = Option::Some(value.into());
         DocumentBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `tags` field (optional)
-    pub fn tags(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn tags(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.10 = value.into();
         self
     }
     /// Set the `tags` field to an Option value (optional)
-    pub fn maybe_tags(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_tags(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.10 = value;
         self
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `textContent` field (optional)
-    pub fn text_content(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn text_content(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.11 = value.into();
         self
     }
     /// Set the `textContent` field to an Option value (optional)
-    pub fn maybe_text_content(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_text_content(mut self, value: Option<S>) -> Self {
         self._fields.11 = value;
         self
     }
 }
 
-impl<'a, S> DocumentBuilder<'a, S>
+impl<St, S: BosStr> DocumentBuilder<St, S>
 where
-    S: document_state::State,
-    S::Title: document_state::IsUnset,
+    St: document_state::State,
+    St::Title: document_state::IsUnset,
 {
     /// Set the `title` field (required)
     pub fn title(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> DocumentBuilder<'a, document_state::SetTitle<S>> {
+        value: impl Into<S>,
+    ) -> DocumentBuilder<document_state::SetTitle<St>, S> {
         self._fields.12 = Option::Some(value.into());
         DocumentBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
+impl<St: document_state::State, S: BosStr> DocumentBuilder<St, S> {
     /// Set the `updatedAt` field (optional)
     pub fn updated_at(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.13 = value.into();
@@ -993,15 +1058,15 @@ impl<'a, S: document_state::State> DocumentBuilder<'a, S> {
     }
 }
 
-impl<'a, S> DocumentBuilder<'a, S>
+impl<St, S: BosStr> DocumentBuilder<St, S>
 where
-    S: document_state::State,
-    S::Title: document_state::IsSet,
-    S::Site: document_state::IsSet,
-    S::PublishedAt: document_state::IsSet,
+    St: document_state::State,
+    St::PublishedAt: document_state::IsSet,
+    St::Site: document_state::IsSet,
+    St::Title: document_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Document<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Document<S> {
         Document {
             bsky_post_ref: self._fields.0,
             content: self._fields.1,
@@ -1020,11 +1085,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> Document<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Document<S> {
         Document {
             bsky_post_ref: self._fields.0,
             content: self._fields.1,

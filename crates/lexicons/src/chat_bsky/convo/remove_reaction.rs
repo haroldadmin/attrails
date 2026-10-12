@@ -10,34 +10,33 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::convo::MessageView;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoveReaction<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub message_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub value: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct RemoveReaction<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub message_id: S,
+    pub value: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoveReactionOutput<'a> {
-    #[serde(borrow)]
-    pub message: MessageView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct RemoveReactionOutput<S: BosStr = DefaultStr> {
+    pub message: MessageView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -46,27 +45,28 @@ pub struct RemoveReactionOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum RemoveReactionError<'a> {
+pub enum RemoveReactionError {
     #[serde(rename = "InvalidConvo")]
-    InvalidConvo(Option<CowStr<'a>>),
+    InvalidConvo(Option<SmolStr>),
     /// Indicates that reactions are not allowed on this message, e.g. because it is a system message.
     #[serde(rename = "ReactionNotAllowed")]
-    ReactionNotAllowed(Option<CowStr<'a>>),
+    ReactionNotAllowed(Option<SmolStr>),
     /// Indicates that the message has been deleted and reactions can no longer be added/removed.
     #[serde(rename = "ReactionMessageDeleted")]
-    ReactionMessageDeleted(Option<CowStr<'a>>),
+    ReactionMessageDeleted(Option<SmolStr>),
     /// Indicates the value for the reaction is not acceptable. In general, this means it is not an emoji.
     #[serde(rename = "ReactionInvalidValue")]
-    ReactionInvalidValue(Option<CowStr<'a>>),
+    ReactionInvalidValue(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for RemoveReactionError<'_> {
+impl core::fmt::Display for RemoveReactionError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidConvo(msg) => {
@@ -97,21 +97,29 @@ impl core::fmt::Display for RemoveReactionError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for chat.bsky.convo.removeReaction
+/** Response marker for the `chat.bsky.convo.removeReaction` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `RemoveReactionOutput<S>` for this endpoint.*/
 pub struct RemoveReactionResponse;
 impl jacquard_common::xrpc::XrpcResp for RemoveReactionResponse {
     const NSID: &'static str = "chat.bsky.convo.removeReaction";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = RemoveReactionOutput<'de>;
-    type Err<'de> = RemoveReactionError<'de>;
+    type Output<S: BosStr> = RemoveReactionOutput<S>;
+    type Err = RemoveReactionError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for RemoveReaction<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for RemoveReaction<S> {
     const NSID: &'static str = "chat.bsky.convo.removeReaction";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -119,13 +127,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for RemoveReaction<'a> {
     type Response = RemoveReactionResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.removeReaction
+/** Endpoint marker for the `chat.bsky.convo.removeReaction` procedure.
+
+Path: `/xrpc/chat.bsky.convo.removeReaction`. The request payload type is `RemoveReaction<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct RemoveReactionRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for RemoveReactionRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.removeReaction";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = RemoveReaction<'de>;
+    type Request<S: BosStr> = RemoveReaction<S>;
     type Response = RemoveReactionResponse;
 }

@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{IntoStatic, lexicon};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -27,35 +29,35 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 /// Record representing a block relationship against an entire an entire list of accounts (actors).
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase", rename = "app.bsky.graph.listblock", tag = "$type")]
-pub struct Listblock<'a> {
+#[serde(
+    rename_all = "camelCase",
+    rename = "app.bsky.graph.listblock",
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct Listblock<S: BosStr = DefaultStr> {
     pub created_at: Datetime,
     ///Reference (AT-URI) to the mod list record.
-    #[serde(borrow)]
-    pub subject: AtUri<'a>,
+    pub subject: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct ListblockGetRecordOutput<'a> {
+pub struct ListblockGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Listblock<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Listblock<S>,
 }
 
-impl<'a> Listblock<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, ListblockRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Listblock<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, ListblockRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
@@ -66,18 +68,17 @@ pub struct ListblockRecord;
 impl XrpcResp for ListblockRecord {
     const NSID: &'static str = "app.bsky.graph.listblock";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ListblockGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = ListblockGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<ListblockGetRecordOutput<'_>> for Listblock<'_> {
-    fn from(output: ListblockGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<ListblockGetRecordOutput<S>> for Listblock<S> {
+    fn from(output: ListblockGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Listblock<'_> {
+impl<S: BosStr> Collection for Listblock<S> {
     const NSID: &'static str = "app.bsky.graph.listblock";
     type Record = ListblockRecord;
 }
@@ -87,7 +88,7 @@ impl Collection for ListblockRecord {
     type Record = ListblockRecord;
 }
 
-impl<'a> LexiconSchema for Listblock<'a> {
+impl<S: BosStr> LexiconSchema for Listblock<S> {
     fn nsid() -> &'static str {
         "app.bsky.graph.listblock"
     }
@@ -123,17 +124,17 @@ pub mod listblock_state {
         type Subject = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
-        type Subject = S::Subject;
+        type Subject = St::Subject;
     }
     ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
-        type CreatedAt = S::CreatedAt;
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
+        type CreatedAt = St::CreatedAt;
         type Subject = Set<members::subject>;
     }
     /// Marker types for field names
@@ -146,91 +147,106 @@ pub mod listblock_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ListblockBuilder<'a, S: listblock_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Datetime>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ListblockBuilder<St: listblock_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Datetime>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Listblock<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ListblockBuilder<'a, listblock_state::Empty> {
+impl Listblock<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ListblockBuilder<listblock_state::Empty, DefaultStr> {
         ListblockBuilder::new()
     }
 }
 
-impl<'a> ListblockBuilder<'a, listblock_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Listblock<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ListblockBuilder<listblock_state::Empty, S> {
+        ListblockBuilder::builder()
+    }
+}
+
+impl ListblockBuilder<listblock_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ListblockBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ListblockBuilder<'a, S>
+impl<S: BosStr> ListblockBuilder<listblock_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ListblockBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ListblockBuilder<St, S>
 where
-    S: listblock_state::State,
-    S::CreatedAt: listblock_state::IsUnset,
+    St: listblock_state::State,
+    St::CreatedAt: listblock_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> ListblockBuilder<'a, listblock_state::SetCreatedAt<S>> {
+    ) -> ListblockBuilder<listblock_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ListblockBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ListblockBuilder<'a, S>
+impl<St, S: BosStr> ListblockBuilder<St, S>
 where
-    S: listblock_state::State,
-    S::Subject: listblock_state::IsUnset,
+    St: listblock_state::State,
+    St::Subject: listblock_state::IsUnset,
 {
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> ListblockBuilder<'a, listblock_state::SetSubject<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> ListblockBuilder<listblock_state::SetSubject<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ListblockBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ListblockBuilder<'a, S>
+impl<St, S: BosStr> ListblockBuilder<St, S>
 where
-    S: listblock_state::State,
-    S::CreatedAt: listblock_state::IsSet,
-    S::Subject: listblock_state::IsSet,
+    St: listblock_state::State,
+    St::CreatedAt: listblock_state::IsSet,
+    St::Subject: listblock_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Listblock<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Listblock<S> {
         Listblock {
             created_at: self._fields.0.unwrap(),
             subject: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Listblock<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> Listblock<S> {
         Listblock {
             created_at: self._fields.0.unwrap(),
             subject: self._fields.1.unwrap(),

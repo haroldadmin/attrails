@@ -10,69 +10,71 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Datetime;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::report::ReportActivityView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct QueryActivities<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct QueryActivities<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub activity_types: Option<Vec<CowStr<'a>>>,
+    pub activity_types: Option<Vec<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_after: Option<Datetime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_before: Option<Datetime>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
-    ///Defaults to `"desc"`.
+    /// Defaults to `"desc"`.
     #[serde(default = "_default_sort_direction")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub sort_direction: Option<CowStr<'a>>,
+    pub sort_direction: Option<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct QueryActivitiesOutput<'a> {
-    #[serde(borrow)]
-    pub activities: Vec<ReportActivityView<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct QueryActivitiesOutput<S: BosStr = DefaultStr> {
+    pub activities: Vec<ReportActivityView<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.report.queryActivities
+/** Response marker for the `tools.ozone.report.queryActivities` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `QueryActivitiesOutput<S>` for this endpoint.*/
 pub struct QueryActivitiesResponse;
 impl jacquard_common::xrpc::XrpcResp for QueryActivitiesResponse {
     const NSID: &'static str = "tools.ozone.report.queryActivities";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = QueryActivitiesOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = QueryActivitiesOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for QueryActivities<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for QueryActivities<S> {
     const NSID: &'static str = "tools.ozone.report.queryActivities";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = QueryActivitiesResponse;
 }
 
-/// Endpoint type for tools.ozone.report.queryActivities
+/** Endpoint marker for the `tools.ozone.report.queryActivities` query.
+
+Path: `/xrpc/tools.ozone.report.queryActivities`. The request payload type is `QueryActivities<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct QueryActivitiesRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for QueryActivitiesRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.report.queryActivities";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = QueryActivities<'de>;
+    type Request<S: BosStr> = QueryActivities<S>;
     type Response = QueryActivitiesResponse;
 }
 
@@ -80,8 +82,8 @@ fn _default_limit() -> Option<i64> {
     Some(50i64)
 }
 
-fn _default_sort_direction() -> Option<CowStr<'static>> {
-    Some(CowStr::from("desc"))
+fn _default_sort_direction<S: jacquard_common::FromStaticStr>() -> Option<S> {
+    Some(S::from_static("desc"))
 }
 
 pub mod query_activities_state {
@@ -103,52 +105,73 @@ pub mod query_activities_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct QueryActivitiesBuilder<'a, S: query_activities_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct QueryActivitiesBuilder<
+    St: query_activities_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<Vec<CowStr<'a>>>,
+        Option<Vec<S>>,
         Option<Datetime>,
         Option<Datetime>,
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<i64>,
-        Option<CowStr<'a>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> QueryActivities<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> QueryActivitiesBuilder<'a, query_activities_state::Empty> {
+impl QueryActivities<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> QueryActivitiesBuilder<query_activities_state::Empty, DefaultStr> {
         QueryActivitiesBuilder::new()
     }
 }
 
-impl<'a> QueryActivitiesBuilder<'a, query_activities_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> QueryActivities<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> QueryActivitiesBuilder<query_activities_state::Empty, S> {
+        QueryActivitiesBuilder::builder()
+    }
+}
+
+impl QueryActivitiesBuilder<query_activities_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         QueryActivitiesBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: query_activities_state::State> QueryActivitiesBuilder<'a, S> {
+impl<S: BosStr> QueryActivitiesBuilder<query_activities_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        QueryActivitiesBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: query_activities_state::State, S: BosStr> QueryActivitiesBuilder<St, S> {
     /// Set the `activityTypes` field (optional)
-    pub fn activity_types(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn activity_types(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `activityTypes` field to an Option value (optional)
-    pub fn maybe_activity_types(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_activity_types(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: query_activities_state::State> QueryActivitiesBuilder<'a, S> {
+impl<St: query_activities_state::State, S: BosStr> QueryActivitiesBuilder<St, S> {
     /// Set the `createdAfter` field (optional)
     pub fn created_after(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.1 = value.into();
@@ -161,7 +184,7 @@ impl<'a, S: query_activities_state::State> QueryActivitiesBuilder<'a, S> {
     }
 }
 
-impl<'a, S: query_activities_state::State> QueryActivitiesBuilder<'a, S> {
+impl<St: query_activities_state::State, S: BosStr> QueryActivitiesBuilder<St, S> {
     /// Set the `createdBefore` field (optional)
     pub fn created_before(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.2 = value.into();
@@ -174,20 +197,20 @@ impl<'a, S: query_activities_state::State> QueryActivitiesBuilder<'a, S> {
     }
 }
 
-impl<'a, S: query_activities_state::State> QueryActivitiesBuilder<'a, S> {
+impl<St: query_activities_state::State, S: BosStr> QueryActivitiesBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: query_activities_state::State> QueryActivitiesBuilder<'a, S> {
+impl<St: query_activities_state::State, S: BosStr> QueryActivitiesBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.4 = value.into();
@@ -200,25 +223,25 @@ impl<'a, S: query_activities_state::State> QueryActivitiesBuilder<'a, S> {
     }
 }
 
-impl<'a, S: query_activities_state::State> QueryActivitiesBuilder<'a, S> {
+impl<St: query_activities_state::State, S: BosStr> QueryActivitiesBuilder<St, S> {
     /// Set the `sortDirection` field (optional)
-    pub fn sort_direction(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn sort_direction(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `sortDirection` field to an Option value (optional)
-    pub fn maybe_sort_direction(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_sort_direction(mut self, value: Option<S>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S> QueryActivitiesBuilder<'a, S>
+impl<St, S: BosStr> QueryActivitiesBuilder<St, S>
 where
-    S: query_activities_state::State,
+    St: query_activities_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> QueryActivities<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> QueryActivities<S> {
         QueryActivities {
             activity_types: self._fields.0,
             created_after: self._fields.1,

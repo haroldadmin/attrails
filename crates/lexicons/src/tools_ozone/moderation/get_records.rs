@@ -10,60 +10,66 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::AtUri;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::moderation::RecordViewDetail;
 use crate::tools_ozone::moderation::RecordViewNotFound;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetRecords<'a> {
-    #[serde(borrow)]
-    pub uris: Vec<AtUri<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetRecords<S: BosStr = DefaultStr> {
+    pub uris: Vec<AtUri<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetRecordsOutput<'a> {
-    #[serde(borrow)]
-    pub records: Vec<GetRecordsOutputRecordsItem<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetRecordsOutput<S: BosStr = DefaultStr> {
+    pub records: Vec<GetRecordsOutputRecordsItem<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum GetRecordsOutputRecordsItem<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum GetRecordsOutputRecordsItem<S: BosStr = DefaultStr> {
     #[serde(rename = "tools.ozone.moderation.defs#recordViewDetail")]
-    RecordViewDetail(Box<RecordViewDetail<'a>>),
+    RecordViewDetail(Box<RecordViewDetail<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#recordViewNotFound")]
-    RecordViewNotFound(Box<RecordViewNotFound<'a>>),
+    RecordViewNotFound(Box<RecordViewNotFound<S>>),
 }
 
-/// Response type for tools.ozone.moderation.getRecords
+/** Response marker for the `tools.ozone.moderation.getRecords` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetRecordsOutput<S>` for this endpoint.*/
 pub struct GetRecordsResponse;
 impl jacquard_common::xrpc::XrpcResp for GetRecordsResponse {
     const NSID: &'static str = "tools.ozone.moderation.getRecords";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetRecordsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetRecordsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetRecords<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetRecords<S> {
     const NSID: &'static str = "tools.ozone.moderation.getRecords";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetRecordsResponse;
 }
 
-/// Endpoint type for tools.ozone.moderation.getRecords
+/** Endpoint marker for the `tools.ozone.moderation.getRecords` query.
+
+Path: `/xrpc/tools.ozone.moderation.getRecords`. The request payload type is `GetRecords<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetRecordsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetRecordsRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.moderation.getRecords";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetRecords<'de>;
+    type Request<S: BosStr> = GetRecords<S>;
     type Response = GetRecordsResponse;
 }
 
@@ -86,9 +92,9 @@ pub mod get_records_state {
         type Uris = Unset;
     }
     ///State transition - sets the `uris` field to Set
-    pub struct SetUris<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUris<S> {}
-    impl<S: State> State for SetUris<S> {
+    pub struct SetUris<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUris<St> {}
+    impl<St: State> State for SetUris<St> {
         type Uris = Set<members::uris>;
     }
     /// Marker types for field names
@@ -99,57 +105,75 @@ pub mod get_records_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetRecordsBuilder<'a, S: get_records_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<AtUri<'a>>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetRecordsBuilder<St: get_records_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<AtUri<S>>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetRecords<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetRecordsBuilder<'a, get_records_state::Empty> {
+impl GetRecords<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetRecordsBuilder<get_records_state::Empty, DefaultStr> {
         GetRecordsBuilder::new()
     }
 }
 
-impl<'a> GetRecordsBuilder<'a, get_records_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetRecords<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetRecordsBuilder<get_records_state::Empty, S> {
+        GetRecordsBuilder::builder()
+    }
+}
+
+impl GetRecordsBuilder<get_records_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetRecordsBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetRecordsBuilder<'a, S>
+impl<S: BosStr> GetRecordsBuilder<get_records_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetRecordsBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetRecordsBuilder<St, S>
 where
-    S: get_records_state::State,
-    S::Uris: get_records_state::IsUnset,
+    St: get_records_state::State,
+    St::Uris: get_records_state::IsUnset,
 {
     /// Set the `uris` field (required)
     pub fn uris(
         mut self,
-        value: impl Into<Vec<AtUri<'a>>>,
-    ) -> GetRecordsBuilder<'a, get_records_state::SetUris<S>> {
+        value: impl Into<Vec<AtUri<S>>>,
+    ) -> GetRecordsBuilder<get_records_state::SetUris<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetRecordsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetRecordsBuilder<'a, S>
+impl<St, S: BosStr> GetRecordsBuilder<St, S>
 where
-    S: get_records_state::State,
-    S::Uris: get_records_state::IsSet,
+    St: get_records_state::State,
+    St::Uris: get_records_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetRecords<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetRecords<S> {
         GetRecords {
             uris: self._fields.0.unwrap(),
         }

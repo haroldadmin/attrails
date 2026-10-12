@@ -10,14 +10,16 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::blob::BlobRef;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{IntoStatic, lexicon};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -40,27 +42,27 @@ impl core::fmt::Display for Commute {
 
 /// Cycling-specific attributes of a route.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct CyclingDetails<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CyclingDetails<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub discipline: Option<CyclingDetailsDiscipline<'a>>,
+    pub discipline: Option<CyclingDetailsDiscipline<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum CyclingDetailsDiscipline<'a> {
+pub enum CyclingDetailsDiscipline<S: BosStr = DefaultStr> {
     Road,
     GravelBike,
     Mtb,
     Touring,
     Commute,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> CyclingDetailsDiscipline<'a> {
+impl<S: BosStr> CyclingDetailsDiscipline<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Road => "app.attrails.v0.route#road",
@@ -71,76 +73,63 @@ impl<'a> CyclingDetailsDiscipline<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for CyclingDetailsDiscipline<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "app.attrails.v0.route#road" => Self::Road,
             "app.attrails.v0.route#gravelBike" => Self::GravelBike,
             "app.attrails.v0.route#mtb" => Self::Mtb,
             "app.attrails.v0.route#touring" => Self::Touring,
             "app.attrails.v0.route#commute" => Self::Commute,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for CyclingDetailsDiscipline<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "app.attrails.v0.route#road" => Self::Road,
-            "app.attrails.v0.route#gravelBike" => Self::GravelBike,
-            "app.attrails.v0.route#mtb" => Self::Mtb,
-            "app.attrails.v0.route#touring" => Self::Touring,
-            "app.attrails.v0.route#commute" => Self::Commute,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for CyclingDetailsDiscipline<'a> {
+impl<S: BosStr> core::fmt::Display for CyclingDetailsDiscipline<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for CyclingDetailsDiscipline<'a> {
+impl<S: BosStr> AsRef<str> for CyclingDetailsDiscipline<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for CyclingDetailsDiscipline<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for CyclingDetailsDiscipline<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for CyclingDetailsDiscipline<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for CyclingDetailsDiscipline<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for CyclingDetailsDiscipline<'a> {
+impl<S: BosStr + Default> Default for CyclingDetailsDiscipline<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for CyclingDetailsDiscipline<'_> {
-    type Output = CyclingDetailsDiscipline<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for CyclingDetailsDiscipline<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = CyclingDetailsDiscipline<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             CyclingDetailsDiscipline::Road => CyclingDetailsDiscipline::Road,
@@ -167,56 +156,53 @@ impl core::fmt::Display for GravelBike {
 
 /// A route for a human-powered activity (cycling, running, hiking, ...) shared by a user. The GPX track is stored as a blob; all geographic statistics are derived by the AppView from the blob and are not part of this record.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase", rename = "app.attrails.v0.route", tag = "$type")]
-pub struct Route<'a> {
+#[serde(
+    rename_all = "camelCase",
+    rename = "app.attrails.v0.route",
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct Route<S: BosStr = DefaultStr> {
     ///The activity this route is intended for. Open enum; unknown values are allowed.
-    #[serde(borrow)]
-    pub activity: RouteActivity<'a>,
+    pub activity: RouteActivity<S>,
     pub created_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
+    pub description: Option<S>,
     ///Activity-specific attributes. Open union: new activity detail types can be added later without breaking existing clients.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub details: Option<route::CyclingDetails<'a>>,
+    pub details: Option<route::CyclingDetails<S>>,
     ///Author's subjective difficulty for the stated activity.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub difficulty: Option<RouteDifficulty<'a>>,
+    pub difficulty: Option<RouteDifficulty<S>>,
     ///GPX 1.1 track. Upload with Content-Type application/gpx+xml. maxSize matches the default Bluesky PDS blob limit (976.5625KB); larger routes must be simplified or compressed to fit.
-    #[serde(borrow)]
-    pub gpx: BlobRef<'a>,
+    pub gpx: BlobRef<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub images: Option<Vec<Image<'a>>>,
+    pub images: Option<Vec<Image<S>>>,
     ///Name of the route. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    pub name: S,
     ///Predominant surface. Activity-neutral.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub surface: Option<RouteSurface<'a>>,
+    pub surface: Option<RouteSurface<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub tags: Option<Vec<CowStr<'a>>>,
+    pub tags: Option<Vec<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// The activity this route is intended for. Open enum; unknown values are allowed.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RouteActivity<'a> {
+pub enum RouteActivity<S: BosStr = DefaultStr> {
     Cycling,
     Running,
     Hiking,
     Walking,
     Other,
-    UnknownValue(CowStr<'a>),
+    UnknownValue(S),
 }
 
-impl<'a> RouteActivity<'a> {
+impl<S: BosStr> RouteActivity<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Cycling => "app.attrails.v0.defs#cycling",
@@ -227,76 +213,62 @@ impl<'a> RouteActivity<'a> {
             Self::UnknownValue(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for RouteActivity<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "app.attrails.v0.defs#cycling" => Self::Cycling,
             "app.attrails.v0.defs#running" => Self::Running,
             "app.attrails.v0.defs#hiking" => Self::Hiking,
             "app.attrails.v0.defs#walking" => Self::Walking,
             "app.attrails.v0.defs#other" => Self::Other,
-            _ => Self::UnknownValue(CowStr::from(s)),
+            _ => Self::UnknownValue(s),
         }
     }
 }
 
-impl<'a> From<String> for RouteActivity<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "app.attrails.v0.defs#cycling" => Self::Cycling,
-            "app.attrails.v0.defs#running" => Self::Running,
-            "app.attrails.v0.defs#hiking" => Self::Hiking,
-            "app.attrails.v0.defs#walking" => Self::Walking,
-            "app.attrails.v0.defs#other" => Self::Other,
-            _ => Self::UnknownValue(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for RouteActivity<'a> {
+impl<S: BosStr> core::fmt::Display for RouteActivity<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for RouteActivity<'a> {
+impl<S: BosStr> AsRef<str> for RouteActivity<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for RouteActivity<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for RouteActivity<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for RouteActivity<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for RouteActivity<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for RouteActivity<'a> {
+impl<S: BosStr + Default> Default for RouteActivity<S> {
     fn default() -> Self {
         Self::UnknownValue(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for RouteActivity<'_> {
-    type Output = RouteActivity<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for RouteActivity<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = RouteActivity<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             RouteActivity::Cycling => RouteActivity::Cycling,
@@ -314,15 +286,15 @@ impl jacquard_common::IntoStatic for RouteActivity<'_> {
 /// Author's subjective difficulty for the stated activity.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RouteDifficulty<'a> {
+pub enum RouteDifficulty<S: BosStr = DefaultStr> {
     Easy,
     Moderate,
     Hard,
     Extreme,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> RouteDifficulty<'a> {
+impl<S: BosStr> RouteDifficulty<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Easy => "app.attrails.v0.defs#easy",
@@ -332,74 +304,61 @@ impl<'a> RouteDifficulty<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for RouteDifficulty<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "app.attrails.v0.defs#easy" => Self::Easy,
             "app.attrails.v0.defs#moderate" => Self::Moderate,
             "app.attrails.v0.defs#hard" => Self::Hard,
             "app.attrails.v0.defs#extreme" => Self::Extreme,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for RouteDifficulty<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "app.attrails.v0.defs#easy" => Self::Easy,
-            "app.attrails.v0.defs#moderate" => Self::Moderate,
-            "app.attrails.v0.defs#hard" => Self::Hard,
-            "app.attrails.v0.defs#extreme" => Self::Extreme,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for RouteDifficulty<'a> {
+impl<S: BosStr> core::fmt::Display for RouteDifficulty<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for RouteDifficulty<'a> {
+impl<S: BosStr> AsRef<str> for RouteDifficulty<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for RouteDifficulty<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for RouteDifficulty<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for RouteDifficulty<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for RouteDifficulty<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for RouteDifficulty<'a> {
+impl<S: BosStr + Default> Default for RouteDifficulty<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for RouteDifficulty<'_> {
-    type Output = RouteDifficulty<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for RouteDifficulty<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = RouteDifficulty<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             RouteDifficulty::Easy => RouteDifficulty::Easy,
@@ -414,15 +373,15 @@ impl jacquard_common::IntoStatic for RouteDifficulty<'_> {
 /// Predominant surface. Activity-neutral.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RouteSurface<'a> {
+pub enum RouteSurface<S: BosStr = DefaultStr> {
     Paved,
     Gravel,
     Trail,
     Mixed,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> RouteSurface<'a> {
+impl<S: BosStr> RouteSurface<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Paved => "app.attrails.v0.defs#paved",
@@ -432,74 +391,61 @@ impl<'a> RouteSurface<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for RouteSurface<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "app.attrails.v0.defs#paved" => Self::Paved,
             "app.attrails.v0.defs#gravel" => Self::Gravel,
             "app.attrails.v0.defs#trail" => Self::Trail,
             "app.attrails.v0.defs#mixed" => Self::Mixed,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for RouteSurface<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "app.attrails.v0.defs#paved" => Self::Paved,
-            "app.attrails.v0.defs#gravel" => Self::Gravel,
-            "app.attrails.v0.defs#trail" => Self::Trail,
-            "app.attrails.v0.defs#mixed" => Self::Mixed,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for RouteSurface<'a> {
+impl<S: BosStr> core::fmt::Display for RouteSurface<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for RouteSurface<'a> {
+impl<S: BosStr> AsRef<str> for RouteSurface<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for RouteSurface<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for RouteSurface<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for RouteSurface<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for RouteSurface<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for RouteSurface<'a> {
+impl<S: BosStr + Default> Default for RouteSurface<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for RouteSurface<'_> {
-    type Output = RouteSurface<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for RouteSurface<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = RouteSurface<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             RouteSurface::Paved => RouteSurface::Paved,
@@ -515,14 +461,11 @@ impl jacquard_common::IntoStatic for RouteSurface<'_> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct RouteGetRecordOutput<'a> {
+pub struct RouteGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Route<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Route<S>,
 }
 
 /// Mountain biking.
@@ -555,15 +498,13 @@ impl core::fmt::Display for Touring {
     }
 }
 
-impl<'a> Route<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, RouteRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Route<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, RouteRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
-impl<'a> LexiconSchema for CyclingDetails<'a> {
+impl<S: BosStr> LexiconSchema for CyclingDetails<S> {
     fn nsid() -> &'static str {
         "app.attrails.v0.route"
     }
@@ -585,18 +526,17 @@ pub struct RouteRecord;
 impl XrpcResp for RouteRecord {
     const NSID: &'static str = "app.attrails.v0.route";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = RouteGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = RouteGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<RouteGetRecordOutput<'_>> for Route<'_> {
-    fn from(output: RouteGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<RouteGetRecordOutput<S>> for Route<S> {
+    fn from(output: RouteGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Route<'_> {
+impl<S: BosStr> Collection for Route<S> {
     const NSID: &'static str = "app.attrails.v0.route";
     type Record = RouteRecord;
 }
@@ -606,7 +546,7 @@ impl Collection for RouteRecord {
     type Record = RouteRecord;
 }
 
-impl<'a> LexiconSchema for Route<'a> {
+impl<S: BosStr> LexiconSchema for Route<S> {
     fn nsid() -> &'static str {
         "app.attrails.v0.route"
     }
@@ -728,6 +668,33 @@ impl<'a> LexiconSchema for Route<'a> {
                     max: 20usize,
                     actual: value.len(),
                 });
+            }
+        }
+        if let Some(values) = &self.tags {
+            for value in values {
+                #[allow(unused_comparisons)]
+                if <str>::len(value.as_ref()) > 640usize {
+                    return Err(ConstraintError::MaxLength {
+                        path: ValidationPath::from_field("tags"),
+                        max: 640usize,
+                        actual: <str>::len(value.as_ref()),
+                    });
+                }
+            }
+        }
+        if let Some(values) = &self.tags {
+            for value in values {
+                {
+                    let count = UnicodeSegmentation::graphemes(value.as_ref(), true)
+                        .count();
+                    if count > 64usize {
+                        return Err(ConstraintError::MaxGraphemes {
+                            path: ValidationPath::from_field("tags"),
+                            max: 64usize,
+                            actual: count,
+                        });
+                    }
+                }
             }
         }
         Ok(())
@@ -925,273 +892,291 @@ pub mod route_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Gpx;
-        type Name;
         type Activity;
         type CreatedAt;
+        type Gpx;
+        type Name;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Gpx = Unset;
-        type Name = Unset;
         type Activity = Unset;
         type CreatedAt = Unset;
-    }
-    ///State transition - sets the `gpx` field to Set
-    pub struct SetGpx<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetGpx<S> {}
-    impl<S: State> State for SetGpx<S> {
-        type Gpx = Set<members::gpx>;
-        type Name = S::Name;
-        type Activity = S::Activity;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `name` field to Set
-    pub struct SetName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetName<S> {}
-    impl<S: State> State for SetName<S> {
-        type Gpx = S::Gpx;
-        type Name = Set<members::name>;
-        type Activity = S::Activity;
-        type CreatedAt = S::CreatedAt;
+        type Gpx = Unset;
+        type Name = Unset;
     }
     ///State transition - sets the `activity` field to Set
-    pub struct SetActivity<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetActivity<S> {}
-    impl<S: State> State for SetActivity<S> {
-        type Gpx = S::Gpx;
-        type Name = S::Name;
+    pub struct SetActivity<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetActivity<St> {}
+    impl<St: State> State for SetActivity<St> {
         type Activity = Set<members::activity>;
-        type CreatedAt = S::CreatedAt;
+        type CreatedAt = St::CreatedAt;
+        type Gpx = St::Gpx;
+        type Name = St::Name;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Gpx = S::Gpx;
-        type Name = S::Name;
-        type Activity = S::Activity;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
+        type Activity = St::Activity;
         type CreatedAt = Set<members::created_at>;
+        type Gpx = St::Gpx;
+        type Name = St::Name;
+    }
+    ///State transition - sets the `gpx` field to Set
+    pub struct SetGpx<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetGpx<St> {}
+    impl<St: State> State for SetGpx<St> {
+        type Activity = St::Activity;
+        type CreatedAt = St::CreatedAt;
+        type Gpx = Set<members::gpx>;
+        type Name = St::Name;
+    }
+    ///State transition - sets the `name` field to Set
+    pub struct SetName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetName<St> {}
+    impl<St: State> State for SetName<St> {
+        type Activity = St::Activity;
+        type CreatedAt = St::CreatedAt;
+        type Gpx = St::Gpx;
+        type Name = Set<members::name>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `gpx` field
-        pub struct gpx(());
-        ///Marker type for the `name` field
-        pub struct name(());
         ///Marker type for the `activity` field
         pub struct activity(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `gpx` field
+        pub struct gpx(());
+        ///Marker type for the `name` field
+        pub struct name(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct RouteBuilder<'a, S: route_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct RouteBuilder<St: route_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<RouteActivity<'a>>,
+        Option<RouteActivity<S>>,
         Option<Datetime>,
-        Option<CowStr<'a>>,
-        Option<route::CyclingDetails<'a>>,
-        Option<RouteDifficulty<'a>>,
-        Option<BlobRef<'a>>,
-        Option<Vec<Image<'a>>>,
-        Option<CowStr<'a>>,
-        Option<RouteSurface<'a>>,
-        Option<Vec<CowStr<'a>>>,
+        Option<S>,
+        Option<route::CyclingDetails<S>>,
+        Option<RouteDifficulty<S>>,
+        Option<BlobRef<S>>,
+        Option<Vec<Image<S>>>,
+        Option<S>,
+        Option<RouteSurface<S>>,
+        Option<Vec<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Route<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> RouteBuilder<'a, route_state::Empty> {
+impl Route<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> RouteBuilder<route_state::Empty, DefaultStr> {
         RouteBuilder::new()
     }
 }
 
-impl<'a> RouteBuilder<'a, route_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Route<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> RouteBuilder<route_state::Empty, S> {
+        RouteBuilder::builder()
+    }
+}
+
+impl RouteBuilder<route_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         RouteBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RouteBuilder<'a, S>
+impl<S: BosStr> RouteBuilder<route_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        RouteBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> RouteBuilder<St, S>
 where
-    S: route_state::State,
-    S::Activity: route_state::IsUnset,
+    St: route_state::State,
+    St::Activity: route_state::IsUnset,
 {
     /// Set the `activity` field (required)
     pub fn activity(
         mut self,
-        value: impl Into<RouteActivity<'a>>,
-    ) -> RouteBuilder<'a, route_state::SetActivity<S>> {
+        value: impl Into<RouteActivity<S>>,
+    ) -> RouteBuilder<route_state::SetActivity<St>, S> {
         self._fields.0 = Option::Some(value.into());
         RouteBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RouteBuilder<'a, S>
+impl<St, S: BosStr> RouteBuilder<St, S>
 where
-    S: route_state::State,
-    S::CreatedAt: route_state::IsUnset,
+    St: route_state::State,
+    St::CreatedAt: route_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> RouteBuilder<'a, route_state::SetCreatedAt<S>> {
+    ) -> RouteBuilder<route_state::SetCreatedAt<St>, S> {
         self._fields.1 = Option::Some(value.into());
         RouteBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: route_state::State> RouteBuilder<'a, S> {
+impl<St: route_state::State, S: BosStr> RouteBuilder<St, S> {
     /// Set the `description` field (optional)
-    pub fn description(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn description(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `description` field to an Option value (optional)
-    pub fn maybe_description(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_description(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: route_state::State> RouteBuilder<'a, S> {
+impl<St: route_state::State, S: BosStr> RouteBuilder<St, S> {
     /// Set the `details` field (optional)
     pub fn details(
         mut self,
-        value: impl Into<Option<route::CyclingDetails<'a>>>,
+        value: impl Into<Option<route::CyclingDetails<S>>>,
     ) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `details` field to an Option value (optional)
-    pub fn maybe_details(mut self, value: Option<route::CyclingDetails<'a>>) -> Self {
+    pub fn maybe_details(mut self, value: Option<route::CyclingDetails<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: route_state::State> RouteBuilder<'a, S> {
+impl<St: route_state::State, S: BosStr> RouteBuilder<St, S> {
     /// Set the `difficulty` field (optional)
-    pub fn difficulty(mut self, value: impl Into<Option<RouteDifficulty<'a>>>) -> Self {
+    pub fn difficulty(mut self, value: impl Into<Option<RouteDifficulty<S>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `difficulty` field to an Option value (optional)
-    pub fn maybe_difficulty(mut self, value: Option<RouteDifficulty<'a>>) -> Self {
+    pub fn maybe_difficulty(mut self, value: Option<RouteDifficulty<S>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> RouteBuilder<'a, S>
+impl<St, S: BosStr> RouteBuilder<St, S>
 where
-    S: route_state::State,
-    S::Gpx: route_state::IsUnset,
+    St: route_state::State,
+    St::Gpx: route_state::IsUnset,
 {
     /// Set the `gpx` field (required)
     pub fn gpx(
         mut self,
-        value: impl Into<BlobRef<'a>>,
-    ) -> RouteBuilder<'a, route_state::SetGpx<S>> {
+        value: impl Into<BlobRef<S>>,
+    ) -> RouteBuilder<route_state::SetGpx<St>, S> {
         self._fields.5 = Option::Some(value.into());
         RouteBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: route_state::State> RouteBuilder<'a, S> {
+impl<St: route_state::State, S: BosStr> RouteBuilder<St, S> {
     /// Set the `images` field (optional)
-    pub fn images(mut self, value: impl Into<Option<Vec<Image<'a>>>>) -> Self {
+    pub fn images(mut self, value: impl Into<Option<Vec<Image<S>>>>) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `images` field to an Option value (optional)
-    pub fn maybe_images(mut self, value: Option<Vec<Image<'a>>>) -> Self {
+    pub fn maybe_images(mut self, value: Option<Vec<Image<S>>>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S> RouteBuilder<'a, S>
+impl<St, S: BosStr> RouteBuilder<St, S>
 where
-    S: route_state::State,
-    S::Name: route_state::IsUnset,
+    St: route_state::State,
+    St::Name: route_state::IsUnset,
 {
     /// Set the `name` field (required)
     pub fn name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> RouteBuilder<'a, route_state::SetName<S>> {
+        value: impl Into<S>,
+    ) -> RouteBuilder<route_state::SetName<St>, S> {
         self._fields.7 = Option::Some(value.into());
         RouteBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: route_state::State> RouteBuilder<'a, S> {
+impl<St: route_state::State, S: BosStr> RouteBuilder<St, S> {
     /// Set the `surface` field (optional)
-    pub fn surface(mut self, value: impl Into<Option<RouteSurface<'a>>>) -> Self {
+    pub fn surface(mut self, value: impl Into<Option<RouteSurface<S>>>) -> Self {
         self._fields.8 = value.into();
         self
     }
     /// Set the `surface` field to an Option value (optional)
-    pub fn maybe_surface(mut self, value: Option<RouteSurface<'a>>) -> Self {
+    pub fn maybe_surface(mut self, value: Option<RouteSurface<S>>) -> Self {
         self._fields.8 = value;
         self
     }
 }
 
-impl<'a, S: route_state::State> RouteBuilder<'a, S> {
+impl<St: route_state::State, S: BosStr> RouteBuilder<St, S> {
     /// Set the `tags` field (optional)
-    pub fn tags(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn tags(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.9 = value.into();
         self
     }
     /// Set the `tags` field to an Option value (optional)
-    pub fn maybe_tags(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_tags(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.9 = value;
         self
     }
 }
 
-impl<'a, S> RouteBuilder<'a, S>
+impl<St, S: BosStr> RouteBuilder<St, S>
 where
-    S: route_state::State,
-    S::Gpx: route_state::IsSet,
-    S::Name: route_state::IsSet,
-    S::Activity: route_state::IsSet,
-    S::CreatedAt: route_state::IsSet,
+    St: route_state::State,
+    St::Activity: route_state::IsSet,
+    St::CreatedAt: route_state::IsSet,
+    St::Gpx: route_state::IsSet,
+    St::Name: route_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Route<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Route<S> {
         Route {
             activity: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),
@@ -1206,14 +1191,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Route<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Route<S> {
         Route {
             activity: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),

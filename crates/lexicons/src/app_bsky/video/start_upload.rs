@@ -10,15 +10,16 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Datetime;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct StartUpload<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct StartUpload<S: BosStr = DefaultStr> {
     ///Advisory, non-authoritative duration used only for early failure; the authoritative probe runs asynchronously after upload.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<i64>,
@@ -26,33 +27,32 @@ pub struct StartUpload<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub height: Option<i64>,
     ///Declared MIME type of the video.
-    #[serde(borrow)]
-    pub mime_type: CowStr<'a>,
+    pub mime_type: S,
     ///Optional client-provided file name.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub name: Option<CowStr<'a>>,
+    pub name: Option<S>,
     ///Exact byte size of the complete upload-ready video file before it is split into parts.
     pub size_bytes: i64,
     ///Advisory, non-authoritative width used only for early failure; the authoritative probe runs asynchronously after upload.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<i64>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct StartUploadOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct StartUploadOutput<S: BosStr = DefaultStr> {
     pub expires_at: Datetime,
-    #[serde(borrow)]
-    pub job_id: CowStr<'a>,
+    pub job_id: S,
     pub part_count: i64,
     pub part_size_bytes: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -61,40 +61,41 @@ pub struct StartUploadOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum StartUploadError<'a> {
+pub enum StartUploadError {
     /// The declared MIME type is not supported.
     #[serde(rename = "UnsupportedContentType")]
-    UnsupportedContentType(Option<CowStr<'a>>),
+    UnsupportedContentType(Option<SmolStr>),
     /// The exact file size exceeds the per-file cap or remaining daily byte allowance.
     #[serde(rename = "VideoTooLarge")]
-    VideoTooLarge(Option<CowStr<'a>>),
+    VideoTooLarge(Option<SmolStr>),
     /// The advisory declared duration exceeds the limit.
     #[serde(rename = "VideoTooLong")]
-    VideoTooLong(Option<CowStr<'a>>),
+    VideoTooLong(Option<SmolStr>),
     /// The advisory declared dimensions have an unsupported aspect ratio.
     #[serde(rename = "BadAspectRatio")]
-    BadAspectRatio(Option<CowStr<'a>>),
+    BadAspectRatio(Option<SmolStr>),
     /// The daily video or byte allowance, including active reservations, is exhausted.
     #[serde(rename = "DailyLimitExceeded")]
-    DailyLimitExceeded(Option<CowStr<'a>>),
+    DailyLimitExceeded(Option<SmolStr>),
     /// The account has reached its open multipart upload limit.
     #[serde(rename = "TooManyOpenUploads")]
-    TooManyOpenUploads(Option<CowStr<'a>>),
+    TooManyOpenUploads(Option<SmolStr>),
     /// The account is not permitted to upload video.
     #[serde(rename = "UploadForbidden")]
-    UploadForbidden(Option<CowStr<'a>>),
+    UploadForbidden(Option<SmolStr>),
     /// The service is draining, at capacity, or temporarily unable to create the multipart upload.
     #[serde(rename = "ServiceOverloaded")]
-    ServiceOverloaded(Option<CowStr<'a>>),
+    ServiceOverloaded(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for StartUploadError<'_> {
+impl core::fmt::Display for StartUploadError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::UnsupportedContentType(msg) => {
@@ -153,21 +154,29 @@ impl core::fmt::Display for StartUploadError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.video.startUpload
+/** Response marker for the `app.bsky.video.startUpload` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `StartUploadOutput<S>` for this endpoint.*/
 pub struct StartUploadResponse;
 impl jacquard_common::xrpc::XrpcResp for StartUploadResponse {
     const NSID: &'static str = "app.bsky.video.startUpload";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = StartUploadOutput<'de>;
-    type Err<'de> = StartUploadError<'de>;
+    type Output<S: BosStr> = StartUploadOutput<S>;
+    type Err = StartUploadError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for StartUpload<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for StartUpload<S> {
     const NSID: &'static str = "app.bsky.video.startUpload";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -175,14 +184,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for StartUpload<'a> {
     type Response = StartUploadResponse;
 }
 
-/// Endpoint type for app.bsky.video.startUpload
+/** Endpoint marker for the `app.bsky.video.startUpload` procedure.
+
+Path: `/xrpc/app.bsky.video.startUpload`. The request payload type is `StartUpload<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct StartUploadRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for StartUploadRequest {
     const PATH: &'static str = "/xrpc/app.bsky.video.startUpload";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = StartUpload<'de>;
+    type Request<S: BosStr> = StartUpload<S>;
     type Response = StartUploadResponse;
 }
 
@@ -196,73 +207,84 @@ pub mod start_upload_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type SizeBytes;
         type MimeType;
+        type SizeBytes;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type SizeBytes = Unset;
         type MimeType = Unset;
-    }
-    ///State transition - sets the `size_bytes` field to Set
-    pub struct SetSizeBytes<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSizeBytes<S> {}
-    impl<S: State> State for SetSizeBytes<S> {
-        type SizeBytes = Set<members::size_bytes>;
-        type MimeType = S::MimeType;
+        type SizeBytes = Unset;
     }
     ///State transition - sets the `mime_type` field to Set
-    pub struct SetMimeType<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMimeType<S> {}
-    impl<S: State> State for SetMimeType<S> {
-        type SizeBytes = S::SizeBytes;
+    pub struct SetMimeType<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMimeType<St> {}
+    impl<St: State> State for SetMimeType<St> {
         type MimeType = Set<members::mime_type>;
+        type SizeBytes = St::SizeBytes;
+    }
+    ///State transition - sets the `size_bytes` field to Set
+    pub struct SetSizeBytes<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSizeBytes<St> {}
+    impl<St: State> State for SetSizeBytes<St> {
+        type MimeType = St::MimeType;
+        type SizeBytes = Set<members::size_bytes>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `size_bytes` field
-        pub struct size_bytes(());
         ///Marker type for the `mime_type` field
         pub struct mime_type(());
+        ///Marker type for the `size_bytes` field
+        pub struct size_bytes(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct StartUploadBuilder<'a, S: start_upload_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<i64>,
-        Option<i64>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<i64>,
-        Option<i64>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct StartUploadBuilder<St: start_upload_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<i64>, Option<i64>, Option<S>, Option<S>, Option<i64>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> StartUpload<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> StartUploadBuilder<'a, start_upload_state::Empty> {
+impl StartUpload<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> StartUploadBuilder<start_upload_state::Empty, DefaultStr> {
         StartUploadBuilder::new()
     }
 }
 
-impl<'a> StartUploadBuilder<'a, start_upload_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> StartUpload<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> StartUploadBuilder<start_upload_state::Empty, S> {
+        StartUploadBuilder::builder()
+    }
+}
+
+impl StartUploadBuilder<start_upload_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         StartUploadBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: start_upload_state::State> StartUploadBuilder<'a, S> {
+impl<S: BosStr> StartUploadBuilder<start_upload_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        StartUploadBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: start_upload_state::State, S: BosStr> StartUploadBuilder<St, S> {
     /// Set the `durationMs` field (optional)
     pub fn duration_ms(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.0 = value.into();
@@ -275,7 +297,7 @@ impl<'a, S: start_upload_state::State> StartUploadBuilder<'a, S> {
     }
 }
 
-impl<'a, S: start_upload_state::State> StartUploadBuilder<'a, S> {
+impl<St: start_upload_state::State, S: BosStr> StartUploadBuilder<St, S> {
     /// Set the `height` field (optional)
     pub fn height(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -288,58 +310,58 @@ impl<'a, S: start_upload_state::State> StartUploadBuilder<'a, S> {
     }
 }
 
-impl<'a, S> StartUploadBuilder<'a, S>
+impl<St, S: BosStr> StartUploadBuilder<St, S>
 where
-    S: start_upload_state::State,
-    S::MimeType: start_upload_state::IsUnset,
+    St: start_upload_state::State,
+    St::MimeType: start_upload_state::IsUnset,
 {
     /// Set the `mimeType` field (required)
     pub fn mime_type(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> StartUploadBuilder<'a, start_upload_state::SetMimeType<S>> {
+        value: impl Into<S>,
+    ) -> StartUploadBuilder<start_upload_state::SetMimeType<St>, S> {
         self._fields.2 = Option::Some(value.into());
         StartUploadBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: start_upload_state::State> StartUploadBuilder<'a, S> {
+impl<St: start_upload_state::State, S: BosStr> StartUploadBuilder<St, S> {
     /// Set the `name` field (optional)
-    pub fn name(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn name(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `name` field to an Option value (optional)
-    pub fn maybe_name(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_name(mut self, value: Option<S>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> StartUploadBuilder<'a, S>
+impl<St, S: BosStr> StartUploadBuilder<St, S>
 where
-    S: start_upload_state::State,
-    S::SizeBytes: start_upload_state::IsUnset,
+    St: start_upload_state::State,
+    St::SizeBytes: start_upload_state::IsUnset,
 {
     /// Set the `sizeBytes` field (required)
     pub fn size_bytes(
         mut self,
         value: impl Into<i64>,
-    ) -> StartUploadBuilder<'a, start_upload_state::SetSizeBytes<S>> {
+    ) -> StartUploadBuilder<start_upload_state::SetSizeBytes<St>, S> {
         self._fields.4 = Option::Some(value.into());
         StartUploadBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: start_upload_state::State> StartUploadBuilder<'a, S> {
+impl<St: start_upload_state::State, S: BosStr> StartUploadBuilder<St, S> {
     /// Set the `width` field (optional)
     pub fn width(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.5 = value.into();
@@ -352,14 +374,14 @@ impl<'a, S: start_upload_state::State> StartUploadBuilder<'a, S> {
     }
 }
 
-impl<'a, S> StartUploadBuilder<'a, S>
+impl<St, S: BosStr> StartUploadBuilder<St, S>
 where
-    S: start_upload_state::State,
-    S::SizeBytes: start_upload_state::IsSet,
-    S::MimeType: start_upload_state::IsSet,
+    St: start_upload_state::State,
+    St::MimeType: start_upload_state::IsSet,
+    St::SizeBytes: start_upload_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> StartUpload<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> StartUpload<S> {
         StartUpload {
             duration_ms: self._fields.0,
             height: self._fields.1,
@@ -370,14 +392,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> StartUpload<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> StartUpload<S> {
         StartUpload {
             duration_ms: self._fields.0,
             height: self._fields.1,

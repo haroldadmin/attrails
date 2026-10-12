@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `tools.ozone.communication` Lexicon namespace/module.
 pub mod create_template;
 pub mod delete_template;
 pub mod list_templates;
@@ -16,12 +17,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Datetime, Language};
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -29,34 +32,30 @@ use jacquard_lexicon::schema::LexiconSchema;
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct TemplateView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct TemplateView<S: BosStr = DefaultStr> {
     ///Subject of the message, used in emails.
-    #[serde(borrow)]
-    pub content_markdown: CowStr<'a>,
+    pub content_markdown: S,
     pub created_at: Datetime,
     pub disabled: bool,
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
+    pub id: S,
     ///Message language.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lang: Option<Language>,
     ///DID of the user who last updated the template.
-    #[serde(borrow)]
-    pub last_updated_by: Did<'a>,
+    pub last_updated_by: Did<S>,
     ///Name of the template.
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    pub name: S,
     ///Content of the template, can contain markdown and variable placeholders.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub subject: Option<CowStr<'a>>,
+    pub subject: Option<S>,
     pub updated_at: Datetime,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for TemplateView<'a> {
+impl<S: BosStr> LexiconSchema for TemplateView<S> {
     fn nsid() -> &'static str {
         "tools.ozone.communication.defs"
     }
@@ -82,11 +81,11 @@ pub mod template_view_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type ContentMarkdown;
-        type Name;
-        type LastUpdatedBy;
         type CreatedAt;
-        type Id;
         type Disabled;
+        type Id;
+        type LastUpdatedBy;
+        type Name;
         type UpdatedAt;
     }
     /// Empty state - all required fields are unset
@@ -94,95 +93,95 @@ pub mod template_view_state {
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type ContentMarkdown = Unset;
-        type Name = Unset;
-        type LastUpdatedBy = Unset;
         type CreatedAt = Unset;
-        type Id = Unset;
         type Disabled = Unset;
+        type Id = Unset;
+        type LastUpdatedBy = Unset;
+        type Name = Unset;
         type UpdatedAt = Unset;
     }
     ///State transition - sets the `content_markdown` field to Set
-    pub struct SetContentMarkdown<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetContentMarkdown<S> {}
-    impl<S: State> State for SetContentMarkdown<S> {
+    pub struct SetContentMarkdown<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetContentMarkdown<St> {}
+    impl<St: State> State for SetContentMarkdown<St> {
         type ContentMarkdown = Set<members::content_markdown>;
-        type Name = S::Name;
-        type LastUpdatedBy = S::LastUpdatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Id = S::Id;
-        type Disabled = S::Disabled;
-        type UpdatedAt = S::UpdatedAt;
-    }
-    ///State transition - sets the `name` field to Set
-    pub struct SetName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetName<S> {}
-    impl<S: State> State for SetName<S> {
-        type ContentMarkdown = S::ContentMarkdown;
-        type Name = Set<members::name>;
-        type LastUpdatedBy = S::LastUpdatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Id = S::Id;
-        type Disabled = S::Disabled;
-        type UpdatedAt = S::UpdatedAt;
-    }
-    ///State transition - sets the `last_updated_by` field to Set
-    pub struct SetLastUpdatedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLastUpdatedBy<S> {}
-    impl<S: State> State for SetLastUpdatedBy<S> {
-        type ContentMarkdown = S::ContentMarkdown;
-        type Name = S::Name;
-        type LastUpdatedBy = Set<members::last_updated_by>;
-        type CreatedAt = S::CreatedAt;
-        type Id = S::Id;
-        type Disabled = S::Disabled;
-        type UpdatedAt = S::UpdatedAt;
+        type CreatedAt = St::CreatedAt;
+        type Disabled = St::Disabled;
+        type Id = St::Id;
+        type LastUpdatedBy = St::LastUpdatedBy;
+        type Name = St::Name;
+        type UpdatedAt = St::UpdatedAt;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type ContentMarkdown = S::ContentMarkdown;
-        type Name = S::Name;
-        type LastUpdatedBy = S::LastUpdatedBy;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
+        type ContentMarkdown = St::ContentMarkdown;
         type CreatedAt = Set<members::created_at>;
-        type Id = S::Id;
-        type Disabled = S::Disabled;
-        type UpdatedAt = S::UpdatedAt;
-    }
-    ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type ContentMarkdown = S::ContentMarkdown;
-        type Name = S::Name;
-        type LastUpdatedBy = S::LastUpdatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Id = Set<members::id>;
-        type Disabled = S::Disabled;
-        type UpdatedAt = S::UpdatedAt;
+        type Disabled = St::Disabled;
+        type Id = St::Id;
+        type LastUpdatedBy = St::LastUpdatedBy;
+        type Name = St::Name;
+        type UpdatedAt = St::UpdatedAt;
     }
     ///State transition - sets the `disabled` field to Set
-    pub struct SetDisabled<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDisabled<S> {}
-    impl<S: State> State for SetDisabled<S> {
-        type ContentMarkdown = S::ContentMarkdown;
-        type Name = S::Name;
-        type LastUpdatedBy = S::LastUpdatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Id = S::Id;
+    pub struct SetDisabled<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDisabled<St> {}
+    impl<St: State> State for SetDisabled<St> {
+        type ContentMarkdown = St::ContentMarkdown;
+        type CreatedAt = St::CreatedAt;
         type Disabled = Set<members::disabled>;
-        type UpdatedAt = S::UpdatedAt;
+        type Id = St::Id;
+        type LastUpdatedBy = St::LastUpdatedBy;
+        type Name = St::Name;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `id` field to Set
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type ContentMarkdown = St::ContentMarkdown;
+        type CreatedAt = St::CreatedAt;
+        type Disabled = St::Disabled;
+        type Id = Set<members::id>;
+        type LastUpdatedBy = St::LastUpdatedBy;
+        type Name = St::Name;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `last_updated_by` field to Set
+    pub struct SetLastUpdatedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLastUpdatedBy<St> {}
+    impl<St: State> State for SetLastUpdatedBy<St> {
+        type ContentMarkdown = St::ContentMarkdown;
+        type CreatedAt = St::CreatedAt;
+        type Disabled = St::Disabled;
+        type Id = St::Id;
+        type LastUpdatedBy = Set<members::last_updated_by>;
+        type Name = St::Name;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `name` field to Set
+    pub struct SetName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetName<St> {}
+    impl<St: State> State for SetName<St> {
+        type ContentMarkdown = St::ContentMarkdown;
+        type CreatedAt = St::CreatedAt;
+        type Disabled = St::Disabled;
+        type Id = St::Id;
+        type LastUpdatedBy = St::LastUpdatedBy;
+        type Name = Set<members::name>;
+        type UpdatedAt = St::UpdatedAt;
     }
     ///State transition - sets the `updated_at` field to Set
-    pub struct SetUpdatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUpdatedAt<S> {}
-    impl<S: State> State for SetUpdatedAt<S> {
-        type ContentMarkdown = S::ContentMarkdown;
-        type Name = S::Name;
-        type LastUpdatedBy = S::LastUpdatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Id = S::Id;
-        type Disabled = S::Disabled;
+    pub struct SetUpdatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUpdatedAt<St> {}
+    impl<St: State> State for SetUpdatedAt<St> {
+        type ContentMarkdown = St::ContentMarkdown;
+        type CreatedAt = St::CreatedAt;
+        type Disabled = St::Disabled;
+        type Id = St::Id;
+        type LastUpdatedBy = St::LastUpdatedBy;
+        type Name = St::Name;
         type UpdatedAt = Set<members::updated_at>;
     }
     /// Marker types for field names
@@ -190,133 +189,151 @@ pub mod template_view_state {
     pub mod members {
         ///Marker type for the `content_markdown` field
         pub struct content_markdown(());
-        ///Marker type for the `name` field
-        pub struct name(());
-        ///Marker type for the `last_updated_by` field
-        pub struct last_updated_by(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
-        ///Marker type for the `id` field
-        pub struct id(());
         ///Marker type for the `disabled` field
         pub struct disabled(());
+        ///Marker type for the `id` field
+        pub struct id(());
+        ///Marker type for the `last_updated_by` field
+        pub struct last_updated_by(());
+        ///Marker type for the `name` field
+        pub struct name(());
         ///Marker type for the `updated_at` field
         pub struct updated_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct TemplateViewBuilder<'a, S: template_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct TemplateViewBuilder<St: template_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<Datetime>,
         Option<bool>,
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<Language>,
-        Option<Did<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
+        Option<Did<S>>,
+        Option<S>,
+        Option<S>,
         Option<Datetime>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> TemplateView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> TemplateViewBuilder<'a, template_view_state::Empty> {
+impl TemplateView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> TemplateViewBuilder<template_view_state::Empty, DefaultStr> {
         TemplateViewBuilder::new()
     }
 }
 
-impl<'a> TemplateViewBuilder<'a, template_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> TemplateView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> TemplateViewBuilder<template_view_state::Empty, S> {
+        TemplateViewBuilder::builder()
+    }
+}
+
+impl TemplateViewBuilder<template_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         TemplateViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TemplateViewBuilder<'a, S>
+impl<S: BosStr> TemplateViewBuilder<template_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        TemplateViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> TemplateViewBuilder<St, S>
 where
-    S: template_view_state::State,
-    S::ContentMarkdown: template_view_state::IsUnset,
+    St: template_view_state::State,
+    St::ContentMarkdown: template_view_state::IsUnset,
 {
     /// Set the `contentMarkdown` field (required)
     pub fn content_markdown(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> TemplateViewBuilder<'a, template_view_state::SetContentMarkdown<S>> {
+        value: impl Into<S>,
+    ) -> TemplateViewBuilder<template_view_state::SetContentMarkdown<St>, S> {
         self._fields.0 = Option::Some(value.into());
         TemplateViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TemplateViewBuilder<'a, S>
+impl<St, S: BosStr> TemplateViewBuilder<St, S>
 where
-    S: template_view_state::State,
-    S::CreatedAt: template_view_state::IsUnset,
+    St: template_view_state::State,
+    St::CreatedAt: template_view_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> TemplateViewBuilder<'a, template_view_state::SetCreatedAt<S>> {
+    ) -> TemplateViewBuilder<template_view_state::SetCreatedAt<St>, S> {
         self._fields.1 = Option::Some(value.into());
         TemplateViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TemplateViewBuilder<'a, S>
+impl<St, S: BosStr> TemplateViewBuilder<St, S>
 where
-    S: template_view_state::State,
-    S::Disabled: template_view_state::IsUnset,
+    St: template_view_state::State,
+    St::Disabled: template_view_state::IsUnset,
 {
     /// Set the `disabled` field (required)
     pub fn disabled(
         mut self,
         value: impl Into<bool>,
-    ) -> TemplateViewBuilder<'a, template_view_state::SetDisabled<S>> {
+    ) -> TemplateViewBuilder<template_view_state::SetDisabled<St>, S> {
         self._fields.2 = Option::Some(value.into());
         TemplateViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TemplateViewBuilder<'a, S>
+impl<St, S: BosStr> TemplateViewBuilder<St, S>
 where
-    S: template_view_state::State,
-    S::Id: template_view_state::IsUnset,
+    St: template_view_state::State,
+    St::Id: template_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> TemplateViewBuilder<'a, template_view_state::SetId<S>> {
+        value: impl Into<S>,
+    ) -> TemplateViewBuilder<template_view_state::SetId<St>, S> {
         self._fields.3 = Option::Some(value.into());
         TemplateViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: template_view_state::State> TemplateViewBuilder<'a, S> {
+impl<St: template_view_state::State, S: BosStr> TemplateViewBuilder<St, S> {
     /// Set the `lang` field (optional)
     pub fn lang(mut self, value: impl Into<Option<Language>>) -> Self {
         self._fields.4 = value.into();
@@ -329,89 +346,89 @@ impl<'a, S: template_view_state::State> TemplateViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S> TemplateViewBuilder<'a, S>
+impl<St, S: BosStr> TemplateViewBuilder<St, S>
 where
-    S: template_view_state::State,
-    S::LastUpdatedBy: template_view_state::IsUnset,
+    St: template_view_state::State,
+    St::LastUpdatedBy: template_view_state::IsUnset,
 {
     /// Set the `lastUpdatedBy` field (required)
     pub fn last_updated_by(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> TemplateViewBuilder<'a, template_view_state::SetLastUpdatedBy<S>> {
+        value: impl Into<Did<S>>,
+    ) -> TemplateViewBuilder<template_view_state::SetLastUpdatedBy<St>, S> {
         self._fields.5 = Option::Some(value.into());
         TemplateViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TemplateViewBuilder<'a, S>
+impl<St, S: BosStr> TemplateViewBuilder<St, S>
 where
-    S: template_view_state::State,
-    S::Name: template_view_state::IsUnset,
+    St: template_view_state::State,
+    St::Name: template_view_state::IsUnset,
 {
     /// Set the `name` field (required)
     pub fn name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> TemplateViewBuilder<'a, template_view_state::SetName<S>> {
+        value: impl Into<S>,
+    ) -> TemplateViewBuilder<template_view_state::SetName<St>, S> {
         self._fields.6 = Option::Some(value.into());
         TemplateViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: template_view_state::State> TemplateViewBuilder<'a, S> {
+impl<St: template_view_state::State, S: BosStr> TemplateViewBuilder<St, S> {
     /// Set the `subject` field (optional)
-    pub fn subject(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn subject(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.7 = value.into();
         self
     }
     /// Set the `subject` field to an Option value (optional)
-    pub fn maybe_subject(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_subject(mut self, value: Option<S>) -> Self {
         self._fields.7 = value;
         self
     }
 }
 
-impl<'a, S> TemplateViewBuilder<'a, S>
+impl<St, S: BosStr> TemplateViewBuilder<St, S>
 where
-    S: template_view_state::State,
-    S::UpdatedAt: template_view_state::IsUnset,
+    St: template_view_state::State,
+    St::UpdatedAt: template_view_state::IsUnset,
 {
     /// Set the `updatedAt` field (required)
     pub fn updated_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> TemplateViewBuilder<'a, template_view_state::SetUpdatedAt<S>> {
+    ) -> TemplateViewBuilder<template_view_state::SetUpdatedAt<St>, S> {
         self._fields.8 = Option::Some(value.into());
         TemplateViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TemplateViewBuilder<'a, S>
+impl<St, S: BosStr> TemplateViewBuilder<St, S>
 where
-    S: template_view_state::State,
-    S::ContentMarkdown: template_view_state::IsSet,
-    S::Name: template_view_state::IsSet,
-    S::LastUpdatedBy: template_view_state::IsSet,
-    S::CreatedAt: template_view_state::IsSet,
-    S::Id: template_view_state::IsSet,
-    S::Disabled: template_view_state::IsSet,
-    S::UpdatedAt: template_view_state::IsSet,
+    St: template_view_state::State,
+    St::ContentMarkdown: template_view_state::IsSet,
+    St::CreatedAt: template_view_state::IsSet,
+    St::Disabled: template_view_state::IsSet,
+    St::Id: template_view_state::IsSet,
+    St::LastUpdatedBy: template_view_state::IsSet,
+    St::Name: template_view_state::IsSet,
+    St::UpdatedAt: template_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> TemplateView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> TemplateView<S> {
         TemplateView {
             content_markdown: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),
@@ -425,14 +442,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> TemplateView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> TemplateView<S> {
         TemplateView {
             content_markdown: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),

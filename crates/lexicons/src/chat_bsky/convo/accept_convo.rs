@@ -10,31 +10,32 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct AcceptConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AcceptConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct AcceptConvoOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AcceptConvoOutput<S: BosStr = DefaultStr> {
     ///Rev when the convo was accepted. If not present, the convo was already accepted.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub rev: Option<CowStr<'a>>,
+    pub rev: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -43,18 +44,19 @@ pub struct AcceptConvoOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum AcceptConvoError<'a> {
+pub enum AcceptConvoError {
     #[serde(rename = "InvalidConvo")]
-    InvalidConvo(Option<CowStr<'a>>),
+    InvalidConvo(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for AcceptConvoError<'_> {
+impl core::fmt::Display for AcceptConvoError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidConvo(msg) => {
@@ -64,21 +66,29 @@ impl core::fmt::Display for AcceptConvoError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for chat.bsky.convo.acceptConvo
+/** Response marker for the `chat.bsky.convo.acceptConvo` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `AcceptConvoOutput<S>` for this endpoint.*/
 pub struct AcceptConvoResponse;
 impl jacquard_common::xrpc::XrpcResp for AcceptConvoResponse {
     const NSID: &'static str = "chat.bsky.convo.acceptConvo";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = AcceptConvoOutput<'de>;
-    type Err<'de> = AcceptConvoError<'de>;
+    type Output<S: BosStr> = AcceptConvoOutput<S>;
+    type Err = AcceptConvoError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for AcceptConvo<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for AcceptConvo<S> {
     const NSID: &'static str = "chat.bsky.convo.acceptConvo";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -86,13 +96,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for AcceptConvo<'a> {
     type Response = AcceptConvoResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.acceptConvo
+/** Endpoint marker for the `chat.bsky.convo.acceptConvo` procedure.
+
+Path: `/xrpc/chat.bsky.convo.acceptConvo`. The request payload type is `AcceptConvo<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct AcceptConvoRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for AcceptConvoRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.acceptConvo";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = AcceptConvo<'de>;
+    type Request<S: BosStr> = AcceptConvo<S>;
     type Response = AcceptConvoResponse;
 }

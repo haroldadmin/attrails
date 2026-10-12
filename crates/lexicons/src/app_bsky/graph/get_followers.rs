@@ -10,64 +10,65 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::ident::AtIdentifier;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::actor::ProfileView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetFollowers<'a> {
-    #[serde(borrow)]
-    pub actor: AtIdentifier<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetFollowers<S: BosStr = DefaultStr> {
+    pub actor: AtIdentifier<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub sort: Option<CowStr<'a>>,
+    pub sort: Option<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetFollowersOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetFollowersOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub followers: Vec<ProfileView<'a>>,
-    #[serde(borrow)]
-    pub subject: ProfileView<'a>,
+    pub cursor: Option<S>,
+    pub followers: Vec<ProfileView<S>>,
+    pub subject: ProfileView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.graph.getFollowers
+/** Response marker for the `app.bsky.graph.getFollowers` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetFollowersOutput<S>` for this endpoint.*/
 pub struct GetFollowersResponse;
 impl jacquard_common::xrpc::XrpcResp for GetFollowersResponse {
     const NSID: &'static str = "app.bsky.graph.getFollowers";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetFollowersOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetFollowersOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetFollowers<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetFollowers<S> {
     const NSID: &'static str = "app.bsky.graph.getFollowers";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetFollowersResponse;
 }
 
-/// Endpoint type for app.bsky.graph.getFollowers
+/** Endpoint marker for the `app.bsky.graph.getFollowers` query.
+
+Path: `/xrpc/app.bsky.graph.getFollowers`. The request payload type is `GetFollowers<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetFollowersRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetFollowersRequest {
     const PATH: &'static str = "/xrpc/app.bsky.graph.getFollowers";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetFollowers<'de>;
+    type Request<S: BosStr> = GetFollowers<S>;
     type Response = GetFollowersResponse;
 }
 
@@ -94,9 +95,9 @@ pub mod get_followers_state {
         type Actor = Unset;
     }
     ///State transition - sets the `actor` field to Set
-    pub struct SetActor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetActor<S> {}
-    impl<S: State> State for SetActor<S> {
+    pub struct SetActor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetActor<St> {}
+    impl<St: State> State for SetActor<St> {
         type Actor = Set<members::actor>;
     }
     /// Marker types for field names
@@ -107,69 +108,82 @@ pub mod get_followers_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetFollowersBuilder<'a, S: get_followers_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<AtIdentifier<'a>>,
-        Option<CowStr<'a>>,
-        Option<i64>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetFollowersBuilder<St: get_followers_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtIdentifier<S>>, Option<S>, Option<i64>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetFollowers<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetFollowersBuilder<'a, get_followers_state::Empty> {
+impl GetFollowers<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetFollowersBuilder<get_followers_state::Empty, DefaultStr> {
         GetFollowersBuilder::new()
     }
 }
 
-impl<'a> GetFollowersBuilder<'a, get_followers_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetFollowers<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetFollowersBuilder<get_followers_state::Empty, S> {
+        GetFollowersBuilder::builder()
+    }
+}
+
+impl GetFollowersBuilder<get_followers_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetFollowersBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetFollowersBuilder<'a, S>
+impl<S: BosStr> GetFollowersBuilder<get_followers_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetFollowersBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetFollowersBuilder<St, S>
 where
-    S: get_followers_state::State,
-    S::Actor: get_followers_state::IsUnset,
+    St: get_followers_state::State,
+    St::Actor: get_followers_state::IsUnset,
 {
     /// Set the `actor` field (required)
     pub fn actor(
         mut self,
-        value: impl Into<AtIdentifier<'a>>,
-    ) -> GetFollowersBuilder<'a, get_followers_state::SetActor<S>> {
+        value: impl Into<AtIdentifier<S>>,
+    ) -> GetFollowersBuilder<get_followers_state::SetActor<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetFollowersBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_followers_state::State> GetFollowersBuilder<'a, S> {
+impl<St: get_followers_state::State, S: BosStr> GetFollowersBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: get_followers_state::State> GetFollowersBuilder<'a, S> {
+impl<St: get_followers_state::State, S: BosStr> GetFollowersBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.2 = value.into();
@@ -182,26 +196,26 @@ impl<'a, S: get_followers_state::State> GetFollowersBuilder<'a, S> {
     }
 }
 
-impl<'a, S: get_followers_state::State> GetFollowersBuilder<'a, S> {
+impl<St: get_followers_state::State, S: BosStr> GetFollowersBuilder<St, S> {
     /// Set the `sort` field (optional)
-    pub fn sort(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn sort(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `sort` field to an Option value (optional)
-    pub fn maybe_sort(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_sort(mut self, value: Option<S>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> GetFollowersBuilder<'a, S>
+impl<St, S: BosStr> GetFollowersBuilder<St, S>
 where
-    S: get_followers_state::State,
-    S::Actor: get_followers_state::IsSet,
+    St: get_followers_state::State,
+    St::Actor: get_followers_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetFollowers<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetFollowers<S> {
         GetFollowers {
             actor: self._fields.0.unwrap(),
             cursor: self._fields.1,

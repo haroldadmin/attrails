@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `com.atproto.identity` Lexicon namespace/module.
 pub mod get_recommended_did_credentials;
 pub mod refresh_identity;
 pub mod request_plc_operation_signature;
@@ -21,12 +22,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Handle};
 use jacquard_common::types::value::Data;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -34,21 +37,19 @@ use jacquard_lexicon::schema::LexiconSchema;
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct IdentityInfo<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct IdentityInfo<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
     ///The complete DID document for the identity.
-    #[serde(borrow)]
-    pub did_doc: Data<'a>,
+    pub did_doc: Data<S>,
     ///The validated handle of the account; or 'handle.invalid' if the handle did not bi-directionally match the DID document.
-    #[serde(borrow)]
-    pub handle: Handle<'a>,
+    pub handle: Handle<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for IdentityInfo<'a> {
+impl<S: BosStr> LexiconSchema for IdentityInfo<S> {
     fn nsid() -> &'static str {
         "com.atproto.identity.defs"
     }
@@ -86,27 +87,27 @@ pub mod identity_info_state {
         type Handle = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
-        type DidDoc = S::DidDoc;
-        type Handle = S::Handle;
+        type DidDoc = St::DidDoc;
+        type Handle = St::Handle;
     }
     ///State transition - sets the `did_doc` field to Set
-    pub struct SetDidDoc<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDidDoc<S> {}
-    impl<S: State> State for SetDidDoc<S> {
-        type Did = S::Did;
+    pub struct SetDidDoc<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDidDoc<St> {}
+    impl<St: State> State for SetDidDoc<St> {
+        type Did = St::Did;
         type DidDoc = Set<members::did_doc>;
-        type Handle = S::Handle;
+        type Handle = St::Handle;
     }
     ///State transition - sets the `handle` field to Set
-    pub struct SetHandle<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHandle<S> {}
-    impl<S: State> State for SetHandle<S> {
-        type Did = S::Did;
-        type DidDoc = S::DidDoc;
+    pub struct SetHandle<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetHandle<St> {}
+    impl<St: State> State for SetHandle<St> {
+        type Did = St::Did;
+        type DidDoc = St::DidDoc;
         type Handle = Set<members::handle>;
     }
     /// Marker types for field names
@@ -121,97 +122,115 @@ pub mod identity_info_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct IdentityInfoBuilder<'a, S: identity_info_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>, Option<Data<'a>>, Option<Handle<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct IdentityInfoBuilder<St: identity_info_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>, Option<Data<S>>, Option<Handle<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> IdentityInfo<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> IdentityInfoBuilder<'a, identity_info_state::Empty> {
+impl IdentityInfo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> IdentityInfoBuilder<identity_info_state::Empty, DefaultStr> {
         IdentityInfoBuilder::new()
     }
 }
 
-impl<'a> IdentityInfoBuilder<'a, identity_info_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> IdentityInfo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> IdentityInfoBuilder<identity_info_state::Empty, S> {
+        IdentityInfoBuilder::builder()
+    }
+}
+
+impl IdentityInfoBuilder<identity_info_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         IdentityInfoBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> IdentityInfoBuilder<'a, S>
+impl<S: BosStr> IdentityInfoBuilder<identity_info_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        IdentityInfoBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> IdentityInfoBuilder<St, S>
 where
-    S: identity_info_state::State,
-    S::Did: identity_info_state::IsUnset,
+    St: identity_info_state::State,
+    St::Did: identity_info_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> IdentityInfoBuilder<'a, identity_info_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> IdentityInfoBuilder<identity_info_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         IdentityInfoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> IdentityInfoBuilder<'a, S>
+impl<St, S: BosStr> IdentityInfoBuilder<St, S>
 where
-    S: identity_info_state::State,
-    S::DidDoc: identity_info_state::IsUnset,
+    St: identity_info_state::State,
+    St::DidDoc: identity_info_state::IsUnset,
 {
     /// Set the `didDoc` field (required)
     pub fn did_doc(
         mut self,
-        value: impl Into<Data<'a>>,
-    ) -> IdentityInfoBuilder<'a, identity_info_state::SetDidDoc<S>> {
+        value: impl Into<Data<S>>,
+    ) -> IdentityInfoBuilder<identity_info_state::SetDidDoc<St>, S> {
         self._fields.1 = Option::Some(value.into());
         IdentityInfoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> IdentityInfoBuilder<'a, S>
+impl<St, S: BosStr> IdentityInfoBuilder<St, S>
 where
-    S: identity_info_state::State,
-    S::Handle: identity_info_state::IsUnset,
+    St: identity_info_state::State,
+    St::Handle: identity_info_state::IsUnset,
 {
     /// Set the `handle` field (required)
     pub fn handle(
         mut self,
-        value: impl Into<Handle<'a>>,
-    ) -> IdentityInfoBuilder<'a, identity_info_state::SetHandle<S>> {
+        value: impl Into<Handle<S>>,
+    ) -> IdentityInfoBuilder<identity_info_state::SetHandle<St>, S> {
         self._fields.2 = Option::Some(value.into());
         IdentityInfoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> IdentityInfoBuilder<'a, S>
+impl<St, S: BosStr> IdentityInfoBuilder<St, S>
 where
-    S: identity_info_state::State,
-    S::Did: identity_info_state::IsSet,
-    S::DidDoc: identity_info_state::IsSet,
-    S::Handle: identity_info_state::IsSet,
+    St: identity_info_state::State,
+    St::Did: identity_info_state::IsSet,
+    St::DidDoc: identity_info_state::IsSet,
+    St::Handle: identity_info_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> IdentityInfo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> IdentityInfo<S> {
         IdentityInfo {
             did: self._fields.0.unwrap(),
             did_doc: self._fields.1.unwrap(),
@@ -219,11 +238,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> IdentityInfo<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> IdentityInfo<S> {
         IdentityInfo {
             did: self._fields.0.unwrap(),
             did_doc: self._fields.1.unwrap(),

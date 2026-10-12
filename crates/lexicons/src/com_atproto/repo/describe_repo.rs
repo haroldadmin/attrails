@@ -10,59 +10,61 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::ident::AtIdentifier;
 use jacquard_common::types::string::{Did, Handle, Nsid};
 use jacquard_common::types::value::Data;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DescribeRepo<'a> {
-    #[serde(borrow)]
-    pub repo: AtIdentifier<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DescribeRepo<S: BosStr = DefaultStr> {
+    pub repo: AtIdentifier<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DescribeRepoOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DescribeRepoOutput<S: BosStr = DefaultStr> {
     ///List of all the collections (NSIDs) for which this repo contains at least one record.
-    #[serde(borrow)]
-    pub collections: Vec<Nsid<'a>>,
-    #[serde(borrow)]
-    pub did: Did<'a>,
+    pub collections: Vec<Nsid<S>>,
+    pub did: Did<S>,
     ///The complete DID document for this account.
-    #[serde(borrow)]
-    pub did_doc: Data<'a>,
-    #[serde(borrow)]
-    pub handle: Handle<'a>,
+    pub did_doc: Data<S>,
+    pub handle: Handle<S>,
     ///Indicates if handle is currently valid (resolves bi-directionally)
     pub handle_is_correct: bool,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for com.atproto.repo.describeRepo
+/** Response marker for the `com.atproto.repo.describeRepo` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `DescribeRepoOutput<S>` for this endpoint.*/
 pub struct DescribeRepoResponse;
 impl jacquard_common::xrpc::XrpcResp for DescribeRepoResponse {
     const NSID: &'static str = "com.atproto.repo.describeRepo";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = DescribeRepoOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = DescribeRepoOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for DescribeRepo<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for DescribeRepo<S> {
     const NSID: &'static str = "com.atproto.repo.describeRepo";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = DescribeRepoResponse;
 }
 
-/// Endpoint type for com.atproto.repo.describeRepo
+/** Endpoint marker for the `com.atproto.repo.describeRepo` query.
+
+Path: `/xrpc/com.atproto.repo.describeRepo`. The request payload type is `DescribeRepo<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct DescribeRepoRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for DescribeRepoRequest {
     const PATH: &'static str = "/xrpc/com.atproto.repo.describeRepo";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = DescribeRepo<'de>;
+    type Request<S: BosStr> = DescribeRepo<S>;
     type Response = DescribeRepoResponse;
 }
 
@@ -85,9 +87,9 @@ pub mod describe_repo_state {
         type Repo = Unset;
     }
     ///State transition - sets the `repo` field to Set
-    pub struct SetRepo<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRepo<S> {}
-    impl<S: State> State for SetRepo<S> {
+    pub struct SetRepo<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRepo<St> {}
+    impl<St: State> State for SetRepo<St> {
         type Repo = Set<members::repo>;
     }
     /// Marker types for field names
@@ -98,57 +100,75 @@ pub mod describe_repo_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DescribeRepoBuilder<'a, S: describe_repo_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<AtIdentifier<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct DescribeRepoBuilder<St: describe_repo_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtIdentifier<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DescribeRepo<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DescribeRepoBuilder<'a, describe_repo_state::Empty> {
+impl DescribeRepo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DescribeRepoBuilder<describe_repo_state::Empty, DefaultStr> {
         DescribeRepoBuilder::new()
     }
 }
 
-impl<'a> DescribeRepoBuilder<'a, describe_repo_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DescribeRepo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DescribeRepoBuilder<describe_repo_state::Empty, S> {
+        DescribeRepoBuilder::builder()
+    }
+}
+
+impl DescribeRepoBuilder<describe_repo_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DescribeRepoBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DescribeRepoBuilder<'a, S>
+impl<S: BosStr> DescribeRepoBuilder<describe_repo_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DescribeRepoBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> DescribeRepoBuilder<St, S>
 where
-    S: describe_repo_state::State,
-    S::Repo: describe_repo_state::IsUnset,
+    St: describe_repo_state::State,
+    St::Repo: describe_repo_state::IsUnset,
 {
     /// Set the `repo` field (required)
     pub fn repo(
         mut self,
-        value: impl Into<AtIdentifier<'a>>,
-    ) -> DescribeRepoBuilder<'a, describe_repo_state::SetRepo<S>> {
+        value: impl Into<AtIdentifier<S>>,
+    ) -> DescribeRepoBuilder<describe_repo_state::SetRepo<St>, S> {
         self._fields.0 = Option::Some(value.into());
         DescribeRepoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DescribeRepoBuilder<'a, S>
+impl<St, S: BosStr> DescribeRepoBuilder<St, S>
 where
-    S: describe_repo_state::State,
-    S::Repo: describe_repo_state::IsSet,
+    St: describe_repo_state::State,
+    St::Repo: describe_repo_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DescribeRepo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DescribeRepo<S> {
         DescribeRepo {
             repo: self._fields.0.unwrap(),
         }

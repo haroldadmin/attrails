@@ -10,38 +10,37 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::com_atproto::sync::HostStatus;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetHostStatus<'a> {
-    #[serde(borrow)]
-    pub hostname: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetHostStatus<S: BosStr = DefaultStr> {
+    pub hostname: S,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct GetHostStatusOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetHostStatusOutput<S: BosStr = DefaultStr> {
     ///Number of accounts on the server which are associated with the upstream host. Note that the upstream may actually have more accounts.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_count: Option<i64>,
-    #[serde(borrow)]
-    pub hostname: CowStr<'a>,
+    pub hostname: S,
     ///Recent repo stream event sequence number. May be delayed from actual stream processing (eg, persisted cursor not in-memory cursor).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seq: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub status: Option<HostStatus<'a>>,
+    pub status: Option<HostStatus<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -50,18 +49,19 @@ pub struct GetHostStatusOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetHostStatusError<'a> {
+pub enum GetHostStatusError {
     #[serde(rename = "HostNotFound")]
-    HostNotFound(Option<CowStr<'a>>),
+    HostNotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetHostStatusError<'_> {
+impl core::fmt::Display for GetHostStatusError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::HostNotFound(msg) => {
@@ -71,32 +71,42 @@ impl core::fmt::Display for GetHostStatusError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for com.atproto.sync.getHostStatus
+/** Response marker for the `com.atproto.sync.getHostStatus` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetHostStatusOutput<S>` for this endpoint.*/
 pub struct GetHostStatusResponse;
 impl jacquard_common::xrpc::XrpcResp for GetHostStatusResponse {
     const NSID: &'static str = "com.atproto.sync.getHostStatus";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetHostStatusOutput<'de>;
-    type Err<'de> = GetHostStatusError<'de>;
+    type Output<S: BosStr> = GetHostStatusOutput<S>;
+    type Err = GetHostStatusError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetHostStatus<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetHostStatus<S> {
     const NSID: &'static str = "com.atproto.sync.getHostStatus";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetHostStatusResponse;
 }
 
-/// Endpoint type for com.atproto.sync.getHostStatus
+/** Endpoint marker for the `com.atproto.sync.getHostStatus` query.
+
+Path: `/xrpc/com.atproto.sync.getHostStatus`. The request payload type is `GetHostStatus<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetHostStatusRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetHostStatusRequest {
     const PATH: &'static str = "/xrpc/com.atproto.sync.getHostStatus";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetHostStatus<'de>;
+    type Request<S: BosStr> = GetHostStatus<S>;
     type Response = GetHostStatusResponse;
 }
 
@@ -119,9 +129,9 @@ pub mod get_host_status_state {
         type Hostname = Unset;
     }
     ///State transition - sets the `hostname` field to Set
-    pub struct SetHostname<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHostname<S> {}
-    impl<S: State> State for SetHostname<S> {
+    pub struct SetHostname<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetHostname<St> {}
+    impl<St: State> State for SetHostname<St> {
         type Hostname = Set<members::hostname>;
     }
     /// Marker types for field names
@@ -132,57 +142,78 @@ pub mod get_host_status_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetHostStatusBuilder<'a, S: get_host_status_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetHostStatusBuilder<
+    St: get_host_status_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetHostStatus<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetHostStatusBuilder<'a, get_host_status_state::Empty> {
+impl GetHostStatus<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetHostStatusBuilder<get_host_status_state::Empty, DefaultStr> {
         GetHostStatusBuilder::new()
     }
 }
 
-impl<'a> GetHostStatusBuilder<'a, get_host_status_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetHostStatus<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetHostStatusBuilder<get_host_status_state::Empty, S> {
+        GetHostStatusBuilder::builder()
+    }
+}
+
+impl GetHostStatusBuilder<get_host_status_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetHostStatusBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetHostStatusBuilder<'a, S>
+impl<S: BosStr> GetHostStatusBuilder<get_host_status_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetHostStatusBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetHostStatusBuilder<St, S>
 where
-    S: get_host_status_state::State,
-    S::Hostname: get_host_status_state::IsUnset,
+    St: get_host_status_state::State,
+    St::Hostname: get_host_status_state::IsUnset,
 {
     /// Set the `hostname` field (required)
     pub fn hostname(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> GetHostStatusBuilder<'a, get_host_status_state::SetHostname<S>> {
+        value: impl Into<S>,
+    ) -> GetHostStatusBuilder<get_host_status_state::SetHostname<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetHostStatusBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetHostStatusBuilder<'a, S>
+impl<St, S: BosStr> GetHostStatusBuilder<St, S>
 where
-    S: get_host_status_state::State,
-    S::Hostname: get_host_status_state::IsSet,
+    St: get_host_status_state::State,
+    St::Hostname: get_host_status_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetHostStatus<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetHostStatus<S> {
         GetHostStatus {
             hostname: self._fields.0.unwrap(),
         }

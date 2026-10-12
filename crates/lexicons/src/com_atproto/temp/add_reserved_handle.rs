@@ -10,33 +10,40 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct AddReservedHandle<'a> {
-    #[serde(borrow)]
-    pub handle: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AddReservedHandle<S: BosStr = DefaultStr> {
+    pub handle: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct AddReservedHandleOutput<'a> {}
-/// Response type for com.atproto.temp.addReservedHandle
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AddReservedHandleOutput<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
+/** Response marker for the `com.atproto.temp.addReservedHandle` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `AddReservedHandleOutput<S>` for this endpoint.*/
 pub struct AddReservedHandleResponse;
 impl jacquard_common::xrpc::XrpcResp for AddReservedHandleResponse {
     const NSID: &'static str = "com.atproto.temp.addReservedHandle";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = AddReservedHandleOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = AddReservedHandleOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for AddReservedHandle<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for AddReservedHandle<S> {
     const NSID: &'static str = "com.atproto.temp.addReservedHandle";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -44,13 +51,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for AddReservedHandle<'a> {
     type Response = AddReservedHandleResponse;
 }
 
-/// Endpoint type for com.atproto.temp.addReservedHandle
+/** Endpoint marker for the `com.atproto.temp.addReservedHandle` procedure.
+
+Path: `/xrpc/com.atproto.temp.addReservedHandle`. The request payload type is `AddReservedHandle<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct AddReservedHandleRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for AddReservedHandleRequest {
     const PATH: &'static str = "/xrpc/com.atproto.temp.addReservedHandle";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = AddReservedHandle<'de>;
+    type Request<S: BosStr> = AddReservedHandle<S>;
     type Response = AddReservedHandleResponse;
 }

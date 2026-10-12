@@ -10,50 +10,56 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::convo::ConvoView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetConvoAvailability<'a> {
-    #[serde(borrow)]
-    pub members: Vec<Did<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetConvoAvailability<S: BosStr = DefaultStr> {
+    pub members: Vec<Did<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetConvoAvailabilityOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetConvoAvailabilityOutput<S: BosStr = DefaultStr> {
     pub can_chat: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub convo: Option<ConvoView<'a>>,
+    pub convo: Option<ConvoView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for chat.bsky.convo.getConvoAvailability
+/** Response marker for the `chat.bsky.convo.getConvoAvailability` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetConvoAvailabilityOutput<S>` for this endpoint.*/
 pub struct GetConvoAvailabilityResponse;
 impl jacquard_common::xrpc::XrpcResp for GetConvoAvailabilityResponse {
     const NSID: &'static str = "chat.bsky.convo.getConvoAvailability";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetConvoAvailabilityOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetConvoAvailabilityOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetConvoAvailability<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetConvoAvailability<S> {
     const NSID: &'static str = "chat.bsky.convo.getConvoAvailability";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetConvoAvailabilityResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.getConvoAvailability
+/** Endpoint marker for the `chat.bsky.convo.getConvoAvailability` query.
+
+Path: `/xrpc/chat.bsky.convo.getConvoAvailability`. The request payload type is `GetConvoAvailability<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetConvoAvailabilityRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetConvoAvailabilityRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.getConvoAvailability";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetConvoAvailability<'de>;
+    type Request<S: BosStr> = GetConvoAvailability<S>;
     type Response = GetConvoAvailabilityResponse;
 }
 
@@ -76,9 +82,9 @@ pub mod get_convo_availability_state {
         type Members = Unset;
     }
     ///State transition - sets the `members` field to Set
-    pub struct SetMembers<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMembers<S> {}
-    impl<S: State> State for SetMembers<S> {
+    pub struct SetMembers<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMembers<St> {}
+    impl<St: State> State for SetMembers<St> {
         type Members = Set<members::members>;
     }
     /// Marker types for field names
@@ -89,60 +95,84 @@ pub mod get_convo_availability_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetConvoAvailabilityBuilder<'a, S: get_convo_availability_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<Did<'a>>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetConvoAvailabilityBuilder<
+    St: get_convo_availability_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<Did<S>>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetConvoAvailability<'a> {
-    /// Create a new builder for this type
+impl GetConvoAvailability<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> GetConvoAvailabilityBuilder<
-        'a,
         get_convo_availability_state::Empty,
+        DefaultStr,
     > {
         GetConvoAvailabilityBuilder::new()
     }
 }
 
-impl<'a> GetConvoAvailabilityBuilder<'a, get_convo_availability_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetConvoAvailability<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetConvoAvailabilityBuilder<
+        get_convo_availability_state::Empty,
+        S,
+    > {
+        GetConvoAvailabilityBuilder::builder()
+    }
+}
+
+impl GetConvoAvailabilityBuilder<get_convo_availability_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetConvoAvailabilityBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetConvoAvailabilityBuilder<'a, S>
+impl<S: BosStr> GetConvoAvailabilityBuilder<get_convo_availability_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetConvoAvailabilityBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetConvoAvailabilityBuilder<St, S>
 where
-    S: get_convo_availability_state::State,
-    S::Members: get_convo_availability_state::IsUnset,
+    St: get_convo_availability_state::State,
+    St::Members: get_convo_availability_state::IsUnset,
 {
     /// Set the `members` field (required)
     pub fn members(
         mut self,
-        value: impl Into<Vec<Did<'a>>>,
-    ) -> GetConvoAvailabilityBuilder<'a, get_convo_availability_state::SetMembers<S>> {
+        value: impl Into<Vec<Did<S>>>,
+    ) -> GetConvoAvailabilityBuilder<get_convo_availability_state::SetMembers<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetConvoAvailabilityBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetConvoAvailabilityBuilder<'a, S>
+impl<St, S: BosStr> GetConvoAvailabilityBuilder<St, S>
 where
-    S: get_convo_availability_state::State,
-    S::Members: get_convo_availability_state::IsSet,
+    St: get_convo_availability_state::State,
+    St::Members: get_convo_availability_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetConvoAvailability<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetConvoAvailability<S> {
         GetConvoAvailability {
             members: self._fields.0.unwrap(),
         }

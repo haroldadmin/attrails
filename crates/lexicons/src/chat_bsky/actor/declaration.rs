@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{IntoStatic, lexicon};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -27,29 +29,33 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 /// A declaration of a Bluesky chat account.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase", rename = "chat.bsky.actor.declaration", tag = "$type")]
-pub struct Declaration<'a> {
+#[serde(
+    rename_all = "camelCase",
+    rename = "chat.bsky.actor.declaration",
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct Declaration<S: BosStr = DefaultStr> {
     ///Declaration about group chat invitation preferences for the record owner.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub allow_group_invites: Option<DeclarationAllowGroupInvites<'a>>,
-    #[serde(borrow)]
-    pub allow_incoming: DeclarationAllowIncoming<'a>,
+    pub allow_group_invites: Option<DeclarationAllowGroupInvites<S>>,
+    pub allow_incoming: DeclarationAllowIncoming<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Declaration about group chat invitation preferences for the record owner.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum DeclarationAllowGroupInvites<'a> {
+pub enum DeclarationAllowGroupInvites<S: BosStr = DefaultStr> {
     All,
     None,
     Following,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> DeclarationAllowGroupInvites<'a> {
+impl<S: BosStr> DeclarationAllowGroupInvites<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::All => "all",
@@ -58,72 +64,61 @@ impl<'a> DeclarationAllowGroupInvites<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for DeclarationAllowGroupInvites<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "all" => Self::All,
             "none" => Self::None,
             "following" => Self::Following,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for DeclarationAllowGroupInvites<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "all" => Self::All,
-            "none" => Self::None,
-            "following" => Self::Following,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for DeclarationAllowGroupInvites<'a> {
+impl<S: BosStr> core::fmt::Display for DeclarationAllowGroupInvites<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for DeclarationAllowGroupInvites<'a> {
+impl<S: BosStr> AsRef<str> for DeclarationAllowGroupInvites<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for DeclarationAllowGroupInvites<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for DeclarationAllowGroupInvites<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for DeclarationAllowGroupInvites<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for DeclarationAllowGroupInvites<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for DeclarationAllowGroupInvites<'a> {
+impl<S: BosStr + Default> Default for DeclarationAllowGroupInvites<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for DeclarationAllowGroupInvites<'_> {
-    type Output = DeclarationAllowGroupInvites<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for DeclarationAllowGroupInvites<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = DeclarationAllowGroupInvites<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             DeclarationAllowGroupInvites::All => DeclarationAllowGroupInvites::All,
@@ -140,14 +135,14 @@ impl jacquard_common::IntoStatic for DeclarationAllowGroupInvites<'_> {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum DeclarationAllowIncoming<'a> {
+pub enum DeclarationAllowIncoming<S: BosStr = DefaultStr> {
     All,
     None,
     Following,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> DeclarationAllowIncoming<'a> {
+impl<S: BosStr> DeclarationAllowIncoming<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::All => "all",
@@ -156,72 +151,61 @@ impl<'a> DeclarationAllowIncoming<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for DeclarationAllowIncoming<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "all" => Self::All,
             "none" => Self::None,
             "following" => Self::Following,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for DeclarationAllowIncoming<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "all" => Self::All,
-            "none" => Self::None,
-            "following" => Self::Following,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for DeclarationAllowIncoming<'a> {
+impl<S: BosStr> core::fmt::Display for DeclarationAllowIncoming<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for DeclarationAllowIncoming<'a> {
+impl<S: BosStr> AsRef<str> for DeclarationAllowIncoming<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for DeclarationAllowIncoming<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for DeclarationAllowIncoming<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for DeclarationAllowIncoming<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for DeclarationAllowIncoming<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for DeclarationAllowIncoming<'a> {
+impl<S: BosStr + Default> Default for DeclarationAllowIncoming<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for DeclarationAllowIncoming<'_> {
-    type Output = DeclarationAllowIncoming<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for DeclarationAllowIncoming<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = DeclarationAllowIncoming<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             DeclarationAllowIncoming::All => DeclarationAllowIncoming::All,
@@ -238,21 +222,16 @@ impl jacquard_common::IntoStatic for DeclarationAllowIncoming<'_> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct DeclarationGetRecordOutput<'a> {
+pub struct DeclarationGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Declaration<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Declaration<S>,
 }
 
-impl<'a> Declaration<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, DeclarationRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Declaration<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, DeclarationRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
@@ -263,18 +242,17 @@ pub struct DeclarationRecord;
 impl XrpcResp for DeclarationRecord {
     const NSID: &'static str = "chat.bsky.actor.declaration";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = DeclarationGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = DeclarationGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<DeclarationGetRecordOutput<'_>> for Declaration<'_> {
-    fn from(output: DeclarationGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<DeclarationGetRecordOutput<S>> for Declaration<S> {
+    fn from(output: DeclarationGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Declaration<'_> {
+impl<S: BosStr> Collection for Declaration<S> {
     const NSID: &'static str = "chat.bsky.actor.declaration";
     type Record = DeclarationRecord;
 }
@@ -284,7 +262,7 @@ impl Collection for DeclarationRecord {
     type Record = DeclarationRecord;
 }
 
-impl<'a> LexiconSchema for Declaration<'a> {
+impl<S: BosStr> LexiconSchema for Declaration<S> {
     fn nsid() -> &'static str {
         "chat.bsky.actor.declaration"
     }
@@ -318,9 +296,9 @@ pub mod declaration_state {
         type AllowIncoming = Unset;
     }
     ///State transition - sets the `allow_incoming` field to Set
-    pub struct SetAllowIncoming<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAllowIncoming<S> {}
-    impl<S: State> State for SetAllowIncoming<S> {
+    pub struct SetAllowIncoming<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAllowIncoming<St> {}
+    impl<St: State> State for SetAllowIncoming<St> {
         type AllowIncoming = Set<members::allow_incoming>;
     }
     /// Marker types for field names
@@ -331,39 +309,57 @@ pub mod declaration_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DeclarationBuilder<'a, S: declaration_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct DeclarationBuilder<St: declaration_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<DeclarationAllowGroupInvites<'a>>,
-        Option<DeclarationAllowIncoming<'a>>,
+        Option<DeclarationAllowGroupInvites<S>>,
+        Option<DeclarationAllowIncoming<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Declaration<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DeclarationBuilder<'a, declaration_state::Empty> {
+impl Declaration<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DeclarationBuilder<declaration_state::Empty, DefaultStr> {
         DeclarationBuilder::new()
     }
 }
 
-impl<'a> DeclarationBuilder<'a, declaration_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Declaration<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DeclarationBuilder<declaration_state::Empty, S> {
+        DeclarationBuilder::builder()
+    }
+}
+
+impl DeclarationBuilder<declaration_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DeclarationBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: declaration_state::State> DeclarationBuilder<'a, S> {
+impl<S: BosStr> DeclarationBuilder<declaration_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DeclarationBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: declaration_state::State, S: BosStr> DeclarationBuilder<St, S> {
     /// Set the `allowGroupInvites` field (optional)
     pub fn allow_group_invites(
         mut self,
-        value: impl Into<Option<DeclarationAllowGroupInvites<'a>>>,
+        value: impl Into<Option<DeclarationAllowGroupInvites<S>>>,
     ) -> Self {
         self._fields.0 = value.into();
         self
@@ -371,53 +367,50 @@ impl<'a, S: declaration_state::State> DeclarationBuilder<'a, S> {
     /// Set the `allowGroupInvites` field to an Option value (optional)
     pub fn maybe_allow_group_invites(
         mut self,
-        value: Option<DeclarationAllowGroupInvites<'a>>,
+        value: Option<DeclarationAllowGroupInvites<S>>,
     ) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> DeclarationBuilder<'a, S>
+impl<St, S: BosStr> DeclarationBuilder<St, S>
 where
-    S: declaration_state::State,
-    S::AllowIncoming: declaration_state::IsUnset,
+    St: declaration_state::State,
+    St::AllowIncoming: declaration_state::IsUnset,
 {
     /// Set the `allowIncoming` field (required)
     pub fn allow_incoming(
         mut self,
-        value: impl Into<DeclarationAllowIncoming<'a>>,
-    ) -> DeclarationBuilder<'a, declaration_state::SetAllowIncoming<S>> {
+        value: impl Into<DeclarationAllowIncoming<S>>,
+    ) -> DeclarationBuilder<declaration_state::SetAllowIncoming<St>, S> {
         self._fields.1 = Option::Some(value.into());
         DeclarationBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DeclarationBuilder<'a, S>
+impl<St, S: BosStr> DeclarationBuilder<St, S>
 where
-    S: declaration_state::State,
-    S::AllowIncoming: declaration_state::IsSet,
+    St: declaration_state::State,
+    St::AllowIncoming: declaration_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Declaration<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Declaration<S> {
         Declaration {
             allow_group_invites: self._fields.0,
             allow_incoming: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Declaration<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> Declaration<S> {
         Declaration {
             allow_group_invites: self._fields.0,
             allow_incoming: self._fields.1.unwrap(),

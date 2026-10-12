@@ -10,52 +10,48 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Nsid;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::queue::QueueView;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateQueue<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CreateQueue<S: BosStr = DefaultStr> {
     ///Collection name for record subjects. Required if subjectTypes includes 'record'.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub collection: Option<Nsid<'a>>,
+    pub collection: Option<Nsid<S>>,
     ///Optional description of the queue
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
+    pub description: Option<S>,
     ///Display name for the queue (must be unique)
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    pub name: S,
     ///Policy keys to recommend when actioning reports in this queue
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub recommended_policies: Option<Vec<CowStr<'a>>>,
+    pub recommended_policies: Option<Vec<S>>,
     ///Report reason types (fully qualified NSIDs)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub report_types: Option<Vec<CowStr<'a>>>,
+    pub report_types: Option<Vec<S>>,
     ///Subject types this queue accepts
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub subject_types: Option<Vec<CowStr<'a>>>,
+    pub subject_types: Option<Vec<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateQueueOutput<'a> {
-    #[serde(borrow)]
-    pub queue: QueueView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CreateQueueOutput<S: BosStr = DefaultStr> {
+    pub queue: QueueView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -64,22 +60,23 @@ pub struct CreateQueueOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum CreateQueueError<'a> {
+pub enum CreateQueueError {
     /// One or more recommended policy keys do not exist in the configured policy list
     #[serde(rename = "InvalidRecommendedPolicies")]
-    InvalidRecommendedPolicies(Option<CowStr<'a>>),
+    InvalidRecommendedPolicies(Option<SmolStr>),
     /// The queue configuration conflicts with an existing queue
     #[serde(rename = "ConflictingQueue")]
-    ConflictingQueue(Option<CowStr<'a>>),
+    ConflictingQueue(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for CreateQueueError<'_> {
+impl core::fmt::Display for CreateQueueError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidRecommendedPolicies(msg) => {
@@ -96,21 +93,29 @@ impl core::fmt::Display for CreateQueueError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for tools.ozone.queue.createQueue
+/** Response marker for the `tools.ozone.queue.createQueue` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `CreateQueueOutput<S>` for this endpoint.*/
 pub struct CreateQueueResponse;
 impl jacquard_common::xrpc::XrpcResp for CreateQueueResponse {
     const NSID: &'static str = "tools.ozone.queue.createQueue";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = CreateQueueOutput<'de>;
-    type Err<'de> = CreateQueueError<'de>;
+    type Output<S: BosStr> = CreateQueueOutput<S>;
+    type Err = CreateQueueError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for CreateQueue<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for CreateQueue<S> {
     const NSID: &'static str = "tools.ozone.queue.createQueue";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -118,13 +123,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for CreateQueue<'a> {
     type Response = CreateQueueResponse;
 }
 
-/// Endpoint type for tools.ozone.queue.createQueue
+/** Endpoint marker for the `tools.ozone.queue.createQueue` procedure.
+
+Path: `/xrpc/tools.ozone.queue.createQueue`. The request payload type is `CreateQueue<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct CreateQueueRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for CreateQueueRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.queue.createQueue";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = CreateQueue<'de>;
+    type Request<S: BosStr> = CreateQueue<S>;
     type Response = CreateQueueResponse;
 }

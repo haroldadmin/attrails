@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `tools.ozone.report` Lexicon namespace/module.
 pub mod assign_moderator;
 pub mod close_reports;
 pub mod create_activity;
@@ -26,13 +27,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Datetime};
 use jacquard_common::types::value::Data;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -48,29 +50,29 @@ use crate::com_atproto::moderation;
 use crate::tools_ozone::report;
 /// Activity recording a moderator being assigned to a report.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct AssignmentActivity<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AssignmentActivity<S: BosStr = DefaultStr> {
     ///The report's status before this activity. Populated automatically from the report row; not required in input.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub previous_status: Option<AssignmentActivityPreviousStatus<'a>>,
+    pub previous_status: Option<AssignmentActivityPreviousStatus<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// The report's status before this activity. Populated automatically from the report row; not required in input.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AssignmentActivityPreviousStatus<'a> {
+pub enum AssignmentActivityPreviousStatus<S: BosStr = DefaultStr> {
     Open,
     Closed,
     Escalated,
     Queued,
     Assigned,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> AssignmentActivityPreviousStatus<'a> {
+impl<S: BosStr> AssignmentActivityPreviousStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Open => "open",
@@ -81,76 +83,63 @@ impl<'a> AssignmentActivityPreviousStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for AssignmentActivityPreviousStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "open" => Self::Open,
             "closed" => Self::Closed,
             "escalated" => Self::Escalated,
             "queued" => Self::Queued,
             "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for AssignmentActivityPreviousStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "open" => Self::Open,
-            "closed" => Self::Closed,
-            "escalated" => Self::Escalated,
-            "queued" => Self::Queued,
-            "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for AssignmentActivityPreviousStatus<'a> {
+impl<S: BosStr> core::fmt::Display for AssignmentActivityPreviousStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for AssignmentActivityPreviousStatus<'a> {
+impl<S: BosStr> AsRef<str> for AssignmentActivityPreviousStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for AssignmentActivityPreviousStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for AssignmentActivityPreviousStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for AssignmentActivityPreviousStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for AssignmentActivityPreviousStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for AssignmentActivityPreviousStatus<'a> {
+impl<S: BosStr + Default> Default for AssignmentActivityPreviousStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for AssignmentActivityPreviousStatus<'_> {
-    type Output = AssignmentActivityPreviousStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for AssignmentActivityPreviousStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = AssignmentActivityPreviousStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             AssignmentActivityPreviousStatus::Open => {
@@ -176,51 +165,49 @@ impl jacquard_common::IntoStatic for AssignmentActivityPreviousStatus<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct AssignmentView<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AssignmentView<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_at: Option<Datetime>,
     pub id: i64,
     ///The moderator assigned to this report
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub moderator: Option<Member<'a>>,
+    pub moderator: Option<Member<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub queue: Option<QueueView<'a>>,
+    pub queue: Option<QueueView<S>>,
     pub report_id: i64,
     pub start_at: Datetime,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Activity recording a report being closed.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct CloseActivity<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CloseActivity<S: BosStr = DefaultStr> {
     ///The report's status before this activity. Populated automatically from the report row; not required in input.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub previous_status: Option<CloseActivityPreviousStatus<'a>>,
+    pub previous_status: Option<CloseActivityPreviousStatus<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// The report's status before this activity. Populated automatically from the report row; not required in input.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum CloseActivityPreviousStatus<'a> {
+pub enum CloseActivityPreviousStatus<S: BosStr = DefaultStr> {
     Open,
     Closed,
     Escalated,
     Queued,
     Assigned,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> CloseActivityPreviousStatus<'a> {
+impl<S: BosStr> CloseActivityPreviousStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Open => "open",
@@ -231,76 +218,63 @@ impl<'a> CloseActivityPreviousStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for CloseActivityPreviousStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "open" => Self::Open,
             "closed" => Self::Closed,
             "escalated" => Self::Escalated,
             "queued" => Self::Queued,
             "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for CloseActivityPreviousStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "open" => Self::Open,
-            "closed" => Self::Closed,
-            "escalated" => Self::Escalated,
-            "queued" => Self::Queued,
-            "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for CloseActivityPreviousStatus<'a> {
+impl<S: BosStr> core::fmt::Display for CloseActivityPreviousStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for CloseActivityPreviousStatus<'a> {
+impl<S: BosStr> AsRef<str> for CloseActivityPreviousStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for CloseActivityPreviousStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for CloseActivityPreviousStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for CloseActivityPreviousStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for CloseActivityPreviousStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for CloseActivityPreviousStatus<'a> {
+impl<S: BosStr + Default> Default for CloseActivityPreviousStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for CloseActivityPreviousStatus<'_> {
-    type Output = CloseActivityPreviousStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for CloseActivityPreviousStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = CloseActivityPreviousStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             CloseActivityPreviousStatus::Open => CloseActivityPreviousStatus::Open,
@@ -321,29 +295,29 @@ impl jacquard_common::IntoStatic for CloseActivityPreviousStatus<'_> {
 
 /// Activity recording a report being escalated.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct EscalationActivity<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct EscalationActivity<S: BosStr = DefaultStr> {
     ///The report's status before this activity. Populated automatically from the report row; not required in input.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub previous_status: Option<EscalationActivityPreviousStatus<'a>>,
+    pub previous_status: Option<EscalationActivityPreviousStatus<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// The report's status before this activity. Populated automatically from the report row; not required in input.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum EscalationActivityPreviousStatus<'a> {
+pub enum EscalationActivityPreviousStatus<S: BosStr = DefaultStr> {
     Open,
     Closed,
     Escalated,
     Queued,
     Assigned,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> EscalationActivityPreviousStatus<'a> {
+impl<S: BosStr> EscalationActivityPreviousStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Open => "open",
@@ -354,76 +328,63 @@ impl<'a> EscalationActivityPreviousStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for EscalationActivityPreviousStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "open" => Self::Open,
             "closed" => Self::Closed,
             "escalated" => Self::Escalated,
             "queued" => Self::Queued,
             "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for EscalationActivityPreviousStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "open" => Self::Open,
-            "closed" => Self::Closed,
-            "escalated" => Self::Escalated,
-            "queued" => Self::Queued,
-            "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for EscalationActivityPreviousStatus<'a> {
+impl<S: BosStr> core::fmt::Display for EscalationActivityPreviousStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for EscalationActivityPreviousStatus<'a> {
+impl<S: BosStr> AsRef<str> for EscalationActivityPreviousStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for EscalationActivityPreviousStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for EscalationActivityPreviousStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for EscalationActivityPreviousStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for EscalationActivityPreviousStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for EscalationActivityPreviousStatus<'a> {
+impl<S: BosStr + Default> Default for EscalationActivityPreviousStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for EscalationActivityPreviousStatus<'_> {
-    type Output = EscalationActivityPreviousStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for EscalationActivityPreviousStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = EscalationActivityPreviousStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             EscalationActivityPreviousStatus::Open => {
@@ -450,10 +411,9 @@ impl jacquard_common::IntoStatic for EscalationActivityPreviousStatus<'_> {
 
 /// A single daily snapshot of report statistics for a calendar date.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct HistoricalStats<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct HistoricalStats<S: BosStr = DefaultStr> {
     ///Percentage of reports actioned (actionedCount / inboundCount * 100), rounded to nearest integer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub action_rate: Option<i64>,
@@ -467,8 +427,7 @@ pub struct HistoricalStats<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub computed_at: Option<Datetime>,
     ///The calendar date this snapshot covers (YYYY-MM-DD).
-    #[serde(borrow)]
-    pub date: CowStr<'a>,
+    pub date: S,
     ///Number of reports escalated during this day.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub escalated_count: Option<i64>,
@@ -478,14 +437,15 @@ pub struct HistoricalStats<'a> {
     ///Number of reports not closed at time of computation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pending_count: Option<i64>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Live statistics for reports for the current calendar day, filterable by queue, moderator, or report type.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LiveStats<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LiveStats<S: BosStr = DefaultStr> {
     ///Percentage of reports actioned (actionedCount / inboundCount * 100), rounded to nearest integer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub action_rate: Option<i64>,
@@ -507,39 +467,44 @@ pub struct LiveStats<'a> {
     ///Number of reports currently not closed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pending_count: Option<i64>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Activity recording a note on a report. Use internalNote for moderator-only notes or publicNote for reporter-visible notes (or both).
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct NoteActivity<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct NoteActivity<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
 /// Activity recording a report being routed to a queue.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct QueueActivity<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct QueueActivity<S: BosStr = DefaultStr> {
     ///The report's status before this activity. Populated automatically from the report row; not required in input.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub previous_status: Option<QueueActivityPreviousStatus<'a>>,
+    pub previous_status: Option<QueueActivityPreviousStatus<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// The report's status before this activity. Populated automatically from the report row; not required in input.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum QueueActivityPreviousStatus<'a> {
+pub enum QueueActivityPreviousStatus<S: BosStr = DefaultStr> {
     Open,
     Closed,
     Escalated,
     Queued,
     Assigned,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> QueueActivityPreviousStatus<'a> {
+impl<S: BosStr> QueueActivityPreviousStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Open => "open",
@@ -550,76 +515,63 @@ impl<'a> QueueActivityPreviousStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for QueueActivityPreviousStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "open" => Self::Open,
             "closed" => Self::Closed,
             "escalated" => Self::Escalated,
             "queued" => Self::Queued,
             "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for QueueActivityPreviousStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "open" => Self::Open,
-            "closed" => Self::Closed,
-            "escalated" => Self::Escalated,
-            "queued" => Self::Queued,
-            "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for QueueActivityPreviousStatus<'a> {
+impl<S: BosStr> core::fmt::Display for QueueActivityPreviousStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for QueueActivityPreviousStatus<'a> {
+impl<S: BosStr> AsRef<str> for QueueActivityPreviousStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for QueueActivityPreviousStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for QueueActivityPreviousStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for QueueActivityPreviousStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for QueueActivityPreviousStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for QueueActivityPreviousStatus<'a> {
+impl<S: BosStr + Default> Default for QueueActivityPreviousStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for QueueActivityPreviousStatus<'_> {
-    type Output = QueueActivityPreviousStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for QueueActivityPreviousStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = QueueActivityPreviousStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             QueueActivityPreviousStatus::Open => QueueActivityPreviousStatus::Open,
@@ -970,7 +922,7 @@ impl core::fmt::Display for ReasonSexualUnlabeled {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ReasonType<'a> {
+pub enum ReasonType<S: BosStr = DefaultStr> {
     ToolsOzoneReportDefsReasonAppeal,
     ToolsOzoneReportDefsReasonOther,
     ToolsOzoneReportDefsReasonViolenceAnimal,
@@ -1011,10 +963,10 @@ pub enum ReasonType<'a> {
     ToolsOzoneReportDefsReasonSelfHarmStunts,
     ToolsOzoneReportDefsReasonSelfHarmSubstances,
     ToolsOzoneReportDefsReasonSelfHarmOther,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> ReasonType<'a> {
+impl<S: BosStr> ReasonType<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::ToolsOzoneReportDefsReasonAppeal => {
@@ -1140,11 +1092,9 @@ impl<'a> ReasonType<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for ReasonType<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "tools.ozone.report.defs#reasonAppeal" => {
                 Self::ToolsOzoneReportDefsReasonAppeal
             }
@@ -1265,175 +1215,48 @@ impl<'a> From<&'a str> for ReasonType<'a> {
             "tools.ozone.report.defs#reasonSelfHarmOther" => {
                 Self::ToolsOzoneReportDefsReasonSelfHarmOther
             }
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for ReasonType<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "tools.ozone.report.defs#reasonAppeal" => {
-                Self::ToolsOzoneReportDefsReasonAppeal
-            }
-            "tools.ozone.report.defs#reasonOther" => {
-                Self::ToolsOzoneReportDefsReasonOther
-            }
-            "tools.ozone.report.defs#reasonViolenceAnimal" => {
-                Self::ToolsOzoneReportDefsReasonViolenceAnimal
-            }
-            "tools.ozone.report.defs#reasonViolenceThreats" => {
-                Self::ToolsOzoneReportDefsReasonViolenceThreats
-            }
-            "tools.ozone.report.defs#reasonViolenceGraphicContent" => {
-                Self::ToolsOzoneReportDefsReasonViolenceGraphicContent
-            }
-            "tools.ozone.report.defs#reasonViolenceGlorification" => {
-                Self::ToolsOzoneReportDefsReasonViolenceGlorification
-            }
-            "tools.ozone.report.defs#reasonViolenceExtremistContent" => {
-                Self::ToolsOzoneReportDefsReasonViolenceExtremistContent
-            }
-            "tools.ozone.report.defs#reasonViolenceTrafficking" => {
-                Self::ToolsOzoneReportDefsReasonViolenceTrafficking
-            }
-            "tools.ozone.report.defs#reasonViolenceOther" => {
-                Self::ToolsOzoneReportDefsReasonViolenceOther
-            }
-            "tools.ozone.report.defs#reasonSexualAbuseContent" => {
-                Self::ToolsOzoneReportDefsReasonSexualAbuseContent
-            }
-            "tools.ozone.report.defs#reasonSexualNCII" => {
-                Self::ToolsOzoneReportDefsReasonSexualNcii
-            }
-            "tools.ozone.report.defs#reasonSexualDeepfake" => {
-                Self::ToolsOzoneReportDefsReasonSexualDeepfake
-            }
-            "tools.ozone.report.defs#reasonSexualAnimal" => {
-                Self::ToolsOzoneReportDefsReasonSexualAnimal
-            }
-            "tools.ozone.report.defs#reasonSexualUnlabeled" => {
-                Self::ToolsOzoneReportDefsReasonSexualUnlabeled
-            }
-            "tools.ozone.report.defs#reasonSexualOther" => {
-                Self::ToolsOzoneReportDefsReasonSexualOther
-            }
-            "tools.ozone.report.defs#reasonChildSafetyCSAM" => {
-                Self::ToolsOzoneReportDefsReasonChildSafetyCsam
-            }
-            "tools.ozone.report.defs#reasonChildSafetyGroom" => {
-                Self::ToolsOzoneReportDefsReasonChildSafetyGroom
-            }
-            "tools.ozone.report.defs#reasonChildSafetyPrivacy" => {
-                Self::ToolsOzoneReportDefsReasonChildSafetyPrivacy
-            }
-            "tools.ozone.report.defs#reasonChildSafetyHarassment" => {
-                Self::ToolsOzoneReportDefsReasonChildSafetyHarassment
-            }
-            "tools.ozone.report.defs#reasonChildSafetyOther" => {
-                Self::ToolsOzoneReportDefsReasonChildSafetyOther
-            }
-            "tools.ozone.report.defs#reasonHarassmentTroll" => {
-                Self::ToolsOzoneReportDefsReasonHarassmentTroll
-            }
-            "tools.ozone.report.defs#reasonHarassmentTargeted" => {
-                Self::ToolsOzoneReportDefsReasonHarassmentTargeted
-            }
-            "tools.ozone.report.defs#reasonHarassmentHateSpeech" => {
-                Self::ToolsOzoneReportDefsReasonHarassmentHateSpeech
-            }
-            "tools.ozone.report.defs#reasonHarassmentDoxxing" => {
-                Self::ToolsOzoneReportDefsReasonHarassmentDoxxing
-            }
-            "tools.ozone.report.defs#reasonHarassmentOther" => {
-                Self::ToolsOzoneReportDefsReasonHarassmentOther
-            }
-            "tools.ozone.report.defs#reasonMisleadingBot" => {
-                Self::ToolsOzoneReportDefsReasonMisleadingBot
-            }
-            "tools.ozone.report.defs#reasonMisleadingImpersonation" => {
-                Self::ToolsOzoneReportDefsReasonMisleadingImpersonation
-            }
-            "tools.ozone.report.defs#reasonMisleadingSpam" => {
-                Self::ToolsOzoneReportDefsReasonMisleadingSpam
-            }
-            "tools.ozone.report.defs#reasonMisleadingScam" => {
-                Self::ToolsOzoneReportDefsReasonMisleadingScam
-            }
-            "tools.ozone.report.defs#reasonMisleadingElections" => {
-                Self::ToolsOzoneReportDefsReasonMisleadingElections
-            }
-            "tools.ozone.report.defs#reasonMisleadingOther" => {
-                Self::ToolsOzoneReportDefsReasonMisleadingOther
-            }
-            "tools.ozone.report.defs#reasonRuleSiteSecurity" => {
-                Self::ToolsOzoneReportDefsReasonRuleSiteSecurity
-            }
-            "tools.ozone.report.defs#reasonRuleProhibitedSales" => {
-                Self::ToolsOzoneReportDefsReasonRuleProhibitedSales
-            }
-            "tools.ozone.report.defs#reasonRuleBanEvasion" => {
-                Self::ToolsOzoneReportDefsReasonRuleBanEvasion
-            }
-            "tools.ozone.report.defs#reasonRuleOther" => {
-                Self::ToolsOzoneReportDefsReasonRuleOther
-            }
-            "tools.ozone.report.defs#reasonSelfHarmContent" => {
-                Self::ToolsOzoneReportDefsReasonSelfHarmContent
-            }
-            "tools.ozone.report.defs#reasonSelfHarmED" => {
-                Self::ToolsOzoneReportDefsReasonSelfHarmEd
-            }
-            "tools.ozone.report.defs#reasonSelfHarmStunts" => {
-                Self::ToolsOzoneReportDefsReasonSelfHarmStunts
-            }
-            "tools.ozone.report.defs#reasonSelfHarmSubstances" => {
-                Self::ToolsOzoneReportDefsReasonSelfHarmSubstances
-            }
-            "tools.ozone.report.defs#reasonSelfHarmOther" => {
-                Self::ToolsOzoneReportDefsReasonSelfHarmOther
-            }
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for ReasonType<'a> {
+impl<S: BosStr> AsRef<str> for ReasonType<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for ReasonType<'a> {
+impl<S: BosStr> core::fmt::Display for ReasonType<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for ReasonType<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for ReasonType<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for ReasonType<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for ReasonType<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for ReasonType<'_> {
-    type Output = ReasonType<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for ReasonType<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ReasonType<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             ReasonType::ToolsOzoneReportDefsReasonAppeal => {
@@ -1633,29 +1456,29 @@ impl core::fmt::Display for ReasonViolenceTrafficking {
 
 /// Activity recording a closed report being reopened. Only valid when the report is in 'closed' status.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ReopenActivity<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReopenActivity<S: BosStr = DefaultStr> {
     ///The report's status before this activity. Populated automatically from the report row; not required in input.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub previous_status: Option<ReopenActivityPreviousStatus<'a>>,
+    pub previous_status: Option<ReopenActivityPreviousStatus<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// The report's status before this activity. Populated automatically from the report row; not required in input.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ReopenActivityPreviousStatus<'a> {
+pub enum ReopenActivityPreviousStatus<S: BosStr = DefaultStr> {
     Open,
     Closed,
     Escalated,
     Queued,
     Assigned,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> ReopenActivityPreviousStatus<'a> {
+impl<S: BosStr> ReopenActivityPreviousStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Open => "open",
@@ -1666,76 +1489,63 @@ impl<'a> ReopenActivityPreviousStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for ReopenActivityPreviousStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "open" => Self::Open,
             "closed" => Self::Closed,
             "escalated" => Self::Escalated,
             "queued" => Self::Queued,
             "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for ReopenActivityPreviousStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "open" => Self::Open,
-            "closed" => Self::Closed,
-            "escalated" => Self::Escalated,
-            "queued" => Self::Queued,
-            "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for ReopenActivityPreviousStatus<'a> {
+impl<S: BosStr> core::fmt::Display for ReopenActivityPreviousStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for ReopenActivityPreviousStatus<'a> {
+impl<S: BosStr> AsRef<str> for ReopenActivityPreviousStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for ReopenActivityPreviousStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for ReopenActivityPreviousStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for ReopenActivityPreviousStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for ReopenActivityPreviousStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for ReopenActivityPreviousStatus<'a> {
+impl<S: BosStr + Default> Default for ReopenActivityPreviousStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for ReopenActivityPreviousStatus<'_> {
-    type Output = ReopenActivityPreviousStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for ReopenActivityPreviousStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ReopenActivityPreviousStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             ReopenActivityPreviousStatus::Open => ReopenActivityPreviousStatus::Open,
@@ -1756,106 +1566,94 @@ impl jacquard_common::IntoStatic for ReopenActivityPreviousStatus<'_> {
 
 /// A single activity entry on a report.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReportActivityView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReportActivityView<S: BosStr = DefaultStr> {
     ///The typed activity object describing what occurred.
-    #[serde(borrow)]
-    pub activity: ReportActivityViewActivity<'a>,
+    pub activity: ReportActivityViewActivity<S>,
     ///When this activity was created
     pub created_at: Datetime,
     ///DID of the actor who created this activity, or the service DID for automated activities.
-    #[serde(borrow)]
-    pub created_by: Did<'a>,
+    pub created_by: Did<S>,
     ///Activity ID
     pub id: i64,
     ///Optional moderator-only note. Not visible to reporters.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub internal_note: Option<CowStr<'a>>,
+    pub internal_note: Option<S>,
     ///True if this activity was created by an automated process (e.g. queue router) rather than a direct human action.
     pub is_automated: bool,
     ///Extensible JSON payload for loose activity-specific metadata (e.g. assignmentId).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub meta: Option<Data<'a>>,
+    pub meta: Option<Data<S>>,
     ///Full member record of the moderator who created this activity
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub moderator: Option<Member<'a>>,
+    pub moderator: Option<Member<S>>,
     ///Optional public note, potentially visible to the reporter.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub public_note: Option<CowStr<'a>>,
+    pub public_note: Option<S>,
     ///Full view of the report this activity belongs to.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub report: Option<report::ReportView<'a>>,
+    pub report: Option<report::ReportView<S>>,
     ///ID of the report this activity belongs to
     pub report_id: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ReportActivityViewActivity<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ReportActivityViewActivity<S: BosStr = DefaultStr> {
     #[serde(rename = "tools.ozone.report.defs#queueActivity")]
-    QueueActivity(Box<report::QueueActivity<'a>>),
+    QueueActivity(Box<report::QueueActivity<S>>),
     #[serde(rename = "tools.ozone.report.defs#assignmentActivity")]
-    AssignmentActivity(Box<report::AssignmentActivity<'a>>),
+    AssignmentActivity(Box<report::AssignmentActivity<S>>),
     #[serde(rename = "tools.ozone.report.defs#escalationActivity")]
-    EscalationActivity(Box<report::EscalationActivity<'a>>),
+    EscalationActivity(Box<report::EscalationActivity<S>>),
     #[serde(rename = "tools.ozone.report.defs#closeActivity")]
-    CloseActivity(Box<report::CloseActivity<'a>>),
+    CloseActivity(Box<report::CloseActivity<S>>),
     #[serde(rename = "tools.ozone.report.defs#reopenActivity")]
-    ReopenActivity(Box<report::ReopenActivity<'a>>),
+    ReopenActivity(Box<report::ReopenActivity<S>>),
     #[serde(rename = "tools.ozone.report.defs#noteActivity")]
-    NoteActivity(Box<report::NoteActivity<'a>>),
+    NoteActivity(Box<report::NoteActivity<S>>),
 }
 
 /// Information about the moderator currently assigned to a report.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReportAssignment<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReportAssignment<S: BosStr = DefaultStr> {
     ///When the report was assigned
     pub assigned_at: Datetime,
     ///DID of the assigned moderator
-    #[serde(borrow)]
-    pub did: Did<'a>,
+    pub did: Did<S>,
     ///Full member record of the assigned moderator
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub moderator: Option<Member<'a>>,
+    pub moderator: Option<Member<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReportView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReportView<S: BosStr = DefaultStr> {
     ///Array of moderation event IDs representing actions taken on this report (sorted DESC, most recent first)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub action_event_ids: Option<Vec<i64>>,
     ///Note sent to reporter when report was actioned
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub action_note: Option<CowStr<'a>>,
+    pub action_note: Option<S>,
     ///Optional: expanded action events
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub actions: Option<Vec<ModEventView<'a>>>,
+    pub actions: Option<Vec<ModEventView<S>>>,
     ///Information about moderator currently assigned to this report (if any)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub assignment: Option<report::ReportAssignment<'a>>,
+    pub assignment: Option<report::ReportAssignment<S>>,
     ///Comment provided by the reporter
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub comment: Option<CowStr<'a>>,
+    pub comment: Option<S>,
     ///When the report was created
     pub created_at: Datetime,
     ///ID of the moderation event that created this report
@@ -1871,8 +1669,7 @@ pub struct ReportView<'a> {
     pub is_muted: Option<bool>,
     ///The queue this report is assigned to (if any)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub queue: Option<QueueView<'a>>,
+    pub queue: Option<QueueView<S>>,
     ///When the report was assigned to its current queue
     #[serde(skip_serializing_if = "Option::is_none")]
     pub queued_at: Option<Datetime>,
@@ -1880,42 +1677,38 @@ pub struct ReportView<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub related_report_count: Option<i64>,
     ///Type of report
-    #[serde(borrow)]
-    pub report_type: moderation::ReasonType<'a>,
+    pub report_type: moderation::ReasonType<S>,
     ///DID of the user who made the report
-    #[serde(borrow)]
-    pub reported_by: Did<'a>,
+    pub reported_by: Did<S>,
     ///Full subject view of the reporter account
-    #[serde(borrow)]
-    pub reporter: SubjectView<'a>,
+    pub reporter: SubjectView<S>,
     ///Current status of the report
-    #[serde(borrow)]
-    pub status: ReportViewStatus<'a>,
+    pub status: ReportViewStatus<S>,
     ///The subject that was reported with full details
-    #[serde(borrow)]
-    pub subject: SubjectView<'a>,
+    pub subject: SubjectView<S>,
     ///Current status of the reported subject
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub subject_status: Option<SubjectStatusView<'a>>,
+    pub subject_status: Option<SubjectStatusView<S>>,
     ///When the report was last updated
     #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<Datetime>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Current status of the report
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ReportViewStatus<'a> {
+pub enum ReportViewStatus<S: BosStr = DefaultStr> {
     Open,
     Closed,
     Escalated,
     Queued,
     Assigned,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> ReportViewStatus<'a> {
+impl<S: BosStr> ReportViewStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Open => "open",
@@ -1926,76 +1719,62 @@ impl<'a> ReportViewStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for ReportViewStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "open" => Self::Open,
             "closed" => Self::Closed,
             "escalated" => Self::Escalated,
             "queued" => Self::Queued,
             "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for ReportViewStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "open" => Self::Open,
-            "closed" => Self::Closed,
-            "escalated" => Self::Escalated,
-            "queued" => Self::Queued,
-            "assigned" => Self::Assigned,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for ReportViewStatus<'a> {
+impl<S: BosStr> core::fmt::Display for ReportViewStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for ReportViewStatus<'a> {
+impl<S: BosStr> AsRef<str> for ReportViewStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for ReportViewStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for ReportViewStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for ReportViewStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for ReportViewStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for ReportViewStatus<'a> {
+impl<S: BosStr + Default> Default for ReportViewStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for ReportViewStatus<'_> {
-    type Output = ReportViewStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for ReportViewStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ReportViewStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             ReportViewStatus::Open => ReportViewStatus::Open,
@@ -2008,7 +1787,7 @@ impl jacquard_common::IntoStatic for ReportViewStatus<'_> {
     }
 }
 
-impl<'a> LexiconSchema for AssignmentActivity<'a> {
+impl<S: BosStr> LexiconSchema for AssignmentActivity<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2023,7 +1802,7 @@ impl<'a> LexiconSchema for AssignmentActivity<'a> {
     }
 }
 
-impl<'a> LexiconSchema for AssignmentView<'a> {
+impl<S: BosStr> LexiconSchema for AssignmentView<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2038,7 +1817,7 @@ impl<'a> LexiconSchema for AssignmentView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for CloseActivity<'a> {
+impl<S: BosStr> LexiconSchema for CloseActivity<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2053,7 +1832,7 @@ impl<'a> LexiconSchema for CloseActivity<'a> {
     }
 }
 
-impl<'a> LexiconSchema for EscalationActivity<'a> {
+impl<S: BosStr> LexiconSchema for EscalationActivity<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2068,7 +1847,7 @@ impl<'a> LexiconSchema for EscalationActivity<'a> {
     }
 }
 
-impl<'a> LexiconSchema for HistoricalStats<'a> {
+impl<S: BosStr> LexiconSchema for HistoricalStats<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2083,7 +1862,7 @@ impl<'a> LexiconSchema for HistoricalStats<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LiveStats<'a> {
+impl<S: BosStr> LexiconSchema for LiveStats<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2098,7 +1877,7 @@ impl<'a> LexiconSchema for LiveStats<'a> {
     }
 }
 
-impl<'a> LexiconSchema for NoteActivity<'a> {
+impl<S: BosStr> LexiconSchema for NoteActivity<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2113,7 +1892,7 @@ impl<'a> LexiconSchema for NoteActivity<'a> {
     }
 }
 
-impl<'a> LexiconSchema for QueueActivity<'a> {
+impl<S: BosStr> LexiconSchema for QueueActivity<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2128,7 +1907,7 @@ impl<'a> LexiconSchema for QueueActivity<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReopenActivity<'a> {
+impl<S: BosStr> LexiconSchema for ReopenActivity<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2143,7 +1922,7 @@ impl<'a> LexiconSchema for ReopenActivity<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReportActivityView<'a> {
+impl<S: BosStr> LexiconSchema for ReportActivityView<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2158,7 +1937,7 @@ impl<'a> LexiconSchema for ReportActivityView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReportAssignment<'a> {
+impl<S: BosStr> LexiconSchema for ReportAssignment<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -2173,7 +1952,7 @@ impl<'a> LexiconSchema for ReportAssignment<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReportView<'a> {
+impl<S: BosStr> LexiconSchema for ReportView<S> {
     fn nsid() -> &'static str {
         "tools.ozone.report.defs"
     }
@@ -3108,123 +2887,144 @@ pub mod assignment_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type ReportId;
-        type StartAt;
         type Did;
         type Id;
+        type ReportId;
+        type StartAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type ReportId = Unset;
-        type StartAt = Unset;
         type Did = Unset;
         type Id = Unset;
-    }
-    ///State transition - sets the `report_id` field to Set
-    pub struct SetReportId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReportId<S> {}
-    impl<S: State> State for SetReportId<S> {
-        type ReportId = Set<members::report_id>;
-        type StartAt = S::StartAt;
-        type Did = S::Did;
-        type Id = S::Id;
-    }
-    ///State transition - sets the `start_at` field to Set
-    pub struct SetStartAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetStartAt<S> {}
-    impl<S: State> State for SetStartAt<S> {
-        type ReportId = S::ReportId;
-        type StartAt = Set<members::start_at>;
-        type Did = S::Did;
-        type Id = S::Id;
+        type ReportId = Unset;
+        type StartAt = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
-        type ReportId = S::ReportId;
-        type StartAt = S::StartAt;
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
-        type Id = S::Id;
+        type Id = St::Id;
+        type ReportId = St::ReportId;
+        type StartAt = St::StartAt;
     }
     ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type ReportId = S::ReportId;
-        type StartAt = S::StartAt;
-        type Did = S::Did;
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type Did = St::Did;
         type Id = Set<members::id>;
+        type ReportId = St::ReportId;
+        type StartAt = St::StartAt;
+    }
+    ///State transition - sets the `report_id` field to Set
+    pub struct SetReportId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReportId<St> {}
+    impl<St: State> State for SetReportId<St> {
+        type Did = St::Did;
+        type Id = St::Id;
+        type ReportId = Set<members::report_id>;
+        type StartAt = St::StartAt;
+    }
+    ///State transition - sets the `start_at` field to Set
+    pub struct SetStartAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetStartAt<St> {}
+    impl<St: State> State for SetStartAt<St> {
+        type Did = St::Did;
+        type Id = St::Id;
+        type ReportId = St::ReportId;
+        type StartAt = Set<members::start_at>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `report_id` field
-        pub struct report_id(());
-        ///Marker type for the `start_at` field
-        pub struct start_at(());
         ///Marker type for the `did` field
         pub struct did(());
         ///Marker type for the `id` field
         pub struct id(());
+        ///Marker type for the `report_id` field
+        pub struct report_id(());
+        ///Marker type for the `start_at` field
+        pub struct start_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct AssignmentViewBuilder<'a, S: assignment_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct AssignmentViewBuilder<
+    St: assignment_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<Did<'a>>,
+        Option<Did<S>>,
         Option<Datetime>,
         Option<i64>,
-        Option<Member<'a>>,
-        Option<QueueView<'a>>,
+        Option<Member<S>>,
+        Option<QueueView<S>>,
         Option<i64>,
         Option<Datetime>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> AssignmentView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> AssignmentViewBuilder<'a, assignment_view_state::Empty> {
+impl AssignmentView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> AssignmentViewBuilder<assignment_view_state::Empty, DefaultStr> {
         AssignmentViewBuilder::new()
     }
 }
 
-impl<'a> AssignmentViewBuilder<'a, assignment_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> AssignmentView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> AssignmentViewBuilder<assignment_view_state::Empty, S> {
+        AssignmentViewBuilder::builder()
+    }
+}
+
+impl AssignmentViewBuilder<assignment_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<S: BosStr> AssignmentViewBuilder<assignment_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        AssignmentViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::Did: assignment_view_state::IsUnset,
+    St: assignment_view_state::State,
+    St::Did: assignment_view_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> AssignmentViewBuilder<'a, assignment_view_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> AssignmentViewBuilder<assignment_view_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: assignment_view_state::State> AssignmentViewBuilder<'a, S> {
+impl<St: assignment_view_state::State, S: BosStr> AssignmentViewBuilder<St, S> {
     /// Set the `endAt` field (optional)
     pub fn end_at(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.1 = value.into();
@@ -3237,99 +3037,99 @@ impl<'a, S: assignment_view_state::State> AssignmentViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::Id: assignment_view_state::IsUnset,
+    St: assignment_view_state::State,
+    St::Id: assignment_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
         value: impl Into<i64>,
-    ) -> AssignmentViewBuilder<'a, assignment_view_state::SetId<S>> {
+    ) -> AssignmentViewBuilder<assignment_view_state::SetId<St>, S> {
         self._fields.2 = Option::Some(value.into());
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: assignment_view_state::State> AssignmentViewBuilder<'a, S> {
+impl<St: assignment_view_state::State, S: BosStr> AssignmentViewBuilder<St, S> {
     /// Set the `moderator` field (optional)
-    pub fn moderator(mut self, value: impl Into<Option<Member<'a>>>) -> Self {
+    pub fn moderator(mut self, value: impl Into<Option<Member<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `moderator` field to an Option value (optional)
-    pub fn maybe_moderator(mut self, value: Option<Member<'a>>) -> Self {
+    pub fn maybe_moderator(mut self, value: Option<Member<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: assignment_view_state::State> AssignmentViewBuilder<'a, S> {
+impl<St: assignment_view_state::State, S: BosStr> AssignmentViewBuilder<St, S> {
     /// Set the `queue` field (optional)
-    pub fn queue(mut self, value: impl Into<Option<QueueView<'a>>>) -> Self {
+    pub fn queue(mut self, value: impl Into<Option<QueueView<S>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `queue` field to an Option value (optional)
-    pub fn maybe_queue(mut self, value: Option<QueueView<'a>>) -> Self {
+    pub fn maybe_queue(mut self, value: Option<QueueView<S>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::ReportId: assignment_view_state::IsUnset,
+    St: assignment_view_state::State,
+    St::ReportId: assignment_view_state::IsUnset,
 {
     /// Set the `reportId` field (required)
     pub fn report_id(
         mut self,
         value: impl Into<i64>,
-    ) -> AssignmentViewBuilder<'a, assignment_view_state::SetReportId<S>> {
+    ) -> AssignmentViewBuilder<assignment_view_state::SetReportId<St>, S> {
         self._fields.5 = Option::Some(value.into());
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::StartAt: assignment_view_state::IsUnset,
+    St: assignment_view_state::State,
+    St::StartAt: assignment_view_state::IsUnset,
 {
     /// Set the `startAt` field (required)
     pub fn start_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> AssignmentViewBuilder<'a, assignment_view_state::SetStartAt<S>> {
+    ) -> AssignmentViewBuilder<assignment_view_state::SetStartAt<St>, S> {
         self._fields.6 = Option::Some(value.into());
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::ReportId: assignment_view_state::IsSet,
-    S::StartAt: assignment_view_state::IsSet,
-    S::Did: assignment_view_state::IsSet,
-    S::Id: assignment_view_state::IsSet,
+    St: assignment_view_state::State,
+    St::Did: assignment_view_state::IsSet,
+    St::Id: assignment_view_state::IsSet,
+    St::ReportId: assignment_view_state::IsSet,
+    St::StartAt: assignment_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> AssignmentView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> AssignmentView<S> {
         AssignmentView {
             did: self._fields.0.unwrap(),
             end_at: self._fields.1,
@@ -3341,11 +3141,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> AssignmentView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> AssignmentView<S> {
         AssignmentView {
             did: self._fields.0.unwrap(),
             end_at: self._fields.1,
@@ -3369,336 +3169,360 @@ pub mod report_activity_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type CreatedBy;
         type Activity;
         type CreatedAt;
+        type CreatedBy;
         type Id;
-        type ReportId;
         type IsAutomated;
+        type ReportId;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type CreatedBy = Unset;
         type Activity = Unset;
         type CreatedAt = Unset;
+        type CreatedBy = Unset;
         type Id = Unset;
-        type ReportId = Unset;
         type IsAutomated = Unset;
-    }
-    ///State transition - sets the `created_by` field to Set
-    pub struct SetCreatedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedBy<S> {}
-    impl<S: State> State for SetCreatedBy<S> {
-        type CreatedBy = Set<members::created_by>;
-        type Activity = S::Activity;
-        type CreatedAt = S::CreatedAt;
-        type Id = S::Id;
-        type ReportId = S::ReportId;
-        type IsAutomated = S::IsAutomated;
+        type ReportId = Unset;
     }
     ///State transition - sets the `activity` field to Set
-    pub struct SetActivity<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetActivity<S> {}
-    impl<S: State> State for SetActivity<S> {
-        type CreatedBy = S::CreatedBy;
+    pub struct SetActivity<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetActivity<St> {}
+    impl<St: State> State for SetActivity<St> {
         type Activity = Set<members::activity>;
-        type CreatedAt = S::CreatedAt;
-        type Id = S::Id;
-        type ReportId = S::ReportId;
-        type IsAutomated = S::IsAutomated;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Id = St::Id;
+        type IsAutomated = St::IsAutomated;
+        type ReportId = St::ReportId;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type CreatedBy = S::CreatedBy;
-        type Activity = S::Activity;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
+        type Activity = St::Activity;
         type CreatedAt = Set<members::created_at>;
-        type Id = S::Id;
-        type ReportId = S::ReportId;
-        type IsAutomated = S::IsAutomated;
+        type CreatedBy = St::CreatedBy;
+        type Id = St::Id;
+        type IsAutomated = St::IsAutomated;
+        type ReportId = St::ReportId;
+    }
+    ///State transition - sets the `created_by` field to Set
+    pub struct SetCreatedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedBy<St> {}
+    impl<St: State> State for SetCreatedBy<St> {
+        type Activity = St::Activity;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = Set<members::created_by>;
+        type Id = St::Id;
+        type IsAutomated = St::IsAutomated;
+        type ReportId = St::ReportId;
     }
     ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type CreatedBy = S::CreatedBy;
-        type Activity = S::Activity;
-        type CreatedAt = S::CreatedAt;
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type Activity = St::Activity;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
         type Id = Set<members::id>;
-        type ReportId = S::ReportId;
-        type IsAutomated = S::IsAutomated;
-    }
-    ///State transition - sets the `report_id` field to Set
-    pub struct SetReportId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReportId<S> {}
-    impl<S: State> State for SetReportId<S> {
-        type CreatedBy = S::CreatedBy;
-        type Activity = S::Activity;
-        type CreatedAt = S::CreatedAt;
-        type Id = S::Id;
-        type ReportId = Set<members::report_id>;
-        type IsAutomated = S::IsAutomated;
+        type IsAutomated = St::IsAutomated;
+        type ReportId = St::ReportId;
     }
     ///State transition - sets the `is_automated` field to Set
-    pub struct SetIsAutomated<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetIsAutomated<S> {}
-    impl<S: State> State for SetIsAutomated<S> {
-        type CreatedBy = S::CreatedBy;
-        type Activity = S::Activity;
-        type CreatedAt = S::CreatedAt;
-        type Id = S::Id;
-        type ReportId = S::ReportId;
+    pub struct SetIsAutomated<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetIsAutomated<St> {}
+    impl<St: State> State for SetIsAutomated<St> {
+        type Activity = St::Activity;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Id = St::Id;
         type IsAutomated = Set<members::is_automated>;
+        type ReportId = St::ReportId;
+    }
+    ///State transition - sets the `report_id` field to Set
+    pub struct SetReportId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReportId<St> {}
+    impl<St: State> State for SetReportId<St> {
+        type Activity = St::Activity;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Id = St::Id;
+        type IsAutomated = St::IsAutomated;
+        type ReportId = Set<members::report_id>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `created_by` field
-        pub struct created_by(());
         ///Marker type for the `activity` field
         pub struct activity(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `created_by` field
+        pub struct created_by(());
         ///Marker type for the `id` field
         pub struct id(());
-        ///Marker type for the `report_id` field
-        pub struct report_id(());
         ///Marker type for the `is_automated` field
         pub struct is_automated(());
+        ///Marker type for the `report_id` field
+        pub struct report_id(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReportActivityViewBuilder<'a, S: report_activity_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ReportActivityViewBuilder<
+    St: report_activity_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<ReportActivityViewActivity<'a>>,
+        Option<ReportActivityViewActivity<S>>,
         Option<Datetime>,
-        Option<Did<'a>>,
+        Option<Did<S>>,
         Option<i64>,
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<bool>,
-        Option<Data<'a>>,
-        Option<Member<'a>>,
-        Option<CowStr<'a>>,
-        Option<report::ReportView<'a>>,
+        Option<Data<S>>,
+        Option<Member<S>>,
+        Option<S>,
+        Option<report::ReportView<S>>,
         Option<i64>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ReportActivityView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReportActivityViewBuilder<'a, report_activity_view_state::Empty> {
+impl ReportActivityView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReportActivityViewBuilder<
+        report_activity_view_state::Empty,
+        DefaultStr,
+    > {
         ReportActivityViewBuilder::new()
     }
 }
 
-impl<'a> ReportActivityViewBuilder<'a, report_activity_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ReportActivityView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReportActivityViewBuilder<report_activity_view_state::Empty, S> {
+        ReportActivityViewBuilder::builder()
+    }
+}
+
+impl ReportActivityViewBuilder<report_activity_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReportActivityViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportActivityViewBuilder<'a, S>
+impl<S: BosStr> ReportActivityViewBuilder<report_activity_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReportActivityViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ReportActivityViewBuilder<St, S>
 where
-    S: report_activity_view_state::State,
-    S::Activity: report_activity_view_state::IsUnset,
+    St: report_activity_view_state::State,
+    St::Activity: report_activity_view_state::IsUnset,
 {
     /// Set the `activity` field (required)
     pub fn activity(
         mut self,
-        value: impl Into<ReportActivityViewActivity<'a>>,
-    ) -> ReportActivityViewBuilder<'a, report_activity_view_state::SetActivity<S>> {
+        value: impl Into<ReportActivityViewActivity<S>>,
+    ) -> ReportActivityViewBuilder<report_activity_view_state::SetActivity<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ReportActivityViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportActivityViewBuilder<'a, S>
+impl<St, S: BosStr> ReportActivityViewBuilder<St, S>
 where
-    S: report_activity_view_state::State,
-    S::CreatedAt: report_activity_view_state::IsUnset,
+    St: report_activity_view_state::State,
+    St::CreatedAt: report_activity_view_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> ReportActivityViewBuilder<'a, report_activity_view_state::SetCreatedAt<S>> {
+    ) -> ReportActivityViewBuilder<report_activity_view_state::SetCreatedAt<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ReportActivityViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportActivityViewBuilder<'a, S>
+impl<St, S: BosStr> ReportActivityViewBuilder<St, S>
 where
-    S: report_activity_view_state::State,
-    S::CreatedBy: report_activity_view_state::IsUnset,
+    St: report_activity_view_state::State,
+    St::CreatedBy: report_activity_view_state::IsUnset,
 {
     /// Set the `createdBy` field (required)
     pub fn created_by(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> ReportActivityViewBuilder<'a, report_activity_view_state::SetCreatedBy<S>> {
+        value: impl Into<Did<S>>,
+    ) -> ReportActivityViewBuilder<report_activity_view_state::SetCreatedBy<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ReportActivityViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportActivityViewBuilder<'a, S>
+impl<St, S: BosStr> ReportActivityViewBuilder<St, S>
 where
-    S: report_activity_view_state::State,
-    S::Id: report_activity_view_state::IsUnset,
+    St: report_activity_view_state::State,
+    St::Id: report_activity_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
         value: impl Into<i64>,
-    ) -> ReportActivityViewBuilder<'a, report_activity_view_state::SetId<S>> {
+    ) -> ReportActivityViewBuilder<report_activity_view_state::SetId<St>, S> {
         self._fields.3 = Option::Some(value.into());
         ReportActivityViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: report_activity_view_state::State> ReportActivityViewBuilder<'a, S> {
+impl<St: report_activity_view_state::State, S: BosStr> ReportActivityViewBuilder<St, S> {
     /// Set the `internalNote` field (optional)
-    pub fn internal_note(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn internal_note(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `internalNote` field to an Option value (optional)
-    pub fn maybe_internal_note(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_internal_note(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> ReportActivityViewBuilder<'a, S>
+impl<St, S: BosStr> ReportActivityViewBuilder<St, S>
 where
-    S: report_activity_view_state::State,
-    S::IsAutomated: report_activity_view_state::IsUnset,
+    St: report_activity_view_state::State,
+    St::IsAutomated: report_activity_view_state::IsUnset,
 {
     /// Set the `isAutomated` field (required)
     pub fn is_automated(
         mut self,
         value: impl Into<bool>,
-    ) -> ReportActivityViewBuilder<'a, report_activity_view_state::SetIsAutomated<S>> {
+    ) -> ReportActivityViewBuilder<report_activity_view_state::SetIsAutomated<St>, S> {
         self._fields.5 = Option::Some(value.into());
         ReportActivityViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: report_activity_view_state::State> ReportActivityViewBuilder<'a, S> {
+impl<St: report_activity_view_state::State, S: BosStr> ReportActivityViewBuilder<St, S> {
     /// Set the `meta` field (optional)
-    pub fn meta(mut self, value: impl Into<Option<Data<'a>>>) -> Self {
+    pub fn meta(mut self, value: impl Into<Option<Data<S>>>) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `meta` field to an Option value (optional)
-    pub fn maybe_meta(mut self, value: Option<Data<'a>>) -> Self {
+    pub fn maybe_meta(mut self, value: Option<Data<S>>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S: report_activity_view_state::State> ReportActivityViewBuilder<'a, S> {
+impl<St: report_activity_view_state::State, S: BosStr> ReportActivityViewBuilder<St, S> {
     /// Set the `moderator` field (optional)
-    pub fn moderator(mut self, value: impl Into<Option<Member<'a>>>) -> Self {
+    pub fn moderator(mut self, value: impl Into<Option<Member<S>>>) -> Self {
         self._fields.7 = value.into();
         self
     }
     /// Set the `moderator` field to an Option value (optional)
-    pub fn maybe_moderator(mut self, value: Option<Member<'a>>) -> Self {
+    pub fn maybe_moderator(mut self, value: Option<Member<S>>) -> Self {
         self._fields.7 = value;
         self
     }
 }
 
-impl<'a, S: report_activity_view_state::State> ReportActivityViewBuilder<'a, S> {
+impl<St: report_activity_view_state::State, S: BosStr> ReportActivityViewBuilder<St, S> {
     /// Set the `publicNote` field (optional)
-    pub fn public_note(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn public_note(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.8 = value.into();
         self
     }
     /// Set the `publicNote` field to an Option value (optional)
-    pub fn maybe_public_note(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_public_note(mut self, value: Option<S>) -> Self {
         self._fields.8 = value;
         self
     }
 }
 
-impl<'a, S: report_activity_view_state::State> ReportActivityViewBuilder<'a, S> {
+impl<St: report_activity_view_state::State, S: BosStr> ReportActivityViewBuilder<St, S> {
     /// Set the `report` field (optional)
-    pub fn report(mut self, value: impl Into<Option<report::ReportView<'a>>>) -> Self {
+    pub fn report(mut self, value: impl Into<Option<report::ReportView<S>>>) -> Self {
         self._fields.9 = value.into();
         self
     }
     /// Set the `report` field to an Option value (optional)
-    pub fn maybe_report(mut self, value: Option<report::ReportView<'a>>) -> Self {
+    pub fn maybe_report(mut self, value: Option<report::ReportView<S>>) -> Self {
         self._fields.9 = value;
         self
     }
 }
 
-impl<'a, S> ReportActivityViewBuilder<'a, S>
+impl<St, S: BosStr> ReportActivityViewBuilder<St, S>
 where
-    S: report_activity_view_state::State,
-    S::ReportId: report_activity_view_state::IsUnset,
+    St: report_activity_view_state::State,
+    St::ReportId: report_activity_view_state::IsUnset,
 {
     /// Set the `reportId` field (required)
     pub fn report_id(
         mut self,
         value: impl Into<i64>,
-    ) -> ReportActivityViewBuilder<'a, report_activity_view_state::SetReportId<S>> {
+    ) -> ReportActivityViewBuilder<report_activity_view_state::SetReportId<St>, S> {
         self._fields.10 = Option::Some(value.into());
         ReportActivityViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportActivityViewBuilder<'a, S>
+impl<St, S: BosStr> ReportActivityViewBuilder<St, S>
 where
-    S: report_activity_view_state::State,
-    S::CreatedBy: report_activity_view_state::IsSet,
-    S::Activity: report_activity_view_state::IsSet,
-    S::CreatedAt: report_activity_view_state::IsSet,
-    S::Id: report_activity_view_state::IsSet,
-    S::ReportId: report_activity_view_state::IsSet,
-    S::IsAutomated: report_activity_view_state::IsSet,
+    St: report_activity_view_state::State,
+    St::Activity: report_activity_view_state::IsSet,
+    St::CreatedAt: report_activity_view_state::IsSet,
+    St::CreatedBy: report_activity_view_state::IsSet,
+    St::Id: report_activity_view_state::IsSet,
+    St::IsAutomated: report_activity_view_state::IsSet,
+    St::ReportId: report_activity_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ReportActivityView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ReportActivityView<S> {
         ReportActivityView {
             activity: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),
@@ -3714,11 +3538,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ReportActivityView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ReportActivityView<S> {
         ReportActivityView {
             activity: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),
@@ -3757,17 +3581,17 @@ pub mod report_assignment_state {
         type Did = Unset;
     }
     ///State transition - sets the `assigned_at` field to Set
-    pub struct SetAssignedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAssignedAt<S> {}
-    impl<S: State> State for SetAssignedAt<S> {
+    pub struct SetAssignedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAssignedAt<St> {}
+    impl<St: State> State for SetAssignedAt<St> {
         type AssignedAt = Set<members::assigned_at>;
-        type Did = S::Did;
+        type Did = St::Did;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
-        type AssignedAt = S::AssignedAt;
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
+        type AssignedAt = St::AssignedAt;
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -3780,90 +3604,111 @@ pub mod report_assignment_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReportAssignmentBuilder<'a, S: report_assignment_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Datetime>, Option<Did<'a>>, Option<Member<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ReportAssignmentBuilder<
+    St: report_assignment_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Datetime>, Option<Did<S>>, Option<Member<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ReportAssignment<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReportAssignmentBuilder<'a, report_assignment_state::Empty> {
+impl ReportAssignment<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReportAssignmentBuilder<report_assignment_state::Empty, DefaultStr> {
         ReportAssignmentBuilder::new()
     }
 }
 
-impl<'a> ReportAssignmentBuilder<'a, report_assignment_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ReportAssignment<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReportAssignmentBuilder<report_assignment_state::Empty, S> {
+        ReportAssignmentBuilder::builder()
+    }
+}
+
+impl ReportAssignmentBuilder<report_assignment_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReportAssignmentBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportAssignmentBuilder<'a, S>
+impl<S: BosStr> ReportAssignmentBuilder<report_assignment_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReportAssignmentBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ReportAssignmentBuilder<St, S>
 where
-    S: report_assignment_state::State,
-    S::AssignedAt: report_assignment_state::IsUnset,
+    St: report_assignment_state::State,
+    St::AssignedAt: report_assignment_state::IsUnset,
 {
     /// Set the `assignedAt` field (required)
     pub fn assigned_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> ReportAssignmentBuilder<'a, report_assignment_state::SetAssignedAt<S>> {
+    ) -> ReportAssignmentBuilder<report_assignment_state::SetAssignedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ReportAssignmentBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportAssignmentBuilder<'a, S>
+impl<St, S: BosStr> ReportAssignmentBuilder<St, S>
 where
-    S: report_assignment_state::State,
-    S::Did: report_assignment_state::IsUnset,
+    St: report_assignment_state::State,
+    St::Did: report_assignment_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> ReportAssignmentBuilder<'a, report_assignment_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> ReportAssignmentBuilder<report_assignment_state::SetDid<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ReportAssignmentBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: report_assignment_state::State> ReportAssignmentBuilder<'a, S> {
+impl<St: report_assignment_state::State, S: BosStr> ReportAssignmentBuilder<St, S> {
     /// Set the `moderator` field (optional)
-    pub fn moderator(mut self, value: impl Into<Option<Member<'a>>>) -> Self {
+    pub fn moderator(mut self, value: impl Into<Option<Member<S>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `moderator` field to an Option value (optional)
-    pub fn maybe_moderator(mut self, value: Option<Member<'a>>) -> Self {
+    pub fn maybe_moderator(mut self, value: Option<Member<S>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> ReportAssignmentBuilder<'a, S>
+impl<St, S: BosStr> ReportAssignmentBuilder<St, S>
 where
-    S: report_assignment_state::State,
-    S::AssignedAt: report_assignment_state::IsSet,
-    S::Did: report_assignment_state::IsSet,
+    St: report_assignment_state::State,
+    St::AssignedAt: report_assignment_state::IsSet,
+    St::Did: report_assignment_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ReportAssignment<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ReportAssignment<S> {
         ReportAssignment {
             assigned_at: self._fields.0.unwrap(),
             did: self._fields.1.unwrap(),
@@ -3871,11 +3716,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ReportAssignment<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ReportAssignment<S> {
         ReportAssignment {
             assigned_at: self._fields.0.unwrap(),
             did: self._fields.1.unwrap(),
@@ -3899,191 +3744,198 @@ pub mod report_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Id;
         type CreatedAt;
+        type EventId;
+        type Id;
+        type ReportType;
+        type ReportedBy;
+        type Reporter;
         type Status;
         type Subject;
-        type Reporter;
-        type EventId;
-        type ReportedBy;
-        type ReportType;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Id = Unset;
         type CreatedAt = Unset;
+        type EventId = Unset;
+        type Id = Unset;
+        type ReportType = Unset;
+        type ReportedBy = Unset;
+        type Reporter = Unset;
         type Status = Unset;
         type Subject = Unset;
-        type Reporter = Unset;
-        type EventId = Unset;
-        type ReportedBy = Unset;
-        type ReportType = Unset;
-    }
-    ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type Id = Set<members::id>;
-        type CreatedAt = S::CreatedAt;
-        type Status = S::Status;
-        type Subject = S::Subject;
-        type Reporter = S::Reporter;
-        type EventId = S::EventId;
-        type ReportedBy = S::ReportedBy;
-        type ReportType = S::ReportType;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Id = S::Id;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
-        type Status = S::Status;
-        type Subject = S::Subject;
-        type Reporter = S::Reporter;
-        type EventId = S::EventId;
-        type ReportedBy = S::ReportedBy;
-        type ReportType = S::ReportType;
-    }
-    ///State transition - sets the `status` field to Set
-    pub struct SetStatus<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetStatus<S> {}
-    impl<S: State> State for SetStatus<S> {
-        type Id = S::Id;
-        type CreatedAt = S::CreatedAt;
-        type Status = Set<members::status>;
-        type Subject = S::Subject;
-        type Reporter = S::Reporter;
-        type EventId = S::EventId;
-        type ReportedBy = S::ReportedBy;
-        type ReportType = S::ReportType;
-    }
-    ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
-        type Id = S::Id;
-        type CreatedAt = S::CreatedAt;
-        type Status = S::Status;
-        type Subject = Set<members::subject>;
-        type Reporter = S::Reporter;
-        type EventId = S::EventId;
-        type ReportedBy = S::ReportedBy;
-        type ReportType = S::ReportType;
-    }
-    ///State transition - sets the `reporter` field to Set
-    pub struct SetReporter<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReporter<S> {}
-    impl<S: State> State for SetReporter<S> {
-        type Id = S::Id;
-        type CreatedAt = S::CreatedAt;
-        type Status = S::Status;
-        type Subject = S::Subject;
-        type Reporter = Set<members::reporter>;
-        type EventId = S::EventId;
-        type ReportedBy = S::ReportedBy;
-        type ReportType = S::ReportType;
+        type EventId = St::EventId;
+        type Id = St::Id;
+        type ReportType = St::ReportType;
+        type ReportedBy = St::ReportedBy;
+        type Reporter = St::Reporter;
+        type Status = St::Status;
+        type Subject = St::Subject;
     }
     ///State transition - sets the `event_id` field to Set
-    pub struct SetEventId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEventId<S> {}
-    impl<S: State> State for SetEventId<S> {
-        type Id = S::Id;
-        type CreatedAt = S::CreatedAt;
-        type Status = S::Status;
-        type Subject = S::Subject;
-        type Reporter = S::Reporter;
+    pub struct SetEventId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetEventId<St> {}
+    impl<St: State> State for SetEventId<St> {
+        type CreatedAt = St::CreatedAt;
         type EventId = Set<members::event_id>;
-        type ReportedBy = S::ReportedBy;
-        type ReportType = S::ReportType;
+        type Id = St::Id;
+        type ReportType = St::ReportType;
+        type ReportedBy = St::ReportedBy;
+        type Reporter = St::Reporter;
+        type Status = St::Status;
+        type Subject = St::Subject;
     }
-    ///State transition - sets the `reported_by` field to Set
-    pub struct SetReportedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReportedBy<S> {}
-    impl<S: State> State for SetReportedBy<S> {
-        type Id = S::Id;
-        type CreatedAt = S::CreatedAt;
-        type Status = S::Status;
-        type Subject = S::Subject;
-        type Reporter = S::Reporter;
-        type EventId = S::EventId;
-        type ReportedBy = Set<members::reported_by>;
-        type ReportType = S::ReportType;
+    ///State transition - sets the `id` field to Set
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type CreatedAt = St::CreatedAt;
+        type EventId = St::EventId;
+        type Id = Set<members::id>;
+        type ReportType = St::ReportType;
+        type ReportedBy = St::ReportedBy;
+        type Reporter = St::Reporter;
+        type Status = St::Status;
+        type Subject = St::Subject;
     }
     ///State transition - sets the `report_type` field to Set
-    pub struct SetReportType<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReportType<S> {}
-    impl<S: State> State for SetReportType<S> {
-        type Id = S::Id;
-        type CreatedAt = S::CreatedAt;
-        type Status = S::Status;
-        type Subject = S::Subject;
-        type Reporter = S::Reporter;
-        type EventId = S::EventId;
-        type ReportedBy = S::ReportedBy;
+    pub struct SetReportType<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReportType<St> {}
+    impl<St: State> State for SetReportType<St> {
+        type CreatedAt = St::CreatedAt;
+        type EventId = St::EventId;
+        type Id = St::Id;
         type ReportType = Set<members::report_type>;
+        type ReportedBy = St::ReportedBy;
+        type Reporter = St::Reporter;
+        type Status = St::Status;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `reported_by` field to Set
+    pub struct SetReportedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReportedBy<St> {}
+    impl<St: State> State for SetReportedBy<St> {
+        type CreatedAt = St::CreatedAt;
+        type EventId = St::EventId;
+        type Id = St::Id;
+        type ReportType = St::ReportType;
+        type ReportedBy = Set<members::reported_by>;
+        type Reporter = St::Reporter;
+        type Status = St::Status;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `reporter` field to Set
+    pub struct SetReporter<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReporter<St> {}
+    impl<St: State> State for SetReporter<St> {
+        type CreatedAt = St::CreatedAt;
+        type EventId = St::EventId;
+        type Id = St::Id;
+        type ReportType = St::ReportType;
+        type ReportedBy = St::ReportedBy;
+        type Reporter = Set<members::reporter>;
+        type Status = St::Status;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `status` field to Set
+    pub struct SetStatus<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetStatus<St> {}
+    impl<St: State> State for SetStatus<St> {
+        type CreatedAt = St::CreatedAt;
+        type EventId = St::EventId;
+        type Id = St::Id;
+        type ReportType = St::ReportType;
+        type ReportedBy = St::ReportedBy;
+        type Reporter = St::Reporter;
+        type Status = Set<members::status>;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `subject` field to Set
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
+        type CreatedAt = St::CreatedAt;
+        type EventId = St::EventId;
+        type Id = St::Id;
+        type ReportType = St::ReportType;
+        type ReportedBy = St::ReportedBy;
+        type Reporter = St::Reporter;
+        type Status = St::Status;
+        type Subject = Set<members::subject>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `id` field
-        pub struct id(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `event_id` field
+        pub struct event_id(());
+        ///Marker type for the `id` field
+        pub struct id(());
+        ///Marker type for the `report_type` field
+        pub struct report_type(());
+        ///Marker type for the `reported_by` field
+        pub struct reported_by(());
+        ///Marker type for the `reporter` field
+        pub struct reporter(());
         ///Marker type for the `status` field
         pub struct status(());
         ///Marker type for the `subject` field
         pub struct subject(());
-        ///Marker type for the `reporter` field
-        pub struct reporter(());
-        ///Marker type for the `event_id` field
-        pub struct event_id(());
-        ///Marker type for the `reported_by` field
-        pub struct reported_by(());
-        ///Marker type for the `report_type` field
-        pub struct report_type(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReportViewBuilder<'a, S: report_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ReportViewBuilder<St: report_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<Vec<i64>>,
-        Option<CowStr<'a>>,
-        Option<Vec<ModEventView<'a>>>,
-        Option<report::ReportAssignment<'a>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<Vec<ModEventView<S>>>,
+        Option<report::ReportAssignment<S>>,
+        Option<S>,
         Option<Datetime>,
         Option<i64>,
         Option<i64>,
         Option<bool>,
         Option<bool>,
-        Option<QueueView<'a>>,
+        Option<QueueView<S>>,
         Option<Datetime>,
         Option<i64>,
-        Option<moderation::ReasonType<'a>>,
-        Option<Did<'a>>,
-        Option<SubjectView<'a>>,
-        Option<ReportViewStatus<'a>>,
-        Option<SubjectView<'a>>,
-        Option<SubjectStatusView<'a>>,
+        Option<moderation::ReasonType<S>>,
+        Option<Did<S>>,
+        Option<SubjectView<S>>,
+        Option<ReportViewStatus<S>>,
+        Option<SubjectView<S>>,
+        Option<SubjectStatusView<S>>,
         Option<Datetime>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ReportView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReportViewBuilder<'a, report_view_state::Empty> {
+impl ReportView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReportViewBuilder<report_view_state::Empty, DefaultStr> {
         ReportViewBuilder::new()
     }
 }
 
-impl<'a> ReportViewBuilder<'a, report_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ReportView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReportViewBuilder<report_view_state::Empty, S> {
+        ReportViewBuilder::builder()
+    }
+}
+
+impl ReportViewBuilder<report_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReportViewBuilder {
             _state: PhantomData,
@@ -4109,12 +3961,44 @@ impl<'a> ReportViewBuilder<'a, report_view_state::Empty> {
                 None,
                 None,
             ),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<S: BosStr> ReportViewBuilder<report_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReportViewBuilder {
+            _state: PhantomData,
+            _fields: (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `actionEventIds` field (optional)
     pub fn action_event_ids(mut self, value: impl Into<Option<Vec<i64>>>) -> Self {
         self._fields.0 = value.into();
@@ -4127,37 +4011,37 @@ impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `actionNote` field (optional)
-    pub fn action_note(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn action_note(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `actionNote` field to an Option value (optional)
-    pub fn maybe_action_note(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_action_note(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `actions` field (optional)
-    pub fn actions(mut self, value: impl Into<Option<Vec<ModEventView<'a>>>>) -> Self {
+    pub fn actions(mut self, value: impl Into<Option<Vec<ModEventView<S>>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `actions` field to an Option value (optional)
-    pub fn maybe_actions(mut self, value: Option<Vec<ModEventView<'a>>>) -> Self {
+    pub fn maybe_actions(mut self, value: Option<Vec<ModEventView<S>>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `assignment` field (optional)
     pub fn assignment(
         mut self,
-        value: impl Into<Option<report::ReportAssignment<'a>>>,
+        value: impl Into<Option<report::ReportAssignment<S>>>,
     ) -> Self {
         self._fields.3 = value.into();
         self
@@ -4165,84 +4049,84 @@ impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
     /// Set the `assignment` field to an Option value (optional)
     pub fn maybe_assignment(
         mut self,
-        value: Option<report::ReportAssignment<'a>>,
+        value: Option<report::ReportAssignment<S>>,
     ) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn comment(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `comment` field to an Option value (optional)
-    pub fn maybe_comment(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_comment(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> ReportViewBuilder<'a, S>
+impl<St, S: BosStr> ReportViewBuilder<St, S>
 where
-    S: report_view_state::State,
-    S::CreatedAt: report_view_state::IsUnset,
+    St: report_view_state::State,
+    St::CreatedAt: report_view_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> ReportViewBuilder<'a, report_view_state::SetCreatedAt<S>> {
+    ) -> ReportViewBuilder<report_view_state::SetCreatedAt<St>, S> {
         self._fields.5 = Option::Some(value.into());
         ReportViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportViewBuilder<'a, S>
+impl<St, S: BosStr> ReportViewBuilder<St, S>
 where
-    S: report_view_state::State,
-    S::EventId: report_view_state::IsUnset,
+    St: report_view_state::State,
+    St::EventId: report_view_state::IsUnset,
 {
     /// Set the `eventId` field (required)
     pub fn event_id(
         mut self,
         value: impl Into<i64>,
-    ) -> ReportViewBuilder<'a, report_view_state::SetEventId<S>> {
+    ) -> ReportViewBuilder<report_view_state::SetEventId<St>, S> {
         self._fields.6 = Option::Some(value.into());
         ReportViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportViewBuilder<'a, S>
+impl<St, S: BosStr> ReportViewBuilder<St, S>
 where
-    S: report_view_state::State,
-    S::Id: report_view_state::IsUnset,
+    St: report_view_state::State,
+    St::Id: report_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
         value: impl Into<i64>,
-    ) -> ReportViewBuilder<'a, report_view_state::SetId<S>> {
+    ) -> ReportViewBuilder<report_view_state::SetId<St>, S> {
         self._fields.7 = Option::Some(value.into());
         ReportViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `isAutomated` field (optional)
     pub fn is_automated(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.8 = value.into();
@@ -4255,7 +4139,7 @@ impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `isMuted` field (optional)
     pub fn is_muted(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.9 = value.into();
@@ -4268,20 +4152,20 @@ impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `queue` field (optional)
-    pub fn queue(mut self, value: impl Into<Option<QueueView<'a>>>) -> Self {
+    pub fn queue(mut self, value: impl Into<Option<QueueView<S>>>) -> Self {
         self._fields.10 = value.into();
         self
     }
     /// Set the `queue` field to an Option value (optional)
-    pub fn maybe_queue(mut self, value: Option<QueueView<'a>>) -> Self {
+    pub fn maybe_queue(mut self, value: Option<QueueView<S>>) -> Self {
         self._fields.10 = value;
         self
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `queuedAt` field (optional)
     pub fn queued_at(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.11 = value.into();
@@ -4294,7 +4178,7 @@ impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `relatedReportCount` field (optional)
     pub fn related_report_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.12 = value.into();
@@ -4307,118 +4191,118 @@ impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S> ReportViewBuilder<'a, S>
+impl<St, S: BosStr> ReportViewBuilder<St, S>
 where
-    S: report_view_state::State,
-    S::ReportType: report_view_state::IsUnset,
+    St: report_view_state::State,
+    St::ReportType: report_view_state::IsUnset,
 {
     /// Set the `reportType` field (required)
     pub fn report_type(
         mut self,
-        value: impl Into<moderation::ReasonType<'a>>,
-    ) -> ReportViewBuilder<'a, report_view_state::SetReportType<S>> {
+        value: impl Into<moderation::ReasonType<S>>,
+    ) -> ReportViewBuilder<report_view_state::SetReportType<St>, S> {
         self._fields.13 = Option::Some(value.into());
         ReportViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportViewBuilder<'a, S>
+impl<St, S: BosStr> ReportViewBuilder<St, S>
 where
-    S: report_view_state::State,
-    S::ReportedBy: report_view_state::IsUnset,
+    St: report_view_state::State,
+    St::ReportedBy: report_view_state::IsUnset,
 {
     /// Set the `reportedBy` field (required)
     pub fn reported_by(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> ReportViewBuilder<'a, report_view_state::SetReportedBy<S>> {
+        value: impl Into<Did<S>>,
+    ) -> ReportViewBuilder<report_view_state::SetReportedBy<St>, S> {
         self._fields.14 = Option::Some(value.into());
         ReportViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportViewBuilder<'a, S>
+impl<St, S: BosStr> ReportViewBuilder<St, S>
 where
-    S: report_view_state::State,
-    S::Reporter: report_view_state::IsUnset,
+    St: report_view_state::State,
+    St::Reporter: report_view_state::IsUnset,
 {
     /// Set the `reporter` field (required)
     pub fn reporter(
         mut self,
-        value: impl Into<SubjectView<'a>>,
-    ) -> ReportViewBuilder<'a, report_view_state::SetReporter<S>> {
+        value: impl Into<SubjectView<S>>,
+    ) -> ReportViewBuilder<report_view_state::SetReporter<St>, S> {
         self._fields.15 = Option::Some(value.into());
         ReportViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportViewBuilder<'a, S>
+impl<St, S: BosStr> ReportViewBuilder<St, S>
 where
-    S: report_view_state::State,
-    S::Status: report_view_state::IsUnset,
+    St: report_view_state::State,
+    St::Status: report_view_state::IsUnset,
 {
     /// Set the `status` field (required)
     pub fn status(
         mut self,
-        value: impl Into<ReportViewStatus<'a>>,
-    ) -> ReportViewBuilder<'a, report_view_state::SetStatus<S>> {
+        value: impl Into<ReportViewStatus<S>>,
+    ) -> ReportViewBuilder<report_view_state::SetStatus<St>, S> {
         self._fields.16 = Option::Some(value.into());
         ReportViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReportViewBuilder<'a, S>
+impl<St, S: BosStr> ReportViewBuilder<St, S>
 where
-    S: report_view_state::State,
-    S::Subject: report_view_state::IsUnset,
+    St: report_view_state::State,
+    St::Subject: report_view_state::IsUnset,
 {
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<SubjectView<'a>>,
-    ) -> ReportViewBuilder<'a, report_view_state::SetSubject<S>> {
+        value: impl Into<SubjectView<S>>,
+    ) -> ReportViewBuilder<report_view_state::SetSubject<St>, S> {
         self._fields.17 = Option::Some(value.into());
         ReportViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `subjectStatus` field (optional)
     pub fn subject_status(
         mut self,
-        value: impl Into<Option<SubjectStatusView<'a>>>,
+        value: impl Into<Option<SubjectStatusView<S>>>,
     ) -> Self {
         self._fields.18 = value.into();
         self
     }
     /// Set the `subjectStatus` field to an Option value (optional)
-    pub fn maybe_subject_status(mut self, value: Option<SubjectStatusView<'a>>) -> Self {
+    pub fn maybe_subject_status(mut self, value: Option<SubjectStatusView<S>>) -> Self {
         self._fields.18 = value;
         self
     }
 }
 
-impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
+impl<St: report_view_state::State, S: BosStr> ReportViewBuilder<St, S> {
     /// Set the `updatedAt` field (optional)
     pub fn updated_at(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.19 = value.into();
@@ -4431,20 +4315,20 @@ impl<'a, S: report_view_state::State> ReportViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S> ReportViewBuilder<'a, S>
+impl<St, S: BosStr> ReportViewBuilder<St, S>
 where
-    S: report_view_state::State,
-    S::Id: report_view_state::IsSet,
-    S::CreatedAt: report_view_state::IsSet,
-    S::Status: report_view_state::IsSet,
-    S::Subject: report_view_state::IsSet,
-    S::Reporter: report_view_state::IsSet,
-    S::EventId: report_view_state::IsSet,
-    S::ReportedBy: report_view_state::IsSet,
-    S::ReportType: report_view_state::IsSet,
+    St: report_view_state::State,
+    St::CreatedAt: report_view_state::IsSet,
+    St::EventId: report_view_state::IsSet,
+    St::Id: report_view_state::IsSet,
+    St::ReportType: report_view_state::IsSet,
+    St::ReportedBy: report_view_state::IsSet,
+    St::Reporter: report_view_state::IsSet,
+    St::Status: report_view_state::IsSet,
+    St::Subject: report_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ReportView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ReportView<S> {
         ReportView {
             action_event_ids: self._fields.0,
             action_note: self._fields.1,
@@ -4469,11 +4353,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ReportView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ReportView<S> {
         ReportView {
             action_event_ids: self._fields.0,
             action_note: self._fields.1,

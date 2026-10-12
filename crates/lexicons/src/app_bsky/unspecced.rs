@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `app.bsky.unspecced` Lexicon namespace/module.
 pub mod get_age_assurance_state;
 pub mod get_config;
 pub mod get_onboarding_suggested_starter_packs;
@@ -42,12 +43,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, AtUri, Datetime};
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -59,51 +62,45 @@ use crate::app_bsky::feed::BlockedAuthor;
 use crate::app_bsky::feed::PostView;
 /// Object used to store age assurance data in stash.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct AgeAssuranceEvent<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AgeAssuranceEvent<S: BosStr = DefaultStr> {
     ///The unique identifier for this instance of the age assurance flow, in UUID format.
-    #[serde(borrow)]
-    pub attempt_id: CowStr<'a>,
+    pub attempt_id: S,
     ///The IP address used when completing the AA flow.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub complete_ip: Option<CowStr<'a>>,
+    pub complete_ip: Option<S>,
     ///The user agent used when completing the AA flow.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub complete_ua: Option<CowStr<'a>>,
+    pub complete_ua: Option<S>,
     ///The date and time of this write operation.
     pub created_at: Datetime,
     ///The email used for AA.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub email: Option<CowStr<'a>>,
+    pub email: Option<S>,
     ///The IP address used when initiating the AA flow.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub init_ip: Option<CowStr<'a>>,
+    pub init_ip: Option<S>,
     ///The user agent used when initiating the AA flow.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub init_ua: Option<CowStr<'a>>,
+    pub init_ua: Option<S>,
     ///The status of the age assurance process.
-    #[serde(borrow)]
-    pub status: AgeAssuranceEventStatus<'a>,
+    pub status: AgeAssuranceEventStatus<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// The status of the age assurance process.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AgeAssuranceEventStatus<'a> {
+pub enum AgeAssuranceEventStatus<S: BosStr = DefaultStr> {
     Unknown,
     Pending,
     Assured,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> AgeAssuranceEventStatus<'a> {
+impl<S: BosStr> AgeAssuranceEventStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Unknown => "unknown",
@@ -112,72 +109,60 @@ impl<'a> AgeAssuranceEventStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for AgeAssuranceEventStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "unknown" => Self::Unknown,
             "pending" => Self::Pending,
             "assured" => Self::Assured,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for AgeAssuranceEventStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "unknown" => Self::Unknown,
-            "pending" => Self::Pending,
-            "assured" => Self::Assured,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for AgeAssuranceEventStatus<'a> {
+impl<S: BosStr> core::fmt::Display for AgeAssuranceEventStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for AgeAssuranceEventStatus<'a> {
+impl<S: BosStr> AsRef<str> for AgeAssuranceEventStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for AgeAssuranceEventStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for AgeAssuranceEventStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for AgeAssuranceEventStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for AgeAssuranceEventStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for AgeAssuranceEventStatus<'a> {
+impl<S: BosStr + Default> Default for AgeAssuranceEventStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for AgeAssuranceEventStatus<'_> {
-    type Output = AgeAssuranceEventStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for AgeAssuranceEventStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = AgeAssuranceEventStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             AgeAssuranceEventStatus::Unknown => AgeAssuranceEventStatus::Unknown,
@@ -192,30 +177,30 @@ impl jacquard_common::IntoStatic for AgeAssuranceEventStatus<'_> {
 
 /// The computed state of the age assurance process, returned to the user in question on certain authenticated requests.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct AgeAssuranceState<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AgeAssuranceState<S: BosStr = DefaultStr> {
     ///The timestamp when this state was last updated.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_initiated_at: Option<Datetime>,
     ///The status of the age assurance process.
-    #[serde(borrow)]
-    pub status: AgeAssuranceStateStatus<'a>,
+    pub status: AgeAssuranceStateStatus<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// The status of the age assurance process.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AgeAssuranceStateStatus<'a> {
+pub enum AgeAssuranceStateStatus<S: BosStr = DefaultStr> {
     Unknown,
     Pending,
     Assured,
     Blocked,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> AgeAssuranceStateStatus<'a> {
+impl<S: BosStr> AgeAssuranceStateStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Unknown => "unknown",
@@ -225,74 +210,61 @@ impl<'a> AgeAssuranceStateStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for AgeAssuranceStateStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "unknown" => Self::Unknown,
             "pending" => Self::Pending,
             "assured" => Self::Assured,
             "blocked" => Self::Blocked,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for AgeAssuranceStateStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "unknown" => Self::Unknown,
-            "pending" => Self::Pending,
-            "assured" => Self::Assured,
-            "blocked" => Self::Blocked,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for AgeAssuranceStateStatus<'a> {
+impl<S: BosStr> core::fmt::Display for AgeAssuranceStateStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for AgeAssuranceStateStatus<'a> {
+impl<S: BosStr> AsRef<str> for AgeAssuranceStateStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for AgeAssuranceStateStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for AgeAssuranceStateStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for AgeAssuranceStateStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for AgeAssuranceStateStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for AgeAssuranceStateStatus<'a> {
+impl<S: BosStr + Default> Default for AgeAssuranceStateStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for AgeAssuranceStateStatus<'_> {
-    type Output = AgeAssuranceStateStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for AgeAssuranceStateStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = AgeAssuranceStateStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             AgeAssuranceStateStatus::Unknown => AgeAssuranceStateStatus::Unknown,
@@ -307,134 +279,118 @@ impl jacquard_common::IntoStatic for AgeAssuranceStateStatus<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SkeletonSearchActor<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SkeletonSearchActor<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SkeletonSearchPost<'a> {
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SkeletonSearchPost<S: BosStr = DefaultStr> {
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SkeletonSearchStarterPack<'a> {
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SkeletonSearchStarterPack<S: BosStr = DefaultStr> {
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SkeletonTrend<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SkeletonTrend<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub category: Option<CowStr<'a>>,
+    pub category: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub dids: Vec<Did<'a>>,
-    #[serde(borrow)]
-    pub display_name: CowStr<'a>,
-    #[serde(borrow)]
-    pub link: CowStr<'a>,
+    pub description: Option<S>,
+    pub dids: Vec<Did<S>>,
+    pub display_name: S,
+    pub link: S,
     pub post_count: i64,
     pub started_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub status: Option<SkeletonTrendStatus<'a>>,
-    #[serde(borrow)]
-    pub topic: CowStr<'a>,
+    pub status: Option<SkeletonTrendStatus<S>>,
+    pub topic: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum SkeletonTrendStatus<'a> {
+pub enum SkeletonTrendStatus<S: BosStr = DefaultStr> {
     Hot,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> SkeletonTrendStatus<'a> {
+impl<S: BosStr> SkeletonTrendStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Hot => "hot",
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for SkeletonTrendStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "hot" => Self::Hot,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for SkeletonTrendStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "hot" => Self::Hot,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for SkeletonTrendStatus<'a> {
+impl<S: BosStr> core::fmt::Display for SkeletonTrendStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for SkeletonTrendStatus<'a> {
+impl<S: BosStr> AsRef<str> for SkeletonTrendStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for SkeletonTrendStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for SkeletonTrendStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for SkeletonTrendStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for SkeletonTrendStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for SkeletonTrendStatus<'a> {
+impl<S: BosStr + Default> Default for SkeletonTrendStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for SkeletonTrendStatus<'_> {
-    type Output = SkeletonTrendStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for SkeletonTrendStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = SkeletonTrendStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             SkeletonTrendStatus::Hot => SkeletonTrendStatus::Hot,
@@ -444,29 +400,34 @@ impl jacquard_common::IntoStatic for SkeletonTrendStatus<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadItemBlocked<'a> {
-    #[serde(borrow)]
-    pub author: BlockedAuthor<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ThreadItemBlocked<S: BosStr = DefaultStr> {
+    pub author: BlockedAuthor<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadItemNoUnauthenticated<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ThreadItemNoUnauthenticated<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
 
-#[lexicon]
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadItemNotFound<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ThreadItemNotFound<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
 
-#[lexicon]
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadItemPost<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ThreadItemPost<S: BosStr = DefaultStr> {
     ///The threadgate created by the author indicates this post as a reply to be hidden for everyone consuming the thread.
     pub hidden_by_threadgate: bool,
     ///This post has more parents that were not present in the response. This is just a boolean, without the number of parents.
@@ -483,112 +444,97 @@ pub struct ThreadItemPost<'a> {
     ///The 1-indexed position of this post within the contiguous OP thread. Only present when this post is part of the OP thread (see `opThread`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub op_thread_post_index: Option<i64>,
-    #[serde(borrow)]
-    pub post: PostView<'a>,
+    pub post: PostView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct TrendView<'a> {
-    #[serde(borrow)]
-    pub actors: Vec<ProfileViewBasic<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct TrendView<S: BosStr = DefaultStr> {
+    pub actors: Vec<ProfileViewBasic<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub category: Option<CowStr<'a>>,
+    pub category: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub display_name: CowStr<'a>,
-    #[serde(borrow)]
-    pub link: CowStr<'a>,
+    pub description: Option<S>,
+    pub display_name: S,
+    pub link: S,
     pub post_count: i64,
     pub started_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub status: Option<TrendViewStatus<'a>>,
-    #[serde(borrow)]
-    pub topic: CowStr<'a>,
+    pub status: Option<TrendViewStatus<S>>,
+    pub topic: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TrendViewStatus<'a> {
+pub enum TrendViewStatus<S: BosStr = DefaultStr> {
     Hot,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> TrendViewStatus<'a> {
+impl<S: BosStr> TrendViewStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Hot => "hot",
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for TrendViewStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "hot" => Self::Hot,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for TrendViewStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "hot" => Self::Hot,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for TrendViewStatus<'a> {
+impl<S: BosStr> core::fmt::Display for TrendViewStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for TrendViewStatus<'a> {
+impl<S: BosStr> AsRef<str> for TrendViewStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for TrendViewStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for TrendViewStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for TrendViewStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for TrendViewStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for TrendViewStatus<'a> {
+impl<S: BosStr + Default> Default for TrendViewStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for TrendViewStatus<'_> {
-    type Output = TrendViewStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for TrendViewStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = TrendViewStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             TrendViewStatus::Hot => TrendViewStatus::Hot,
@@ -598,23 +544,20 @@ impl jacquard_common::IntoStatic for TrendViewStatus<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct TrendingTopic<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct TrendingTopic<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
+    pub description: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub display_name: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub link: CowStr<'a>,
-    #[serde(borrow)]
-    pub topic: CowStr<'a>,
+    pub display_name: Option<S>,
+    pub link: S,
+    pub topic: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for AgeAssuranceEvent<'a> {
+impl<S: BosStr> LexiconSchema for AgeAssuranceEvent<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -629,7 +572,7 @@ impl<'a> LexiconSchema for AgeAssuranceEvent<'a> {
     }
 }
 
-impl<'a> LexiconSchema for AgeAssuranceState<'a> {
+impl<S: BosStr> LexiconSchema for AgeAssuranceState<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -644,7 +587,7 @@ impl<'a> LexiconSchema for AgeAssuranceState<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SkeletonSearchActor<'a> {
+impl<S: BosStr> LexiconSchema for SkeletonSearchActor<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -659,7 +602,7 @@ impl<'a> LexiconSchema for SkeletonSearchActor<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SkeletonSearchPost<'a> {
+impl<S: BosStr> LexiconSchema for SkeletonSearchPost<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -674,7 +617,7 @@ impl<'a> LexiconSchema for SkeletonSearchPost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SkeletonSearchStarterPack<'a> {
+impl<S: BosStr> LexiconSchema for SkeletonSearchStarterPack<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -689,7 +632,7 @@ impl<'a> LexiconSchema for SkeletonSearchStarterPack<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SkeletonTrend<'a> {
+impl<S: BosStr> LexiconSchema for SkeletonTrend<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -704,7 +647,7 @@ impl<'a> LexiconSchema for SkeletonTrend<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ThreadItemBlocked<'a> {
+impl<S: BosStr> LexiconSchema for ThreadItemBlocked<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -719,7 +662,7 @@ impl<'a> LexiconSchema for ThreadItemBlocked<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ThreadItemNoUnauthenticated<'a> {
+impl<S: BosStr> LexiconSchema for ThreadItemNoUnauthenticated<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -734,7 +677,7 @@ impl<'a> LexiconSchema for ThreadItemNoUnauthenticated<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ThreadItemNotFound<'a> {
+impl<S: BosStr> LexiconSchema for ThreadItemNotFound<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -749,7 +692,7 @@ impl<'a> LexiconSchema for ThreadItemNotFound<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ThreadItemPost<'a> {
+impl<S: BosStr> LexiconSchema for ThreadItemPost<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -764,7 +707,7 @@ impl<'a> LexiconSchema for ThreadItemPost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for TrendView<'a> {
+impl<S: BosStr> LexiconSchema for TrendView<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -779,7 +722,7 @@ impl<'a> LexiconSchema for TrendView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for TrendingTopic<'a> {
+impl<S: BosStr> LexiconSchema for TrendingTopic<S> {
     fn nsid() -> &'static str {
         "app.bsky.unspecced.defs"
     }
@@ -817,27 +760,27 @@ pub mod age_assurance_event_state {
         type Status = Unset;
     }
     ///State transition - sets the `attempt_id` field to Set
-    pub struct SetAttemptId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAttemptId<S> {}
-    impl<S: State> State for SetAttemptId<S> {
+    pub struct SetAttemptId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAttemptId<St> {}
+    impl<St: State> State for SetAttemptId<St> {
         type AttemptId = Set<members::attempt_id>;
-        type CreatedAt = S::CreatedAt;
-        type Status = S::Status;
+        type CreatedAt = St::CreatedAt;
+        type Status = St::Status;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type AttemptId = S::AttemptId;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
+        type AttemptId = St::AttemptId;
         type CreatedAt = Set<members::created_at>;
-        type Status = S::Status;
+        type Status = St::Status;
     }
     ///State transition - sets the `status` field to Set
-    pub struct SetStatus<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetStatus<S> {}
-    impl<S: State> State for SetStatus<S> {
-        type AttemptId = S::AttemptId;
-        type CreatedAt = S::CreatedAt;
+    pub struct SetStatus<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetStatus<St> {}
+    impl<St: State> State for SetStatus<St> {
+        type AttemptId = St::AttemptId;
+        type CreatedAt = St::CreatedAt;
         type Status = Set<members::status>;
     }
     /// Marker types for field names
@@ -852,171 +795,195 @@ pub mod age_assurance_event_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct AgeAssuranceEventBuilder<'a, S: age_assurance_event_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct AgeAssuranceEventBuilder<
+    St: age_assurance_event_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
         Option<Datetime>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<AgeAssuranceEventStatus<'a>>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<AgeAssuranceEventStatus<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> AgeAssuranceEvent<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> AgeAssuranceEventBuilder<'a, age_assurance_event_state::Empty> {
+impl AgeAssuranceEvent<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> AgeAssuranceEventBuilder<
+        age_assurance_event_state::Empty,
+        DefaultStr,
+    > {
         AgeAssuranceEventBuilder::new()
     }
 }
 
-impl<'a> AgeAssuranceEventBuilder<'a, age_assurance_event_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> AgeAssuranceEvent<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> AgeAssuranceEventBuilder<age_assurance_event_state::Empty, S> {
+        AgeAssuranceEventBuilder::builder()
+    }
+}
+
+impl AgeAssuranceEventBuilder<age_assurance_event_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         AgeAssuranceEventBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AgeAssuranceEventBuilder<'a, S>
+impl<S: BosStr> AgeAssuranceEventBuilder<age_assurance_event_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        AgeAssuranceEventBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> AgeAssuranceEventBuilder<St, S>
 where
-    S: age_assurance_event_state::State,
-    S::AttemptId: age_assurance_event_state::IsUnset,
+    St: age_assurance_event_state::State,
+    St::AttemptId: age_assurance_event_state::IsUnset,
 {
     /// Set the `attemptId` field (required)
     pub fn attempt_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> AgeAssuranceEventBuilder<'a, age_assurance_event_state::SetAttemptId<S>> {
+        value: impl Into<S>,
+    ) -> AgeAssuranceEventBuilder<age_assurance_event_state::SetAttemptId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         AgeAssuranceEventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: age_assurance_event_state::State> AgeAssuranceEventBuilder<'a, S> {
+impl<St: age_assurance_event_state::State, S: BosStr> AgeAssuranceEventBuilder<St, S> {
     /// Set the `completeIp` field (optional)
-    pub fn complete_ip(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn complete_ip(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `completeIp` field to an Option value (optional)
-    pub fn maybe_complete_ip(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_complete_ip(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: age_assurance_event_state::State> AgeAssuranceEventBuilder<'a, S> {
+impl<St: age_assurance_event_state::State, S: BosStr> AgeAssuranceEventBuilder<St, S> {
     /// Set the `completeUa` field (optional)
-    pub fn complete_ua(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn complete_ua(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `completeUa` field to an Option value (optional)
-    pub fn maybe_complete_ua(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_complete_ua(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> AgeAssuranceEventBuilder<'a, S>
+impl<St, S: BosStr> AgeAssuranceEventBuilder<St, S>
 where
-    S: age_assurance_event_state::State,
-    S::CreatedAt: age_assurance_event_state::IsUnset,
+    St: age_assurance_event_state::State,
+    St::CreatedAt: age_assurance_event_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> AgeAssuranceEventBuilder<'a, age_assurance_event_state::SetCreatedAt<S>> {
+    ) -> AgeAssuranceEventBuilder<age_assurance_event_state::SetCreatedAt<St>, S> {
         self._fields.3 = Option::Some(value.into());
         AgeAssuranceEventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: age_assurance_event_state::State> AgeAssuranceEventBuilder<'a, S> {
+impl<St: age_assurance_event_state::State, S: BosStr> AgeAssuranceEventBuilder<St, S> {
     /// Set the `email` field (optional)
-    pub fn email(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn email(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `email` field to an Option value (optional)
-    pub fn maybe_email(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_email(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S: age_assurance_event_state::State> AgeAssuranceEventBuilder<'a, S> {
+impl<St: age_assurance_event_state::State, S: BosStr> AgeAssuranceEventBuilder<St, S> {
     /// Set the `initIp` field (optional)
-    pub fn init_ip(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn init_ip(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `initIp` field to an Option value (optional)
-    pub fn maybe_init_ip(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_init_ip(mut self, value: Option<S>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S: age_assurance_event_state::State> AgeAssuranceEventBuilder<'a, S> {
+impl<St: age_assurance_event_state::State, S: BosStr> AgeAssuranceEventBuilder<St, S> {
     /// Set the `initUa` field (optional)
-    pub fn init_ua(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn init_ua(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `initUa` field to an Option value (optional)
-    pub fn maybe_init_ua(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_init_ua(mut self, value: Option<S>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S> AgeAssuranceEventBuilder<'a, S>
+impl<St, S: BosStr> AgeAssuranceEventBuilder<St, S>
 where
-    S: age_assurance_event_state::State,
-    S::Status: age_assurance_event_state::IsUnset,
+    St: age_assurance_event_state::State,
+    St::Status: age_assurance_event_state::IsUnset,
 {
     /// Set the `status` field (required)
     pub fn status(
         mut self,
-        value: impl Into<AgeAssuranceEventStatus<'a>>,
-    ) -> AgeAssuranceEventBuilder<'a, age_assurance_event_state::SetStatus<S>> {
+        value: impl Into<AgeAssuranceEventStatus<S>>,
+    ) -> AgeAssuranceEventBuilder<age_assurance_event_state::SetStatus<St>, S> {
         self._fields.7 = Option::Some(value.into());
         AgeAssuranceEventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AgeAssuranceEventBuilder<'a, S>
+impl<St, S: BosStr> AgeAssuranceEventBuilder<St, S>
 where
-    S: age_assurance_event_state::State,
-    S::AttemptId: age_assurance_event_state::IsSet,
-    S::CreatedAt: age_assurance_event_state::IsSet,
-    S::Status: age_assurance_event_state::IsSet,
+    St: age_assurance_event_state::State,
+    St::AttemptId: age_assurance_event_state::IsSet,
+    St::CreatedAt: age_assurance_event_state::IsSet,
+    St::Status: age_assurance_event_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> AgeAssuranceEvent<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> AgeAssuranceEvent<S> {
         AgeAssuranceEvent {
             attempt_id: self._fields.0.unwrap(),
             complete_ip: self._fields.1,
@@ -1029,14 +996,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> AgeAssuranceEvent<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> AgeAssuranceEvent<S> {
         AgeAssuranceEvent {
             attempt_id: self._fields.0.unwrap(),
             complete_ip: self._fields.1,
@@ -1573,9 +1537,9 @@ pub mod skeleton_search_actor_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -1586,70 +1550,94 @@ pub mod skeleton_search_actor_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SkeletonSearchActorBuilder<'a, S: skeleton_search_actor_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct SkeletonSearchActorBuilder<
+    St: skeleton_search_actor_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SkeletonSearchActor<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SkeletonSearchActorBuilder<'a, skeleton_search_actor_state::Empty> {
+impl SkeletonSearchActor<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SkeletonSearchActorBuilder<
+        skeleton_search_actor_state::Empty,
+        DefaultStr,
+    > {
         SkeletonSearchActorBuilder::new()
     }
 }
 
-impl<'a> SkeletonSearchActorBuilder<'a, skeleton_search_actor_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SkeletonSearchActor<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SkeletonSearchActorBuilder<
+        skeleton_search_actor_state::Empty,
+        S,
+    > {
+        SkeletonSearchActorBuilder::builder()
+    }
+}
+
+impl SkeletonSearchActorBuilder<skeleton_search_actor_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SkeletonSearchActorBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonSearchActorBuilder<'a, S>
+impl<S: BosStr> SkeletonSearchActorBuilder<skeleton_search_actor_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SkeletonSearchActorBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SkeletonSearchActorBuilder<St, S>
 where
-    S: skeleton_search_actor_state::State,
-    S::Did: skeleton_search_actor_state::IsUnset,
+    St: skeleton_search_actor_state::State,
+    St::Did: skeleton_search_actor_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> SkeletonSearchActorBuilder<'a, skeleton_search_actor_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> SkeletonSearchActorBuilder<skeleton_search_actor_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         SkeletonSearchActorBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonSearchActorBuilder<'a, S>
+impl<St, S: BosStr> SkeletonSearchActorBuilder<St, S>
 where
-    S: skeleton_search_actor_state::State,
-    S::Did: skeleton_search_actor_state::IsSet,
+    St: skeleton_search_actor_state::State,
+    St::Did: skeleton_search_actor_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SkeletonSearchActor<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SkeletonSearchActor<S> {
         SkeletonSearchActor {
             did: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SkeletonSearchActor<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SkeletonSearchActor<S> {
         SkeletonSearchActor {
             did: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -1676,9 +1664,9 @@ pub mod skeleton_search_post_state {
         type Uri = Unset;
     }
     ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
         type Uri = Set<members::uri>;
     }
     /// Marker types for field names
@@ -1689,70 +1677,91 @@ pub mod skeleton_search_post_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SkeletonSearchPostBuilder<'a, S: skeleton_search_post_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<AtUri<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct SkeletonSearchPostBuilder<
+    St: skeleton_search_post_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtUri<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SkeletonSearchPost<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SkeletonSearchPostBuilder<'a, skeleton_search_post_state::Empty> {
+impl SkeletonSearchPost<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SkeletonSearchPostBuilder<
+        skeleton_search_post_state::Empty,
+        DefaultStr,
+    > {
         SkeletonSearchPostBuilder::new()
     }
 }
 
-impl<'a> SkeletonSearchPostBuilder<'a, skeleton_search_post_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SkeletonSearchPost<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SkeletonSearchPostBuilder<skeleton_search_post_state::Empty, S> {
+        SkeletonSearchPostBuilder::builder()
+    }
+}
+
+impl SkeletonSearchPostBuilder<skeleton_search_post_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SkeletonSearchPostBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonSearchPostBuilder<'a, S>
+impl<S: BosStr> SkeletonSearchPostBuilder<skeleton_search_post_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SkeletonSearchPostBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SkeletonSearchPostBuilder<St, S>
 where
-    S: skeleton_search_post_state::State,
-    S::Uri: skeleton_search_post_state::IsUnset,
+    St: skeleton_search_post_state::State,
+    St::Uri: skeleton_search_post_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> SkeletonSearchPostBuilder<'a, skeleton_search_post_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> SkeletonSearchPostBuilder<skeleton_search_post_state::SetUri<St>, S> {
         self._fields.0 = Option::Some(value.into());
         SkeletonSearchPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonSearchPostBuilder<'a, S>
+impl<St, S: BosStr> SkeletonSearchPostBuilder<St, S>
 where
-    S: skeleton_search_post_state::State,
-    S::Uri: skeleton_search_post_state::IsSet,
+    St: skeleton_search_post_state::State,
+    St::Uri: skeleton_search_post_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SkeletonSearchPost<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SkeletonSearchPost<S> {
         SkeletonSearchPost {
             uri: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SkeletonSearchPost<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SkeletonSearchPost<S> {
         SkeletonSearchPost {
             uri: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -1779,9 +1788,9 @@ pub mod skeleton_search_starter_pack_state {
         type Uri = Unset;
     }
     ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
         type Uri = Set<members::uri>;
     }
     /// Marker types for field names
@@ -1792,81 +1801,102 @@ pub mod skeleton_search_starter_pack_state {
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SkeletonSearchStarterPackBuilder<
-    'a,
-    S: skeleton_search_starter_pack_state::State,
+    St: skeleton_search_starter_pack_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<AtUri<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtUri<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SkeletonSearchStarterPack<'a> {
-    /// Create a new builder for this type
+impl SkeletonSearchStarterPack<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SkeletonSearchStarterPackBuilder<
-        'a,
         skeleton_search_starter_pack_state::Empty,
+        DefaultStr,
     > {
         SkeletonSearchStarterPackBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SkeletonSearchStarterPackBuilder<'a, skeleton_search_starter_pack_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SkeletonSearchStarterPack<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SkeletonSearchStarterPackBuilder<
+        skeleton_search_starter_pack_state::Empty,
+        S,
+    > {
+        SkeletonSearchStarterPackBuilder::builder()
+    }
+}
+
+impl SkeletonSearchStarterPackBuilder<
+    skeleton_search_starter_pack_state::Empty,
+    DefaultStr,
+> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SkeletonSearchStarterPackBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonSearchStarterPackBuilder<'a, S>
+impl<
+    S: BosStr,
+> SkeletonSearchStarterPackBuilder<skeleton_search_starter_pack_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SkeletonSearchStarterPackBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SkeletonSearchStarterPackBuilder<St, S>
 where
-    S: skeleton_search_starter_pack_state::State,
-    S::Uri: skeleton_search_starter_pack_state::IsUnset,
+    St: skeleton_search_starter_pack_state::State,
+    St::Uri: skeleton_search_starter_pack_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
+        value: impl Into<AtUri<S>>,
     ) -> SkeletonSearchStarterPackBuilder<
-        'a,
-        skeleton_search_starter_pack_state::SetUri<S>,
+        skeleton_search_starter_pack_state::SetUri<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         SkeletonSearchStarterPackBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonSearchStarterPackBuilder<'a, S>
+impl<St, S: BosStr> SkeletonSearchStarterPackBuilder<St, S>
 where
-    S: skeleton_search_starter_pack_state::State,
-    S::Uri: skeleton_search_starter_pack_state::IsSet,
+    St: skeleton_search_starter_pack_state::State,
+    St::Uri: skeleton_search_starter_pack_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SkeletonSearchStarterPack<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SkeletonSearchStarterPack<S> {
         SkeletonSearchStarterPack {
             uri: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SkeletonSearchStarterPack<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SkeletonSearchStarterPack<S> {
         SkeletonSearchStarterPack {
             uri: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -1884,308 +1914,329 @@ pub mod skeleton_trend_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type StartedAt;
-        type Link;
-        type Topic;
         type Dids;
         type DisplayName;
+        type Link;
         type PostCount;
+        type StartedAt;
+        type Topic;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type StartedAt = Unset;
-        type Link = Unset;
-        type Topic = Unset;
         type Dids = Unset;
         type DisplayName = Unset;
+        type Link = Unset;
         type PostCount = Unset;
-    }
-    ///State transition - sets the `started_at` field to Set
-    pub struct SetStartedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetStartedAt<S> {}
-    impl<S: State> State for SetStartedAt<S> {
-        type StartedAt = Set<members::started_at>;
-        type Link = S::Link;
-        type Topic = S::Topic;
-        type Dids = S::Dids;
-        type DisplayName = S::DisplayName;
-        type PostCount = S::PostCount;
-    }
-    ///State transition - sets the `link` field to Set
-    pub struct SetLink<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLink<S> {}
-    impl<S: State> State for SetLink<S> {
-        type StartedAt = S::StartedAt;
-        type Link = Set<members::link>;
-        type Topic = S::Topic;
-        type Dids = S::Dids;
-        type DisplayName = S::DisplayName;
-        type PostCount = S::PostCount;
-    }
-    ///State transition - sets the `topic` field to Set
-    pub struct SetTopic<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetTopic<S> {}
-    impl<S: State> State for SetTopic<S> {
-        type StartedAt = S::StartedAt;
-        type Link = S::Link;
-        type Topic = Set<members::topic>;
-        type Dids = S::Dids;
-        type DisplayName = S::DisplayName;
-        type PostCount = S::PostCount;
+        type StartedAt = Unset;
+        type Topic = Unset;
     }
     ///State transition - sets the `dids` field to Set
-    pub struct SetDids<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDids<S> {}
-    impl<S: State> State for SetDids<S> {
-        type StartedAt = S::StartedAt;
-        type Link = S::Link;
-        type Topic = S::Topic;
+    pub struct SetDids<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDids<St> {}
+    impl<St: State> State for SetDids<St> {
         type Dids = Set<members::dids>;
-        type DisplayName = S::DisplayName;
-        type PostCount = S::PostCount;
+        type DisplayName = St::DisplayName;
+        type Link = St::Link;
+        type PostCount = St::PostCount;
+        type StartedAt = St::StartedAt;
+        type Topic = St::Topic;
     }
     ///State transition - sets the `display_name` field to Set
-    pub struct SetDisplayName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDisplayName<S> {}
-    impl<S: State> State for SetDisplayName<S> {
-        type StartedAt = S::StartedAt;
-        type Link = S::Link;
-        type Topic = S::Topic;
-        type Dids = S::Dids;
+    pub struct SetDisplayName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDisplayName<St> {}
+    impl<St: State> State for SetDisplayName<St> {
+        type Dids = St::Dids;
         type DisplayName = Set<members::display_name>;
-        type PostCount = S::PostCount;
+        type Link = St::Link;
+        type PostCount = St::PostCount;
+        type StartedAt = St::StartedAt;
+        type Topic = St::Topic;
+    }
+    ///State transition - sets the `link` field to Set
+    pub struct SetLink<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLink<St> {}
+    impl<St: State> State for SetLink<St> {
+        type Dids = St::Dids;
+        type DisplayName = St::DisplayName;
+        type Link = Set<members::link>;
+        type PostCount = St::PostCount;
+        type StartedAt = St::StartedAt;
+        type Topic = St::Topic;
     }
     ///State transition - sets the `post_count` field to Set
-    pub struct SetPostCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPostCount<S> {}
-    impl<S: State> State for SetPostCount<S> {
-        type StartedAt = S::StartedAt;
-        type Link = S::Link;
-        type Topic = S::Topic;
-        type Dids = S::Dids;
-        type DisplayName = S::DisplayName;
+    pub struct SetPostCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPostCount<St> {}
+    impl<St: State> State for SetPostCount<St> {
+        type Dids = St::Dids;
+        type DisplayName = St::DisplayName;
+        type Link = St::Link;
         type PostCount = Set<members::post_count>;
+        type StartedAt = St::StartedAt;
+        type Topic = St::Topic;
+    }
+    ///State transition - sets the `started_at` field to Set
+    pub struct SetStartedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetStartedAt<St> {}
+    impl<St: State> State for SetStartedAt<St> {
+        type Dids = St::Dids;
+        type DisplayName = St::DisplayName;
+        type Link = St::Link;
+        type PostCount = St::PostCount;
+        type StartedAt = Set<members::started_at>;
+        type Topic = St::Topic;
+    }
+    ///State transition - sets the `topic` field to Set
+    pub struct SetTopic<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetTopic<St> {}
+    impl<St: State> State for SetTopic<St> {
+        type Dids = St::Dids;
+        type DisplayName = St::DisplayName;
+        type Link = St::Link;
+        type PostCount = St::PostCount;
+        type StartedAt = St::StartedAt;
+        type Topic = Set<members::topic>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `started_at` field
-        pub struct started_at(());
-        ///Marker type for the `link` field
-        pub struct link(());
-        ///Marker type for the `topic` field
-        pub struct topic(());
         ///Marker type for the `dids` field
         pub struct dids(());
         ///Marker type for the `display_name` field
         pub struct display_name(());
+        ///Marker type for the `link` field
+        pub struct link(());
         ///Marker type for the `post_count` field
         pub struct post_count(());
+        ///Marker type for the `started_at` field
+        pub struct started_at(());
+        ///Marker type for the `topic` field
+        pub struct topic(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SkeletonTrendBuilder<'a, S: skeleton_trend_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct SkeletonTrendBuilder<
+    St: skeleton_trend_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<Vec<Did<'a>>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<S>,
+        Option<Vec<Did<S>>>,
+        Option<S>,
+        Option<S>,
         Option<i64>,
         Option<Datetime>,
-        Option<SkeletonTrendStatus<'a>>,
-        Option<CowStr<'a>>,
+        Option<SkeletonTrendStatus<S>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SkeletonTrend<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SkeletonTrendBuilder<'a, skeleton_trend_state::Empty> {
+impl SkeletonTrend<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SkeletonTrendBuilder<skeleton_trend_state::Empty, DefaultStr> {
         SkeletonTrendBuilder::new()
     }
 }
 
-impl<'a> SkeletonTrendBuilder<'a, skeleton_trend_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SkeletonTrend<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SkeletonTrendBuilder<skeleton_trend_state::Empty, S> {
+        SkeletonTrendBuilder::builder()
+    }
+}
+
+impl SkeletonTrendBuilder<skeleton_trend_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SkeletonTrendBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: skeleton_trend_state::State> SkeletonTrendBuilder<'a, S> {
+impl<S: BosStr> SkeletonTrendBuilder<skeleton_trend_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SkeletonTrendBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: skeleton_trend_state::State, S: BosStr> SkeletonTrendBuilder<St, S> {
     /// Set the `category` field (optional)
-    pub fn category(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn category(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `category` field to an Option value (optional)
-    pub fn maybe_category(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_category(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: skeleton_trend_state::State> SkeletonTrendBuilder<'a, S> {
+impl<St: skeleton_trend_state::State, S: BosStr> SkeletonTrendBuilder<St, S> {
     /// Set the `description` field (optional)
-    pub fn description(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn description(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `description` field to an Option value (optional)
-    pub fn maybe_description(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_description(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> SkeletonTrendBuilder<'a, S>
+impl<St, S: BosStr> SkeletonTrendBuilder<St, S>
 where
-    S: skeleton_trend_state::State,
-    S::Dids: skeleton_trend_state::IsUnset,
+    St: skeleton_trend_state::State,
+    St::Dids: skeleton_trend_state::IsUnset,
 {
     /// Set the `dids` field (required)
     pub fn dids(
         mut self,
-        value: impl Into<Vec<Did<'a>>>,
-    ) -> SkeletonTrendBuilder<'a, skeleton_trend_state::SetDids<S>> {
+        value: impl Into<Vec<Did<S>>>,
+    ) -> SkeletonTrendBuilder<skeleton_trend_state::SetDids<St>, S> {
         self._fields.2 = Option::Some(value.into());
         SkeletonTrendBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonTrendBuilder<'a, S>
+impl<St, S: BosStr> SkeletonTrendBuilder<St, S>
 where
-    S: skeleton_trend_state::State,
-    S::DisplayName: skeleton_trend_state::IsUnset,
+    St: skeleton_trend_state::State,
+    St::DisplayName: skeleton_trend_state::IsUnset,
 {
     /// Set the `displayName` field (required)
     pub fn display_name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> SkeletonTrendBuilder<'a, skeleton_trend_state::SetDisplayName<S>> {
+        value: impl Into<S>,
+    ) -> SkeletonTrendBuilder<skeleton_trend_state::SetDisplayName<St>, S> {
         self._fields.3 = Option::Some(value.into());
         SkeletonTrendBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonTrendBuilder<'a, S>
+impl<St, S: BosStr> SkeletonTrendBuilder<St, S>
 where
-    S: skeleton_trend_state::State,
-    S::Link: skeleton_trend_state::IsUnset,
+    St: skeleton_trend_state::State,
+    St::Link: skeleton_trend_state::IsUnset,
 {
     /// Set the `link` field (required)
     pub fn link(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> SkeletonTrendBuilder<'a, skeleton_trend_state::SetLink<S>> {
+        value: impl Into<S>,
+    ) -> SkeletonTrendBuilder<skeleton_trend_state::SetLink<St>, S> {
         self._fields.4 = Option::Some(value.into());
         SkeletonTrendBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonTrendBuilder<'a, S>
+impl<St, S: BosStr> SkeletonTrendBuilder<St, S>
 where
-    S: skeleton_trend_state::State,
-    S::PostCount: skeleton_trend_state::IsUnset,
+    St: skeleton_trend_state::State,
+    St::PostCount: skeleton_trend_state::IsUnset,
 {
     /// Set the `postCount` field (required)
     pub fn post_count(
         mut self,
         value: impl Into<i64>,
-    ) -> SkeletonTrendBuilder<'a, skeleton_trend_state::SetPostCount<S>> {
+    ) -> SkeletonTrendBuilder<skeleton_trend_state::SetPostCount<St>, S> {
         self._fields.5 = Option::Some(value.into());
         SkeletonTrendBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonTrendBuilder<'a, S>
+impl<St, S: BosStr> SkeletonTrendBuilder<St, S>
 where
-    S: skeleton_trend_state::State,
-    S::StartedAt: skeleton_trend_state::IsUnset,
+    St: skeleton_trend_state::State,
+    St::StartedAt: skeleton_trend_state::IsUnset,
 {
     /// Set the `startedAt` field (required)
     pub fn started_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> SkeletonTrendBuilder<'a, skeleton_trend_state::SetStartedAt<S>> {
+    ) -> SkeletonTrendBuilder<skeleton_trend_state::SetStartedAt<St>, S> {
         self._fields.6 = Option::Some(value.into());
         SkeletonTrendBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: skeleton_trend_state::State> SkeletonTrendBuilder<'a, S> {
+impl<St: skeleton_trend_state::State, S: BosStr> SkeletonTrendBuilder<St, S> {
     /// Set the `status` field (optional)
-    pub fn status(mut self, value: impl Into<Option<SkeletonTrendStatus<'a>>>) -> Self {
+    pub fn status(mut self, value: impl Into<Option<SkeletonTrendStatus<S>>>) -> Self {
         self._fields.7 = value.into();
         self
     }
     /// Set the `status` field to an Option value (optional)
-    pub fn maybe_status(mut self, value: Option<SkeletonTrendStatus<'a>>) -> Self {
+    pub fn maybe_status(mut self, value: Option<SkeletonTrendStatus<S>>) -> Self {
         self._fields.7 = value;
         self
     }
 }
 
-impl<'a, S> SkeletonTrendBuilder<'a, S>
+impl<St, S: BosStr> SkeletonTrendBuilder<St, S>
 where
-    S: skeleton_trend_state::State,
-    S::Topic: skeleton_trend_state::IsUnset,
+    St: skeleton_trend_state::State,
+    St::Topic: skeleton_trend_state::IsUnset,
 {
     /// Set the `topic` field (required)
     pub fn topic(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> SkeletonTrendBuilder<'a, skeleton_trend_state::SetTopic<S>> {
+        value: impl Into<S>,
+    ) -> SkeletonTrendBuilder<skeleton_trend_state::SetTopic<St>, S> {
         self._fields.8 = Option::Some(value.into());
         SkeletonTrendBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonTrendBuilder<'a, S>
+impl<St, S: BosStr> SkeletonTrendBuilder<St, S>
 where
-    S: skeleton_trend_state::State,
-    S::StartedAt: skeleton_trend_state::IsSet,
-    S::Link: skeleton_trend_state::IsSet,
-    S::Topic: skeleton_trend_state::IsSet,
-    S::Dids: skeleton_trend_state::IsSet,
-    S::DisplayName: skeleton_trend_state::IsSet,
-    S::PostCount: skeleton_trend_state::IsSet,
+    St: skeleton_trend_state::State,
+    St::Dids: skeleton_trend_state::IsSet,
+    St::DisplayName: skeleton_trend_state::IsSet,
+    St::Link: skeleton_trend_state::IsSet,
+    St::PostCount: skeleton_trend_state::IsSet,
+    St::StartedAt: skeleton_trend_state::IsSet,
+    St::Topic: skeleton_trend_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SkeletonTrend<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SkeletonTrend<S> {
         SkeletonTrend {
             category: self._fields.0,
             description: self._fields.1,
@@ -2199,14 +2250,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SkeletonTrend<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SkeletonTrend<S> {
         SkeletonTrend {
             category: self._fields.0,
             description: self._fields.1,
@@ -2241,9 +2289,9 @@ pub mod thread_item_blocked_state {
         type Author = Unset;
     }
     ///State transition - sets the `author` field to Set
-    pub struct SetAuthor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAuthor<S> {}
-    impl<S: State> State for SetAuthor<S> {
+    pub struct SetAuthor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAuthor<St> {}
+    impl<St: State> State for SetAuthor<St> {
         type Author = Set<members::author>;
     }
     /// Marker types for field names
@@ -2254,70 +2302,91 @@ pub mod thread_item_blocked_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ThreadItemBlockedBuilder<'a, S: thread_item_blocked_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<BlockedAuthor<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ThreadItemBlockedBuilder<
+    St: thread_item_blocked_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<BlockedAuthor<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ThreadItemBlocked<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ThreadItemBlockedBuilder<'a, thread_item_blocked_state::Empty> {
+impl ThreadItemBlocked<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ThreadItemBlockedBuilder<
+        thread_item_blocked_state::Empty,
+        DefaultStr,
+    > {
         ThreadItemBlockedBuilder::new()
     }
 }
 
-impl<'a> ThreadItemBlockedBuilder<'a, thread_item_blocked_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ThreadItemBlocked<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ThreadItemBlockedBuilder<thread_item_blocked_state::Empty, S> {
+        ThreadItemBlockedBuilder::builder()
+    }
+}
+
+impl ThreadItemBlockedBuilder<thread_item_blocked_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ThreadItemBlockedBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemBlockedBuilder<'a, S>
+impl<S: BosStr> ThreadItemBlockedBuilder<thread_item_blocked_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ThreadItemBlockedBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ThreadItemBlockedBuilder<St, S>
 where
-    S: thread_item_blocked_state::State,
-    S::Author: thread_item_blocked_state::IsUnset,
+    St: thread_item_blocked_state::State,
+    St::Author: thread_item_blocked_state::IsUnset,
 {
     /// Set the `author` field (required)
     pub fn author(
         mut self,
-        value: impl Into<BlockedAuthor<'a>>,
-    ) -> ThreadItemBlockedBuilder<'a, thread_item_blocked_state::SetAuthor<S>> {
+        value: impl Into<BlockedAuthor<S>>,
+    ) -> ThreadItemBlockedBuilder<thread_item_blocked_state::SetAuthor<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ThreadItemBlockedBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemBlockedBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemBlockedBuilder<St, S>
 where
-    S: thread_item_blocked_state::State,
-    S::Author: thread_item_blocked_state::IsSet,
+    St: thread_item_blocked_state::State,
+    St::Author: thread_item_blocked_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ThreadItemBlocked<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ThreadItemBlocked<S> {
         ThreadItemBlocked {
             author: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ThreadItemBlocked<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ThreadItemBlocked<S> {
         ThreadItemBlocked {
             author: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -2335,111 +2404,114 @@ pub mod thread_item_post_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type OpThread;
-        type MoreReplies;
-        type Post;
-        type MutedByViewer;
-        type MoreParents;
         type HiddenByThreadgate;
+        type MoreParents;
+        type MoreReplies;
+        type MutedByViewer;
+        type OpThread;
+        type Post;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type OpThread = Unset;
-        type MoreReplies = Unset;
-        type Post = Unset;
-        type MutedByViewer = Unset;
-        type MoreParents = Unset;
         type HiddenByThreadgate = Unset;
-    }
-    ///State transition - sets the `op_thread` field to Set
-    pub struct SetOpThread<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetOpThread<S> {}
-    impl<S: State> State for SetOpThread<S> {
-        type OpThread = Set<members::op_thread>;
-        type MoreReplies = S::MoreReplies;
-        type Post = S::Post;
-        type MutedByViewer = S::MutedByViewer;
-        type MoreParents = S::MoreParents;
-        type HiddenByThreadgate = S::HiddenByThreadgate;
-    }
-    ///State transition - sets the `more_replies` field to Set
-    pub struct SetMoreReplies<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMoreReplies<S> {}
-    impl<S: State> State for SetMoreReplies<S> {
-        type OpThread = S::OpThread;
-        type MoreReplies = Set<members::more_replies>;
-        type Post = S::Post;
-        type MutedByViewer = S::MutedByViewer;
-        type MoreParents = S::MoreParents;
-        type HiddenByThreadgate = S::HiddenByThreadgate;
-    }
-    ///State transition - sets the `post` field to Set
-    pub struct SetPost<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPost<S> {}
-    impl<S: State> State for SetPost<S> {
-        type OpThread = S::OpThread;
-        type MoreReplies = S::MoreReplies;
-        type Post = Set<members::post>;
-        type MutedByViewer = S::MutedByViewer;
-        type MoreParents = S::MoreParents;
-        type HiddenByThreadgate = S::HiddenByThreadgate;
-    }
-    ///State transition - sets the `muted_by_viewer` field to Set
-    pub struct SetMutedByViewer<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMutedByViewer<S> {}
-    impl<S: State> State for SetMutedByViewer<S> {
-        type OpThread = S::OpThread;
-        type MoreReplies = S::MoreReplies;
-        type Post = S::Post;
-        type MutedByViewer = Set<members::muted_by_viewer>;
-        type MoreParents = S::MoreParents;
-        type HiddenByThreadgate = S::HiddenByThreadgate;
-    }
-    ///State transition - sets the `more_parents` field to Set
-    pub struct SetMoreParents<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMoreParents<S> {}
-    impl<S: State> State for SetMoreParents<S> {
-        type OpThread = S::OpThread;
-        type MoreReplies = S::MoreReplies;
-        type Post = S::Post;
-        type MutedByViewer = S::MutedByViewer;
-        type MoreParents = Set<members::more_parents>;
-        type HiddenByThreadgate = S::HiddenByThreadgate;
+        type MoreParents = Unset;
+        type MoreReplies = Unset;
+        type MutedByViewer = Unset;
+        type OpThread = Unset;
+        type Post = Unset;
     }
     ///State transition - sets the `hidden_by_threadgate` field to Set
-    pub struct SetHiddenByThreadgate<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHiddenByThreadgate<S> {}
-    impl<S: State> State for SetHiddenByThreadgate<S> {
-        type OpThread = S::OpThread;
-        type MoreReplies = S::MoreReplies;
-        type Post = S::Post;
-        type MutedByViewer = S::MutedByViewer;
-        type MoreParents = S::MoreParents;
+    pub struct SetHiddenByThreadgate<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetHiddenByThreadgate<St> {}
+    impl<St: State> State for SetHiddenByThreadgate<St> {
         type HiddenByThreadgate = Set<members::hidden_by_threadgate>;
+        type MoreParents = St::MoreParents;
+        type MoreReplies = St::MoreReplies;
+        type MutedByViewer = St::MutedByViewer;
+        type OpThread = St::OpThread;
+        type Post = St::Post;
+    }
+    ///State transition - sets the `more_parents` field to Set
+    pub struct SetMoreParents<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMoreParents<St> {}
+    impl<St: State> State for SetMoreParents<St> {
+        type HiddenByThreadgate = St::HiddenByThreadgate;
+        type MoreParents = Set<members::more_parents>;
+        type MoreReplies = St::MoreReplies;
+        type MutedByViewer = St::MutedByViewer;
+        type OpThread = St::OpThread;
+        type Post = St::Post;
+    }
+    ///State transition - sets the `more_replies` field to Set
+    pub struct SetMoreReplies<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMoreReplies<St> {}
+    impl<St: State> State for SetMoreReplies<St> {
+        type HiddenByThreadgate = St::HiddenByThreadgate;
+        type MoreParents = St::MoreParents;
+        type MoreReplies = Set<members::more_replies>;
+        type MutedByViewer = St::MutedByViewer;
+        type OpThread = St::OpThread;
+        type Post = St::Post;
+    }
+    ///State transition - sets the `muted_by_viewer` field to Set
+    pub struct SetMutedByViewer<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMutedByViewer<St> {}
+    impl<St: State> State for SetMutedByViewer<St> {
+        type HiddenByThreadgate = St::HiddenByThreadgate;
+        type MoreParents = St::MoreParents;
+        type MoreReplies = St::MoreReplies;
+        type MutedByViewer = Set<members::muted_by_viewer>;
+        type OpThread = St::OpThread;
+        type Post = St::Post;
+    }
+    ///State transition - sets the `op_thread` field to Set
+    pub struct SetOpThread<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetOpThread<St> {}
+    impl<St: State> State for SetOpThread<St> {
+        type HiddenByThreadgate = St::HiddenByThreadgate;
+        type MoreParents = St::MoreParents;
+        type MoreReplies = St::MoreReplies;
+        type MutedByViewer = St::MutedByViewer;
+        type OpThread = Set<members::op_thread>;
+        type Post = St::Post;
+    }
+    ///State transition - sets the `post` field to Set
+    pub struct SetPost<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPost<St> {}
+    impl<St: State> State for SetPost<St> {
+        type HiddenByThreadgate = St::HiddenByThreadgate;
+        type MoreParents = St::MoreParents;
+        type MoreReplies = St::MoreReplies;
+        type MutedByViewer = St::MutedByViewer;
+        type OpThread = St::OpThread;
+        type Post = Set<members::post>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `op_thread` field
-        pub struct op_thread(());
-        ///Marker type for the `more_replies` field
-        pub struct more_replies(());
-        ///Marker type for the `post` field
-        pub struct post(());
-        ///Marker type for the `muted_by_viewer` field
-        pub struct muted_by_viewer(());
-        ///Marker type for the `more_parents` field
-        pub struct more_parents(());
         ///Marker type for the `hidden_by_threadgate` field
         pub struct hidden_by_threadgate(());
+        ///Marker type for the `more_parents` field
+        pub struct more_parents(());
+        ///Marker type for the `more_replies` field
+        pub struct more_replies(());
+        ///Marker type for the `muted_by_viewer` field
+        pub struct muted_by_viewer(());
+        ///Marker type for the `op_thread` field
+        pub struct op_thread(());
+        ///Marker type for the `post` field
+        pub struct post(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ThreadItemPostBuilder<'a, S: thread_item_post_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ThreadItemPostBuilder<
+    St: thread_item_post_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<bool>,
         Option<bool>,
@@ -2448,125 +2520,143 @@ pub struct ThreadItemPostBuilder<'a, S: thread_item_post_state::State> {
         Option<bool>,
         Option<i64>,
         Option<i64>,
-        Option<PostView<'a>>,
+        Option<PostView<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ThreadItemPost<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ThreadItemPostBuilder<'a, thread_item_post_state::Empty> {
+impl ThreadItemPost<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ThreadItemPostBuilder<thread_item_post_state::Empty, DefaultStr> {
         ThreadItemPostBuilder::new()
     }
 }
 
-impl<'a> ThreadItemPostBuilder<'a, thread_item_post_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ThreadItemPost<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ThreadItemPostBuilder<thread_item_post_state::Empty, S> {
+        ThreadItemPostBuilder::builder()
+    }
+}
+
+impl ThreadItemPostBuilder<thread_item_post_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ThreadItemPostBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemPostBuilder<'a, S>
+impl<S: BosStr> ThreadItemPostBuilder<thread_item_post_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ThreadItemPostBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ThreadItemPostBuilder<St, S>
 where
-    S: thread_item_post_state::State,
-    S::HiddenByThreadgate: thread_item_post_state::IsUnset,
+    St: thread_item_post_state::State,
+    St::HiddenByThreadgate: thread_item_post_state::IsUnset,
 {
     /// Set the `hiddenByThreadgate` field (required)
     pub fn hidden_by_threadgate(
         mut self,
         value: impl Into<bool>,
-    ) -> ThreadItemPostBuilder<'a, thread_item_post_state::SetHiddenByThreadgate<S>> {
+    ) -> ThreadItemPostBuilder<thread_item_post_state::SetHiddenByThreadgate<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ThreadItemPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemPostBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemPostBuilder<St, S>
 where
-    S: thread_item_post_state::State,
-    S::MoreParents: thread_item_post_state::IsUnset,
+    St: thread_item_post_state::State,
+    St::MoreParents: thread_item_post_state::IsUnset,
 {
     /// Set the `moreParents` field (required)
     pub fn more_parents(
         mut self,
         value: impl Into<bool>,
-    ) -> ThreadItemPostBuilder<'a, thread_item_post_state::SetMoreParents<S>> {
+    ) -> ThreadItemPostBuilder<thread_item_post_state::SetMoreParents<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ThreadItemPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemPostBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemPostBuilder<St, S>
 where
-    S: thread_item_post_state::State,
-    S::MoreReplies: thread_item_post_state::IsUnset,
+    St: thread_item_post_state::State,
+    St::MoreReplies: thread_item_post_state::IsUnset,
 {
     /// Set the `moreReplies` field (required)
     pub fn more_replies(
         mut self,
         value: impl Into<i64>,
-    ) -> ThreadItemPostBuilder<'a, thread_item_post_state::SetMoreReplies<S>> {
+    ) -> ThreadItemPostBuilder<thread_item_post_state::SetMoreReplies<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ThreadItemPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemPostBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemPostBuilder<St, S>
 where
-    S: thread_item_post_state::State,
-    S::MutedByViewer: thread_item_post_state::IsUnset,
+    St: thread_item_post_state::State,
+    St::MutedByViewer: thread_item_post_state::IsUnset,
 {
     /// Set the `mutedByViewer` field (required)
     pub fn muted_by_viewer(
         mut self,
         value: impl Into<bool>,
-    ) -> ThreadItemPostBuilder<'a, thread_item_post_state::SetMutedByViewer<S>> {
+    ) -> ThreadItemPostBuilder<thread_item_post_state::SetMutedByViewer<St>, S> {
         self._fields.3 = Option::Some(value.into());
         ThreadItemPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemPostBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemPostBuilder<St, S>
 where
-    S: thread_item_post_state::State,
-    S::OpThread: thread_item_post_state::IsUnset,
+    St: thread_item_post_state::State,
+    St::OpThread: thread_item_post_state::IsUnset,
 {
     /// Set the `opThread` field (required)
     pub fn op_thread(
         mut self,
         value: impl Into<bool>,
-    ) -> ThreadItemPostBuilder<'a, thread_item_post_state::SetOpThread<S>> {
+    ) -> ThreadItemPostBuilder<thread_item_post_state::SetOpThread<St>, S> {
         self._fields.4 = Option::Some(value.into());
         ThreadItemPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: thread_item_post_state::State> ThreadItemPostBuilder<'a, S> {
+impl<St: thread_item_post_state::State, S: BosStr> ThreadItemPostBuilder<St, S> {
     /// Set the `opThreadPostCount` field (optional)
     pub fn op_thread_post_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.5 = value.into();
@@ -2579,7 +2669,7 @@ impl<'a, S: thread_item_post_state::State> ThreadItemPostBuilder<'a, S> {
     }
 }
 
-impl<'a, S: thread_item_post_state::State> ThreadItemPostBuilder<'a, S> {
+impl<St: thread_item_post_state::State, S: BosStr> ThreadItemPostBuilder<St, S> {
     /// Set the `opThreadPostIndex` field (optional)
     pub fn op_thread_post_index(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.6 = value.into();
@@ -2592,37 +2682,37 @@ impl<'a, S: thread_item_post_state::State> ThreadItemPostBuilder<'a, S> {
     }
 }
 
-impl<'a, S> ThreadItemPostBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemPostBuilder<St, S>
 where
-    S: thread_item_post_state::State,
-    S::Post: thread_item_post_state::IsUnset,
+    St: thread_item_post_state::State,
+    St::Post: thread_item_post_state::IsUnset,
 {
     /// Set the `post` field (required)
     pub fn post(
         mut self,
-        value: impl Into<PostView<'a>>,
-    ) -> ThreadItemPostBuilder<'a, thread_item_post_state::SetPost<S>> {
+        value: impl Into<PostView<S>>,
+    ) -> ThreadItemPostBuilder<thread_item_post_state::SetPost<St>, S> {
         self._fields.7 = Option::Some(value.into());
         ThreadItemPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ThreadItemPostBuilder<'a, S>
+impl<St, S: BosStr> ThreadItemPostBuilder<St, S>
 where
-    S: thread_item_post_state::State,
-    S::OpThread: thread_item_post_state::IsSet,
-    S::MoreReplies: thread_item_post_state::IsSet,
-    S::Post: thread_item_post_state::IsSet,
-    S::MutedByViewer: thread_item_post_state::IsSet,
-    S::MoreParents: thread_item_post_state::IsSet,
-    S::HiddenByThreadgate: thread_item_post_state::IsSet,
+    St: thread_item_post_state::State,
+    St::HiddenByThreadgate: thread_item_post_state::IsSet,
+    St::MoreParents: thread_item_post_state::IsSet,
+    St::MoreReplies: thread_item_post_state::IsSet,
+    St::MutedByViewer: thread_item_post_state::IsSet,
+    St::OpThread: thread_item_post_state::IsSet,
+    St::Post: thread_item_post_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ThreadItemPost<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ThreadItemPost<S> {
         ThreadItemPost {
             hidden_by_threadgate: self._fields.0.unwrap(),
             more_parents: self._fields.1.unwrap(),
@@ -2635,14 +2725,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ThreadItemPost<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ThreadItemPost<S> {
         ThreadItemPost {
             hidden_by_threadgate: self._fields.0.unwrap(),
             more_parents: self._fields.1.unwrap(),
@@ -2667,308 +2754,326 @@ pub mod trend_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type PostCount;
         type Actors;
-        type Link;
-        type Topic;
         type DisplayName;
+        type Link;
+        type PostCount;
         type StartedAt;
+        type Topic;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type PostCount = Unset;
         type Actors = Unset;
-        type Link = Unset;
-        type Topic = Unset;
         type DisplayName = Unset;
+        type Link = Unset;
+        type PostCount = Unset;
         type StartedAt = Unset;
-    }
-    ///State transition - sets the `post_count` field to Set
-    pub struct SetPostCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPostCount<S> {}
-    impl<S: State> State for SetPostCount<S> {
-        type PostCount = Set<members::post_count>;
-        type Actors = S::Actors;
-        type Link = S::Link;
-        type Topic = S::Topic;
-        type DisplayName = S::DisplayName;
-        type StartedAt = S::StartedAt;
+        type Topic = Unset;
     }
     ///State transition - sets the `actors` field to Set
-    pub struct SetActors<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetActors<S> {}
-    impl<S: State> State for SetActors<S> {
-        type PostCount = S::PostCount;
+    pub struct SetActors<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetActors<St> {}
+    impl<St: State> State for SetActors<St> {
         type Actors = Set<members::actors>;
-        type Link = S::Link;
-        type Topic = S::Topic;
-        type DisplayName = S::DisplayName;
-        type StartedAt = S::StartedAt;
-    }
-    ///State transition - sets the `link` field to Set
-    pub struct SetLink<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLink<S> {}
-    impl<S: State> State for SetLink<S> {
-        type PostCount = S::PostCount;
-        type Actors = S::Actors;
-        type Link = Set<members::link>;
-        type Topic = S::Topic;
-        type DisplayName = S::DisplayName;
-        type StartedAt = S::StartedAt;
-    }
-    ///State transition - sets the `topic` field to Set
-    pub struct SetTopic<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetTopic<S> {}
-    impl<S: State> State for SetTopic<S> {
-        type PostCount = S::PostCount;
-        type Actors = S::Actors;
-        type Link = S::Link;
-        type Topic = Set<members::topic>;
-        type DisplayName = S::DisplayName;
-        type StartedAt = S::StartedAt;
+        type DisplayName = St::DisplayName;
+        type Link = St::Link;
+        type PostCount = St::PostCount;
+        type StartedAt = St::StartedAt;
+        type Topic = St::Topic;
     }
     ///State transition - sets the `display_name` field to Set
-    pub struct SetDisplayName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDisplayName<S> {}
-    impl<S: State> State for SetDisplayName<S> {
-        type PostCount = S::PostCount;
-        type Actors = S::Actors;
-        type Link = S::Link;
-        type Topic = S::Topic;
+    pub struct SetDisplayName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDisplayName<St> {}
+    impl<St: State> State for SetDisplayName<St> {
+        type Actors = St::Actors;
         type DisplayName = Set<members::display_name>;
-        type StartedAt = S::StartedAt;
+        type Link = St::Link;
+        type PostCount = St::PostCount;
+        type StartedAt = St::StartedAt;
+        type Topic = St::Topic;
+    }
+    ///State transition - sets the `link` field to Set
+    pub struct SetLink<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLink<St> {}
+    impl<St: State> State for SetLink<St> {
+        type Actors = St::Actors;
+        type DisplayName = St::DisplayName;
+        type Link = Set<members::link>;
+        type PostCount = St::PostCount;
+        type StartedAt = St::StartedAt;
+        type Topic = St::Topic;
+    }
+    ///State transition - sets the `post_count` field to Set
+    pub struct SetPostCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPostCount<St> {}
+    impl<St: State> State for SetPostCount<St> {
+        type Actors = St::Actors;
+        type DisplayName = St::DisplayName;
+        type Link = St::Link;
+        type PostCount = Set<members::post_count>;
+        type StartedAt = St::StartedAt;
+        type Topic = St::Topic;
     }
     ///State transition - sets the `started_at` field to Set
-    pub struct SetStartedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetStartedAt<S> {}
-    impl<S: State> State for SetStartedAt<S> {
-        type PostCount = S::PostCount;
-        type Actors = S::Actors;
-        type Link = S::Link;
-        type Topic = S::Topic;
-        type DisplayName = S::DisplayName;
+    pub struct SetStartedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetStartedAt<St> {}
+    impl<St: State> State for SetStartedAt<St> {
+        type Actors = St::Actors;
+        type DisplayName = St::DisplayName;
+        type Link = St::Link;
+        type PostCount = St::PostCount;
         type StartedAt = Set<members::started_at>;
+        type Topic = St::Topic;
+    }
+    ///State transition - sets the `topic` field to Set
+    pub struct SetTopic<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetTopic<St> {}
+    impl<St: State> State for SetTopic<St> {
+        type Actors = St::Actors;
+        type DisplayName = St::DisplayName;
+        type Link = St::Link;
+        type PostCount = St::PostCount;
+        type StartedAt = St::StartedAt;
+        type Topic = Set<members::topic>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `post_count` field
-        pub struct post_count(());
         ///Marker type for the `actors` field
         pub struct actors(());
-        ///Marker type for the `link` field
-        pub struct link(());
-        ///Marker type for the `topic` field
-        pub struct topic(());
         ///Marker type for the `display_name` field
         pub struct display_name(());
+        ///Marker type for the `link` field
+        pub struct link(());
+        ///Marker type for the `post_count` field
+        pub struct post_count(());
         ///Marker type for the `started_at` field
         pub struct started_at(());
+        ///Marker type for the `topic` field
+        pub struct topic(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct TrendViewBuilder<'a, S: trend_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct TrendViewBuilder<St: trend_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
         Option<i64>,
         Option<Datetime>,
-        Option<TrendViewStatus<'a>>,
-        Option<CowStr<'a>>,
+        Option<TrendViewStatus<S>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> TrendView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> TrendViewBuilder<'a, trend_view_state::Empty> {
+impl TrendView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> TrendViewBuilder<trend_view_state::Empty, DefaultStr> {
         TrendViewBuilder::new()
     }
 }
 
-impl<'a> TrendViewBuilder<'a, trend_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> TrendView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> TrendViewBuilder<trend_view_state::Empty, S> {
+        TrendViewBuilder::builder()
+    }
+}
+
+impl TrendViewBuilder<trend_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         TrendViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TrendViewBuilder<'a, S>
+impl<S: BosStr> TrendViewBuilder<trend_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        TrendViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> TrendViewBuilder<St, S>
 where
-    S: trend_view_state::State,
-    S::Actors: trend_view_state::IsUnset,
+    St: trend_view_state::State,
+    St::Actors: trend_view_state::IsUnset,
 {
     /// Set the `actors` field (required)
     pub fn actors(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
-    ) -> TrendViewBuilder<'a, trend_view_state::SetActors<S>> {
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
+    ) -> TrendViewBuilder<trend_view_state::SetActors<St>, S> {
         self._fields.0 = Option::Some(value.into());
         TrendViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: trend_view_state::State> TrendViewBuilder<'a, S> {
+impl<St: trend_view_state::State, S: BosStr> TrendViewBuilder<St, S> {
     /// Set the `category` field (optional)
-    pub fn category(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn category(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `category` field to an Option value (optional)
-    pub fn maybe_category(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_category(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: trend_view_state::State> TrendViewBuilder<'a, S> {
+impl<St: trend_view_state::State, S: BosStr> TrendViewBuilder<St, S> {
     /// Set the `description` field (optional)
-    pub fn description(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn description(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `description` field to an Option value (optional)
-    pub fn maybe_description(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_description(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> TrendViewBuilder<'a, S>
+impl<St, S: BosStr> TrendViewBuilder<St, S>
 where
-    S: trend_view_state::State,
-    S::DisplayName: trend_view_state::IsUnset,
+    St: trend_view_state::State,
+    St::DisplayName: trend_view_state::IsUnset,
 {
     /// Set the `displayName` field (required)
     pub fn display_name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> TrendViewBuilder<'a, trend_view_state::SetDisplayName<S>> {
+        value: impl Into<S>,
+    ) -> TrendViewBuilder<trend_view_state::SetDisplayName<St>, S> {
         self._fields.3 = Option::Some(value.into());
         TrendViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TrendViewBuilder<'a, S>
+impl<St, S: BosStr> TrendViewBuilder<St, S>
 where
-    S: trend_view_state::State,
-    S::Link: trend_view_state::IsUnset,
+    St: trend_view_state::State,
+    St::Link: trend_view_state::IsUnset,
 {
     /// Set the `link` field (required)
     pub fn link(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> TrendViewBuilder<'a, trend_view_state::SetLink<S>> {
+        value: impl Into<S>,
+    ) -> TrendViewBuilder<trend_view_state::SetLink<St>, S> {
         self._fields.4 = Option::Some(value.into());
         TrendViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TrendViewBuilder<'a, S>
+impl<St, S: BosStr> TrendViewBuilder<St, S>
 where
-    S: trend_view_state::State,
-    S::PostCount: trend_view_state::IsUnset,
+    St: trend_view_state::State,
+    St::PostCount: trend_view_state::IsUnset,
 {
     /// Set the `postCount` field (required)
     pub fn post_count(
         mut self,
         value: impl Into<i64>,
-    ) -> TrendViewBuilder<'a, trend_view_state::SetPostCount<S>> {
+    ) -> TrendViewBuilder<trend_view_state::SetPostCount<St>, S> {
         self._fields.5 = Option::Some(value.into());
         TrendViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TrendViewBuilder<'a, S>
+impl<St, S: BosStr> TrendViewBuilder<St, S>
 where
-    S: trend_view_state::State,
-    S::StartedAt: trend_view_state::IsUnset,
+    St: trend_view_state::State,
+    St::StartedAt: trend_view_state::IsUnset,
 {
     /// Set the `startedAt` field (required)
     pub fn started_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> TrendViewBuilder<'a, trend_view_state::SetStartedAt<S>> {
+    ) -> TrendViewBuilder<trend_view_state::SetStartedAt<St>, S> {
         self._fields.6 = Option::Some(value.into());
         TrendViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: trend_view_state::State> TrendViewBuilder<'a, S> {
+impl<St: trend_view_state::State, S: BosStr> TrendViewBuilder<St, S> {
     /// Set the `status` field (optional)
-    pub fn status(mut self, value: impl Into<Option<TrendViewStatus<'a>>>) -> Self {
+    pub fn status(mut self, value: impl Into<Option<TrendViewStatus<S>>>) -> Self {
         self._fields.7 = value.into();
         self
     }
     /// Set the `status` field to an Option value (optional)
-    pub fn maybe_status(mut self, value: Option<TrendViewStatus<'a>>) -> Self {
+    pub fn maybe_status(mut self, value: Option<TrendViewStatus<S>>) -> Self {
         self._fields.7 = value;
         self
     }
 }
 
-impl<'a, S> TrendViewBuilder<'a, S>
+impl<St, S: BosStr> TrendViewBuilder<St, S>
 where
-    S: trend_view_state::State,
-    S::Topic: trend_view_state::IsUnset,
+    St: trend_view_state::State,
+    St::Topic: trend_view_state::IsUnset,
 {
     /// Set the `topic` field (required)
     pub fn topic(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> TrendViewBuilder<'a, trend_view_state::SetTopic<S>> {
+        value: impl Into<S>,
+    ) -> TrendViewBuilder<trend_view_state::SetTopic<St>, S> {
         self._fields.8 = Option::Some(value.into());
         TrendViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TrendViewBuilder<'a, S>
+impl<St, S: BosStr> TrendViewBuilder<St, S>
 where
-    S: trend_view_state::State,
-    S::PostCount: trend_view_state::IsSet,
-    S::Actors: trend_view_state::IsSet,
-    S::Link: trend_view_state::IsSet,
-    S::Topic: trend_view_state::IsSet,
-    S::DisplayName: trend_view_state::IsSet,
-    S::StartedAt: trend_view_state::IsSet,
+    St: trend_view_state::State,
+    St::Actors: trend_view_state::IsSet,
+    St::DisplayName: trend_view_state::IsSet,
+    St::Link: trend_view_state::IsSet,
+    St::PostCount: trend_view_state::IsSet,
+    St::StartedAt: trend_view_state::IsSet,
+    St::Topic: trend_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> TrendView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> TrendView<S> {
         TrendView {
             actors: self._fields.0.unwrap(),
             category: self._fields.1,
@@ -2982,14 +3087,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> TrendView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> TrendView<S> {
         TrendView {
             actors: self._fields.0.unwrap(),
             category: self._fields.1,

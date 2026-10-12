@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `chat.bsky.group` Lexicon namespace/module.
 pub mod add_members;
 pub mod approve_join_request;
 pub mod create_group;
@@ -28,12 +29,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Datetime;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -45,117 +48,106 @@ use crate::chat_bsky::convo::ConvoView;
 use crate::chat_bsky::group;
 /// Preview for a disabled join link. Carries only the code so clients can correlate with the input and render a disabled state.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DisabledJoinLinkPreviewView<'a> {
-    #[serde(borrow)]
-    pub code: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DisabledJoinLinkPreviewView<S: BosStr = DefaultStr> {
+    pub code: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Preview for a join link code that does not map to an existing link. Carries only the code so clients can correlate with the input and render an invalid state.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct InvalidJoinLinkPreviewView<'a> {
-    #[serde(borrow)]
-    pub code: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct InvalidJoinLinkPreviewView<S: BosStr = DefaultStr> {
+    pub code: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Preview that can be shown in feeds, including to unauthenticated viewers.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct JoinLinkPreviewView<'a> {
-    #[serde(borrow)]
-    pub code: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct JoinLinkPreviewView<S: BosStr = DefaultStr> {
+    pub code: S,
     ///Present only if the request is authenticated and the user is a member of the group.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub convo: Option<ConvoView<'a>>,
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub join_rule: group::JoinRule<'a>,
+    pub convo: Option<ConvoView<S>>,
+    pub convo_id: S,
+    pub join_rule: group::JoinRule<S>,
     pub member_count: i64,
     pub member_limit: i64,
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
-    #[serde(borrow)]
-    pub owner: ProfileViewBasic<'a>,
+    pub name: S,
+    pub owner: ProfileViewBasic<S>,
     pub require_approval: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub viewer: Option<group::JoinLinkViewerState<'a>>,
+    pub viewer: Option<group::JoinLinkViewerState<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Join link view to be used within a group view, so the convo is surrounding, not specified inside this view.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct JoinLinkView<'a> {
-    #[serde(borrow)]
-    pub code: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct JoinLinkView<S: BosStr = DefaultStr> {
+    pub code: S,
     pub created_at: Datetime,
-    #[serde(borrow)]
-    pub enabled_status: group::LinkEnabledStatus<'a>,
-    #[serde(borrow)]
-    pub join_rule: group::JoinRule<'a>,
+    pub enabled_status: group::LinkEnabledStatus<S>,
+    pub join_rule: group::JoinRule<S>,
     pub require_approval: bool,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct JoinLinkViewerState<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct JoinLinkViewerState<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub requested_at: Option<Datetime>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// A join request from the perspective of the requester, including enough group context to render the request in a list (e.g. group name, owner, member count).
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct JoinRequestConvoView<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct JoinRequestConvoView<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     pub member_count: i64,
     pub member_limit: i64,
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
-    #[serde(borrow)]
-    pub owner: ProfileViewBasic<'a>,
-    #[serde(borrow)]
-    pub viewer: group::JoinLinkViewerState<'a>,
+    pub name: S,
+    pub owner: ProfileViewBasic<S>,
+    pub viewer: group::JoinLinkViewerState<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// A join request from the perspective of the group owner.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct JoinRequestView<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct JoinRequestView<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     pub requested_at: Datetime,
-    #[serde(borrow)]
-    pub requested_by: ProfileViewBasic<'a>,
+    pub requested_by: ProfileViewBasic<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum JoinRule<'a> {
+pub enum JoinRule<S: BosStr = DefaultStr> {
     Anyone,
     FollowedByOwner,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> JoinRule<'a> {
+impl<S: BosStr> JoinRule<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Anyone => "anyone",
@@ -163,64 +155,53 @@ impl<'a> JoinRule<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for JoinRule<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "anyone" => Self::Anyone,
             "followedByOwner" => Self::FollowedByOwner,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for JoinRule<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "anyone" => Self::Anyone,
-            "followedByOwner" => Self::FollowedByOwner,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for JoinRule<'a> {
+impl<S: BosStr> AsRef<str> for JoinRule<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for JoinRule<'a> {
+impl<S: BosStr> core::fmt::Display for JoinRule<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for JoinRule<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for JoinRule<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for JoinRule<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for JoinRule<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for JoinRule<'_> {
-    type Output = JoinRule<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for JoinRule<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = JoinRule<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             JoinRule::Anyone => JoinRule::Anyone,
@@ -232,13 +213,13 @@ impl jacquard_common::IntoStatic for JoinRule<'_> {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum LinkEnabledStatus<'a> {
+pub enum LinkEnabledStatus<S: BosStr = DefaultStr> {
     Enabled,
     Disabled,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> LinkEnabledStatus<'a> {
+impl<S: BosStr> LinkEnabledStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Enabled => "enabled",
@@ -246,64 +227,53 @@ impl<'a> LinkEnabledStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for LinkEnabledStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "enabled" => Self::Enabled,
             "disabled" => Self::Disabled,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for LinkEnabledStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "enabled" => Self::Enabled,
-            "disabled" => Self::Disabled,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for LinkEnabledStatus<'a> {
+impl<S: BosStr> AsRef<str> for LinkEnabledStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for LinkEnabledStatus<'a> {
+impl<S: BosStr> core::fmt::Display for LinkEnabledStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for LinkEnabledStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for LinkEnabledStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for LinkEnabledStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for LinkEnabledStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for LinkEnabledStatus<'_> {
-    type Output = LinkEnabledStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for LinkEnabledStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = LinkEnabledStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             LinkEnabledStatus::Enabled => LinkEnabledStatus::Enabled,
@@ -313,7 +283,7 @@ impl jacquard_common::IntoStatic for LinkEnabledStatus<'_> {
     }
 }
 
-impl<'a> LexiconSchema for DisabledJoinLinkPreviewView<'a> {
+impl<S: BosStr> LexiconSchema for DisabledJoinLinkPreviewView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.group.defs"
     }
@@ -328,7 +298,7 @@ impl<'a> LexiconSchema for DisabledJoinLinkPreviewView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for InvalidJoinLinkPreviewView<'a> {
+impl<S: BosStr> LexiconSchema for InvalidJoinLinkPreviewView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.group.defs"
     }
@@ -343,7 +313,7 @@ impl<'a> LexiconSchema for InvalidJoinLinkPreviewView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for JoinLinkPreviewView<'a> {
+impl<S: BosStr> LexiconSchema for JoinLinkPreviewView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.group.defs"
     }
@@ -358,7 +328,7 @@ impl<'a> LexiconSchema for JoinLinkPreviewView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for JoinLinkView<'a> {
+impl<S: BosStr> LexiconSchema for JoinLinkView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.group.defs"
     }
@@ -373,7 +343,7 @@ impl<'a> LexiconSchema for JoinLinkView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for JoinLinkViewerState<'a> {
+impl<S: BosStr> LexiconSchema for JoinLinkViewerState<S> {
     fn nsid() -> &'static str {
         "chat.bsky.group.defs"
     }
@@ -388,7 +358,7 @@ impl<'a> LexiconSchema for JoinLinkViewerState<'a> {
     }
 }
 
-impl<'a> LexiconSchema for JoinRequestConvoView<'a> {
+impl<S: BosStr> LexiconSchema for JoinRequestConvoView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.group.defs"
     }
@@ -403,7 +373,7 @@ impl<'a> LexiconSchema for JoinRequestConvoView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for JoinRequestView<'a> {
+impl<S: BosStr> LexiconSchema for JoinRequestView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.group.defs"
     }
@@ -758,397 +728,427 @@ pub mod join_link_preview_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type Code;
         type ConvoId;
+        type JoinRule;
+        type MemberCount;
+        type MemberLimit;
         type Name;
         type Owner;
-        type Code;
-        type MemberCount;
         type RequireApproval;
-        type JoinRule;
-        type MemberLimit;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type Code = Unset;
         type ConvoId = Unset;
+        type JoinRule = Unset;
+        type MemberCount = Unset;
+        type MemberLimit = Unset;
         type Name = Unset;
         type Owner = Unset;
-        type Code = Unset;
-        type MemberCount = Unset;
         type RequireApproval = Unset;
-        type JoinRule = Unset;
-        type MemberLimit = Unset;
-    }
-    ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type ConvoId = Set<members::convo_id>;
-        type Name = S::Name;
-        type Owner = S::Owner;
-        type Code = S::Code;
-        type MemberCount = S::MemberCount;
-        type RequireApproval = S::RequireApproval;
-        type JoinRule = S::JoinRule;
-        type MemberLimit = S::MemberLimit;
-    }
-    ///State transition - sets the `name` field to Set
-    pub struct SetName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetName<S> {}
-    impl<S: State> State for SetName<S> {
-        type ConvoId = S::ConvoId;
-        type Name = Set<members::name>;
-        type Owner = S::Owner;
-        type Code = S::Code;
-        type MemberCount = S::MemberCount;
-        type RequireApproval = S::RequireApproval;
-        type JoinRule = S::JoinRule;
-        type MemberLimit = S::MemberLimit;
-    }
-    ///State transition - sets the `owner` field to Set
-    pub struct SetOwner<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetOwner<S> {}
-    impl<S: State> State for SetOwner<S> {
-        type ConvoId = S::ConvoId;
-        type Name = S::Name;
-        type Owner = Set<members::owner>;
-        type Code = S::Code;
-        type MemberCount = S::MemberCount;
-        type RequireApproval = S::RequireApproval;
-        type JoinRule = S::JoinRule;
-        type MemberLimit = S::MemberLimit;
     }
     ///State transition - sets the `code` field to Set
-    pub struct SetCode<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCode<S> {}
-    impl<S: State> State for SetCode<S> {
-        type ConvoId = S::ConvoId;
-        type Name = S::Name;
-        type Owner = S::Owner;
+    pub struct SetCode<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCode<St> {}
+    impl<St: State> State for SetCode<St> {
         type Code = Set<members::code>;
-        type MemberCount = S::MemberCount;
-        type RequireApproval = S::RequireApproval;
-        type JoinRule = S::JoinRule;
-        type MemberLimit = S::MemberLimit;
+        type ConvoId = St::ConvoId;
+        type JoinRule = St::JoinRule;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = St::Owner;
+        type RequireApproval = St::RequireApproval;
     }
-    ///State transition - sets the `member_count` field to Set
-    pub struct SetMemberCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMemberCount<S> {}
-    impl<S: State> State for SetMemberCount<S> {
-        type ConvoId = S::ConvoId;
-        type Name = S::Name;
-        type Owner = S::Owner;
-        type Code = S::Code;
-        type MemberCount = Set<members::member_count>;
-        type RequireApproval = S::RequireApproval;
-        type JoinRule = S::JoinRule;
-        type MemberLimit = S::MemberLimit;
-    }
-    ///State transition - sets the `require_approval` field to Set
-    pub struct SetRequireApproval<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRequireApproval<S> {}
-    impl<S: State> State for SetRequireApproval<S> {
-        type ConvoId = S::ConvoId;
-        type Name = S::Name;
-        type Owner = S::Owner;
-        type Code = S::Code;
-        type MemberCount = S::MemberCount;
-        type RequireApproval = Set<members::require_approval>;
-        type JoinRule = S::JoinRule;
-        type MemberLimit = S::MemberLimit;
+    ///State transition - sets the `convo_id` field to Set
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
+        type Code = St::Code;
+        type ConvoId = Set<members::convo_id>;
+        type JoinRule = St::JoinRule;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = St::Owner;
+        type RequireApproval = St::RequireApproval;
     }
     ///State transition - sets the `join_rule` field to Set
-    pub struct SetJoinRule<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetJoinRule<S> {}
-    impl<S: State> State for SetJoinRule<S> {
-        type ConvoId = S::ConvoId;
-        type Name = S::Name;
-        type Owner = S::Owner;
-        type Code = S::Code;
-        type MemberCount = S::MemberCount;
-        type RequireApproval = S::RequireApproval;
+    pub struct SetJoinRule<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetJoinRule<St> {}
+    impl<St: State> State for SetJoinRule<St> {
+        type Code = St::Code;
+        type ConvoId = St::ConvoId;
         type JoinRule = Set<members::join_rule>;
-        type MemberLimit = S::MemberLimit;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = St::Owner;
+        type RequireApproval = St::RequireApproval;
+    }
+    ///State transition - sets the `member_count` field to Set
+    pub struct SetMemberCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMemberCount<St> {}
+    impl<St: State> State for SetMemberCount<St> {
+        type Code = St::Code;
+        type ConvoId = St::ConvoId;
+        type JoinRule = St::JoinRule;
+        type MemberCount = Set<members::member_count>;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = St::Owner;
+        type RequireApproval = St::RequireApproval;
     }
     ///State transition - sets the `member_limit` field to Set
-    pub struct SetMemberLimit<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMemberLimit<S> {}
-    impl<S: State> State for SetMemberLimit<S> {
-        type ConvoId = S::ConvoId;
-        type Name = S::Name;
-        type Owner = S::Owner;
-        type Code = S::Code;
-        type MemberCount = S::MemberCount;
-        type RequireApproval = S::RequireApproval;
-        type JoinRule = S::JoinRule;
+    pub struct SetMemberLimit<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMemberLimit<St> {}
+    impl<St: State> State for SetMemberLimit<St> {
+        type Code = St::Code;
+        type ConvoId = St::ConvoId;
+        type JoinRule = St::JoinRule;
+        type MemberCount = St::MemberCount;
         type MemberLimit = Set<members::member_limit>;
+        type Name = St::Name;
+        type Owner = St::Owner;
+        type RequireApproval = St::RequireApproval;
+    }
+    ///State transition - sets the `name` field to Set
+    pub struct SetName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetName<St> {}
+    impl<St: State> State for SetName<St> {
+        type Code = St::Code;
+        type ConvoId = St::ConvoId;
+        type JoinRule = St::JoinRule;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = Set<members::name>;
+        type Owner = St::Owner;
+        type RequireApproval = St::RequireApproval;
+    }
+    ///State transition - sets the `owner` field to Set
+    pub struct SetOwner<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetOwner<St> {}
+    impl<St: State> State for SetOwner<St> {
+        type Code = St::Code;
+        type ConvoId = St::ConvoId;
+        type JoinRule = St::JoinRule;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = Set<members::owner>;
+        type RequireApproval = St::RequireApproval;
+    }
+    ///State transition - sets the `require_approval` field to Set
+    pub struct SetRequireApproval<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRequireApproval<St> {}
+    impl<St: State> State for SetRequireApproval<St> {
+        type Code = St::Code;
+        type ConvoId = St::ConvoId;
+        type JoinRule = St::JoinRule;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = St::Owner;
+        type RequireApproval = Set<members::require_approval>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `code` field
+        pub struct code(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
+        ///Marker type for the `join_rule` field
+        pub struct join_rule(());
+        ///Marker type for the `member_count` field
+        pub struct member_count(());
+        ///Marker type for the `member_limit` field
+        pub struct member_limit(());
         ///Marker type for the `name` field
         pub struct name(());
         ///Marker type for the `owner` field
         pub struct owner(());
-        ///Marker type for the `code` field
-        pub struct code(());
-        ///Marker type for the `member_count` field
-        pub struct member_count(());
         ///Marker type for the `require_approval` field
         pub struct require_approval(());
-        ///Marker type for the `join_rule` field
-        pub struct join_rule(());
-        ///Marker type for the `member_limit` field
-        pub struct member_limit(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct JoinLinkPreviewViewBuilder<'a, S: join_link_preview_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct JoinLinkPreviewViewBuilder<
+    St: join_link_preview_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<ConvoView<'a>>,
-        Option<CowStr<'a>>,
-        Option<group::JoinRule<'a>>,
+        Option<S>,
+        Option<ConvoView<S>>,
+        Option<S>,
+        Option<group::JoinRule<S>>,
         Option<i64>,
         Option<i64>,
-        Option<CowStr<'a>>,
-        Option<ProfileViewBasic<'a>>,
+        Option<S>,
+        Option<ProfileViewBasic<S>>,
         Option<bool>,
-        Option<group::JoinLinkViewerState<'a>>,
+        Option<group::JoinLinkViewerState<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> JoinLinkPreviewView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> JoinLinkPreviewViewBuilder<'a, join_link_preview_view_state::Empty> {
+impl JoinLinkPreviewView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> JoinLinkPreviewViewBuilder<
+        join_link_preview_view_state::Empty,
+        DefaultStr,
+    > {
         JoinLinkPreviewViewBuilder::new()
     }
 }
 
-impl<'a> JoinLinkPreviewViewBuilder<'a, join_link_preview_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> JoinLinkPreviewView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> JoinLinkPreviewViewBuilder<
+        join_link_preview_view_state::Empty,
+        S,
+    > {
+        JoinLinkPreviewViewBuilder::builder()
+    }
+}
+
+impl JoinLinkPreviewViewBuilder<join_link_preview_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         JoinLinkPreviewViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkPreviewViewBuilder<'a, S>
+impl<S: BosStr> JoinLinkPreviewViewBuilder<join_link_preview_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        JoinLinkPreviewViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> JoinLinkPreviewViewBuilder<St, S>
 where
-    S: join_link_preview_view_state::State,
-    S::Code: join_link_preview_view_state::IsUnset,
+    St: join_link_preview_view_state::State,
+    St::Code: join_link_preview_view_state::IsUnset,
 {
     /// Set the `code` field (required)
     pub fn code(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> JoinLinkPreviewViewBuilder<'a, join_link_preview_view_state::SetCode<S>> {
+        value: impl Into<S>,
+    ) -> JoinLinkPreviewViewBuilder<join_link_preview_view_state::SetCode<St>, S> {
         self._fields.0 = Option::Some(value.into());
         JoinLinkPreviewViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: join_link_preview_view_state::State> JoinLinkPreviewViewBuilder<'a, S> {
+impl<
+    St: join_link_preview_view_state::State,
+    S: BosStr,
+> JoinLinkPreviewViewBuilder<St, S> {
     /// Set the `convo` field (optional)
-    pub fn convo(mut self, value: impl Into<Option<ConvoView<'a>>>) -> Self {
+    pub fn convo(mut self, value: impl Into<Option<ConvoView<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `convo` field to an Option value (optional)
-    pub fn maybe_convo(mut self, value: Option<ConvoView<'a>>) -> Self {
+    pub fn maybe_convo(mut self, value: Option<ConvoView<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> JoinLinkPreviewViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkPreviewViewBuilder<St, S>
 where
-    S: join_link_preview_view_state::State,
-    S::ConvoId: join_link_preview_view_state::IsUnset,
+    St: join_link_preview_view_state::State,
+    St::ConvoId: join_link_preview_view_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> JoinLinkPreviewViewBuilder<'a, join_link_preview_view_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> JoinLinkPreviewViewBuilder<join_link_preview_view_state::SetConvoId<St>, S> {
         self._fields.2 = Option::Some(value.into());
         JoinLinkPreviewViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkPreviewViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkPreviewViewBuilder<St, S>
 where
-    S: join_link_preview_view_state::State,
-    S::JoinRule: join_link_preview_view_state::IsUnset,
+    St: join_link_preview_view_state::State,
+    St::JoinRule: join_link_preview_view_state::IsUnset,
 {
     /// Set the `joinRule` field (required)
     pub fn join_rule(
         mut self,
-        value: impl Into<group::JoinRule<'a>>,
-    ) -> JoinLinkPreviewViewBuilder<'a, join_link_preview_view_state::SetJoinRule<S>> {
+        value: impl Into<group::JoinRule<S>>,
+    ) -> JoinLinkPreviewViewBuilder<join_link_preview_view_state::SetJoinRule<St>, S> {
         self._fields.3 = Option::Some(value.into());
         JoinLinkPreviewViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkPreviewViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkPreviewViewBuilder<St, S>
 where
-    S: join_link_preview_view_state::State,
-    S::MemberCount: join_link_preview_view_state::IsUnset,
+    St: join_link_preview_view_state::State,
+    St::MemberCount: join_link_preview_view_state::IsUnset,
 {
     /// Set the `memberCount` field (required)
     pub fn member_count(
         mut self,
         value: impl Into<i64>,
     ) -> JoinLinkPreviewViewBuilder<
-        'a,
-        join_link_preview_view_state::SetMemberCount<S>,
+        join_link_preview_view_state::SetMemberCount<St>,
+        S,
     > {
         self._fields.4 = Option::Some(value.into());
         JoinLinkPreviewViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkPreviewViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkPreviewViewBuilder<St, S>
 where
-    S: join_link_preview_view_state::State,
-    S::MemberLimit: join_link_preview_view_state::IsUnset,
+    St: join_link_preview_view_state::State,
+    St::MemberLimit: join_link_preview_view_state::IsUnset,
 {
     /// Set the `memberLimit` field (required)
     pub fn member_limit(
         mut self,
         value: impl Into<i64>,
     ) -> JoinLinkPreviewViewBuilder<
-        'a,
-        join_link_preview_view_state::SetMemberLimit<S>,
+        join_link_preview_view_state::SetMemberLimit<St>,
+        S,
     > {
         self._fields.5 = Option::Some(value.into());
         JoinLinkPreviewViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkPreviewViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkPreviewViewBuilder<St, S>
 where
-    S: join_link_preview_view_state::State,
-    S::Name: join_link_preview_view_state::IsUnset,
+    St: join_link_preview_view_state::State,
+    St::Name: join_link_preview_view_state::IsUnset,
 {
     /// Set the `name` field (required)
     pub fn name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> JoinLinkPreviewViewBuilder<'a, join_link_preview_view_state::SetName<S>> {
+        value: impl Into<S>,
+    ) -> JoinLinkPreviewViewBuilder<join_link_preview_view_state::SetName<St>, S> {
         self._fields.6 = Option::Some(value.into());
         JoinLinkPreviewViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkPreviewViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkPreviewViewBuilder<St, S>
 where
-    S: join_link_preview_view_state::State,
-    S::Owner: join_link_preview_view_state::IsUnset,
+    St: join_link_preview_view_state::State,
+    St::Owner: join_link_preview_view_state::IsUnset,
 {
     /// Set the `owner` field (required)
     pub fn owner(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
-    ) -> JoinLinkPreviewViewBuilder<'a, join_link_preview_view_state::SetOwner<S>> {
+        value: impl Into<ProfileViewBasic<S>>,
+    ) -> JoinLinkPreviewViewBuilder<join_link_preview_view_state::SetOwner<St>, S> {
         self._fields.7 = Option::Some(value.into());
         JoinLinkPreviewViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkPreviewViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkPreviewViewBuilder<St, S>
 where
-    S: join_link_preview_view_state::State,
-    S::RequireApproval: join_link_preview_view_state::IsUnset,
+    St: join_link_preview_view_state::State,
+    St::RequireApproval: join_link_preview_view_state::IsUnset,
 {
     /// Set the `requireApproval` field (required)
     pub fn require_approval(
         mut self,
         value: impl Into<bool>,
     ) -> JoinLinkPreviewViewBuilder<
-        'a,
-        join_link_preview_view_state::SetRequireApproval<S>,
+        join_link_preview_view_state::SetRequireApproval<St>,
+        S,
     > {
         self._fields.8 = Option::Some(value.into());
         JoinLinkPreviewViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: join_link_preview_view_state::State> JoinLinkPreviewViewBuilder<'a, S> {
+impl<
+    St: join_link_preview_view_state::State,
+    S: BosStr,
+> JoinLinkPreviewViewBuilder<St, S> {
     /// Set the `viewer` field (optional)
     pub fn viewer(
         mut self,
-        value: impl Into<Option<group::JoinLinkViewerState<'a>>>,
+        value: impl Into<Option<group::JoinLinkViewerState<S>>>,
     ) -> Self {
         self._fields.9 = value.into();
         self
     }
     /// Set the `viewer` field to an Option value (optional)
-    pub fn maybe_viewer(
-        mut self,
-        value: Option<group::JoinLinkViewerState<'a>>,
-    ) -> Self {
+    pub fn maybe_viewer(mut self, value: Option<group::JoinLinkViewerState<S>>) -> Self {
         self._fields.9 = value;
         self
     }
 }
 
-impl<'a, S> JoinLinkPreviewViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkPreviewViewBuilder<St, S>
 where
-    S: join_link_preview_view_state::State,
-    S::ConvoId: join_link_preview_view_state::IsSet,
-    S::Name: join_link_preview_view_state::IsSet,
-    S::Owner: join_link_preview_view_state::IsSet,
-    S::Code: join_link_preview_view_state::IsSet,
-    S::MemberCount: join_link_preview_view_state::IsSet,
-    S::RequireApproval: join_link_preview_view_state::IsSet,
-    S::JoinRule: join_link_preview_view_state::IsSet,
-    S::MemberLimit: join_link_preview_view_state::IsSet,
+    St: join_link_preview_view_state::State,
+    St::Code: join_link_preview_view_state::IsSet,
+    St::ConvoId: join_link_preview_view_state::IsSet,
+    St::JoinRule: join_link_preview_view_state::IsSet,
+    St::MemberCount: join_link_preview_view_state::IsSet,
+    St::MemberLimit: join_link_preview_view_state::IsSet,
+    St::Name: join_link_preview_view_state::IsSet,
+    St::Owner: join_link_preview_view_state::IsSet,
+    St::RequireApproval: join_link_preview_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> JoinLinkPreviewView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> JoinLinkPreviewView<S> {
         JoinLinkPreviewView {
             code: self._fields.0.unwrap(),
             convo: self._fields.1,
@@ -1163,14 +1163,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> JoinLinkPreviewView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> JoinLinkPreviewView<S> {
         JoinLinkPreviewView {
             code: self._fields.0.unwrap(),
             convo: self._fields.1,
@@ -1197,225 +1194,243 @@ pub mod join_link_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type JoinRule;
-        type RequireApproval;
-        type EnabledStatus;
         type Code;
         type CreatedAt;
+        type EnabledStatus;
+        type JoinRule;
+        type RequireApproval;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type JoinRule = Unset;
-        type RequireApproval = Unset;
-        type EnabledStatus = Unset;
         type Code = Unset;
         type CreatedAt = Unset;
-    }
-    ///State transition - sets the `join_rule` field to Set
-    pub struct SetJoinRule<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetJoinRule<S> {}
-    impl<S: State> State for SetJoinRule<S> {
-        type JoinRule = Set<members::join_rule>;
-        type RequireApproval = S::RequireApproval;
-        type EnabledStatus = S::EnabledStatus;
-        type Code = S::Code;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `require_approval` field to Set
-    pub struct SetRequireApproval<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRequireApproval<S> {}
-    impl<S: State> State for SetRequireApproval<S> {
-        type JoinRule = S::JoinRule;
-        type RequireApproval = Set<members::require_approval>;
-        type EnabledStatus = S::EnabledStatus;
-        type Code = S::Code;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `enabled_status` field to Set
-    pub struct SetEnabledStatus<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEnabledStatus<S> {}
-    impl<S: State> State for SetEnabledStatus<S> {
-        type JoinRule = S::JoinRule;
-        type RequireApproval = S::RequireApproval;
-        type EnabledStatus = Set<members::enabled_status>;
-        type Code = S::Code;
-        type CreatedAt = S::CreatedAt;
+        type EnabledStatus = Unset;
+        type JoinRule = Unset;
+        type RequireApproval = Unset;
     }
     ///State transition - sets the `code` field to Set
-    pub struct SetCode<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCode<S> {}
-    impl<S: State> State for SetCode<S> {
-        type JoinRule = S::JoinRule;
-        type RequireApproval = S::RequireApproval;
-        type EnabledStatus = S::EnabledStatus;
+    pub struct SetCode<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCode<St> {}
+    impl<St: State> State for SetCode<St> {
         type Code = Set<members::code>;
-        type CreatedAt = S::CreatedAt;
+        type CreatedAt = St::CreatedAt;
+        type EnabledStatus = St::EnabledStatus;
+        type JoinRule = St::JoinRule;
+        type RequireApproval = St::RequireApproval;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type JoinRule = S::JoinRule;
-        type RequireApproval = S::RequireApproval;
-        type EnabledStatus = S::EnabledStatus;
-        type Code = S::Code;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
+        type Code = St::Code;
         type CreatedAt = Set<members::created_at>;
+        type EnabledStatus = St::EnabledStatus;
+        type JoinRule = St::JoinRule;
+        type RequireApproval = St::RequireApproval;
+    }
+    ///State transition - sets the `enabled_status` field to Set
+    pub struct SetEnabledStatus<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetEnabledStatus<St> {}
+    impl<St: State> State for SetEnabledStatus<St> {
+        type Code = St::Code;
+        type CreatedAt = St::CreatedAt;
+        type EnabledStatus = Set<members::enabled_status>;
+        type JoinRule = St::JoinRule;
+        type RequireApproval = St::RequireApproval;
+    }
+    ///State transition - sets the `join_rule` field to Set
+    pub struct SetJoinRule<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetJoinRule<St> {}
+    impl<St: State> State for SetJoinRule<St> {
+        type Code = St::Code;
+        type CreatedAt = St::CreatedAt;
+        type EnabledStatus = St::EnabledStatus;
+        type JoinRule = Set<members::join_rule>;
+        type RequireApproval = St::RequireApproval;
+    }
+    ///State transition - sets the `require_approval` field to Set
+    pub struct SetRequireApproval<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRequireApproval<St> {}
+    impl<St: State> State for SetRequireApproval<St> {
+        type Code = St::Code;
+        type CreatedAt = St::CreatedAt;
+        type EnabledStatus = St::EnabledStatus;
+        type JoinRule = St::JoinRule;
+        type RequireApproval = Set<members::require_approval>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `join_rule` field
-        pub struct join_rule(());
-        ///Marker type for the `require_approval` field
-        pub struct require_approval(());
-        ///Marker type for the `enabled_status` field
-        pub struct enabled_status(());
         ///Marker type for the `code` field
         pub struct code(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `enabled_status` field
+        pub struct enabled_status(());
+        ///Marker type for the `join_rule` field
+        pub struct join_rule(());
+        ///Marker type for the `require_approval` field
+        pub struct require_approval(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct JoinLinkViewBuilder<'a, S: join_link_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct JoinLinkViewBuilder<St: join_link_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<Datetime>,
-        Option<group::LinkEnabledStatus<'a>>,
-        Option<group::JoinRule<'a>>,
+        Option<group::LinkEnabledStatus<S>>,
+        Option<group::JoinRule<S>>,
         Option<bool>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> JoinLinkView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> JoinLinkViewBuilder<'a, join_link_view_state::Empty> {
+impl JoinLinkView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> JoinLinkViewBuilder<join_link_view_state::Empty, DefaultStr> {
         JoinLinkViewBuilder::new()
     }
 }
 
-impl<'a> JoinLinkViewBuilder<'a, join_link_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> JoinLinkView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> JoinLinkViewBuilder<join_link_view_state::Empty, S> {
+        JoinLinkViewBuilder::builder()
+    }
+}
+
+impl JoinLinkViewBuilder<join_link_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         JoinLinkViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkViewBuilder<'a, S>
+impl<S: BosStr> JoinLinkViewBuilder<join_link_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        JoinLinkViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> JoinLinkViewBuilder<St, S>
 where
-    S: join_link_view_state::State,
-    S::Code: join_link_view_state::IsUnset,
+    St: join_link_view_state::State,
+    St::Code: join_link_view_state::IsUnset,
 {
     /// Set the `code` field (required)
     pub fn code(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> JoinLinkViewBuilder<'a, join_link_view_state::SetCode<S>> {
+        value: impl Into<S>,
+    ) -> JoinLinkViewBuilder<join_link_view_state::SetCode<St>, S> {
         self._fields.0 = Option::Some(value.into());
         JoinLinkViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkViewBuilder<St, S>
 where
-    S: join_link_view_state::State,
-    S::CreatedAt: join_link_view_state::IsUnset,
+    St: join_link_view_state::State,
+    St::CreatedAt: join_link_view_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> JoinLinkViewBuilder<'a, join_link_view_state::SetCreatedAt<S>> {
+    ) -> JoinLinkViewBuilder<join_link_view_state::SetCreatedAt<St>, S> {
         self._fields.1 = Option::Some(value.into());
         JoinLinkViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkViewBuilder<St, S>
 where
-    S: join_link_view_state::State,
-    S::EnabledStatus: join_link_view_state::IsUnset,
+    St: join_link_view_state::State,
+    St::EnabledStatus: join_link_view_state::IsUnset,
 {
     /// Set the `enabledStatus` field (required)
     pub fn enabled_status(
         mut self,
-        value: impl Into<group::LinkEnabledStatus<'a>>,
-    ) -> JoinLinkViewBuilder<'a, join_link_view_state::SetEnabledStatus<S>> {
+        value: impl Into<group::LinkEnabledStatus<S>>,
+    ) -> JoinLinkViewBuilder<join_link_view_state::SetEnabledStatus<St>, S> {
         self._fields.2 = Option::Some(value.into());
         JoinLinkViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkViewBuilder<St, S>
 where
-    S: join_link_view_state::State,
-    S::JoinRule: join_link_view_state::IsUnset,
+    St: join_link_view_state::State,
+    St::JoinRule: join_link_view_state::IsUnset,
 {
     /// Set the `joinRule` field (required)
     pub fn join_rule(
         mut self,
-        value: impl Into<group::JoinRule<'a>>,
-    ) -> JoinLinkViewBuilder<'a, join_link_view_state::SetJoinRule<S>> {
+        value: impl Into<group::JoinRule<S>>,
+    ) -> JoinLinkViewBuilder<join_link_view_state::SetJoinRule<St>, S> {
         self._fields.3 = Option::Some(value.into());
         JoinLinkViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkViewBuilder<St, S>
 where
-    S: join_link_view_state::State,
-    S::RequireApproval: join_link_view_state::IsUnset,
+    St: join_link_view_state::State,
+    St::RequireApproval: join_link_view_state::IsUnset,
 {
     /// Set the `requireApproval` field (required)
     pub fn require_approval(
         mut self,
         value: impl Into<bool>,
-    ) -> JoinLinkViewBuilder<'a, join_link_view_state::SetRequireApproval<S>> {
+    ) -> JoinLinkViewBuilder<join_link_view_state::SetRequireApproval<St>, S> {
         self._fields.4 = Option::Some(value.into());
         JoinLinkViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinLinkViewBuilder<'a, S>
+impl<St, S: BosStr> JoinLinkViewBuilder<St, S>
 where
-    S: join_link_view_state::State,
-    S::JoinRule: join_link_view_state::IsSet,
-    S::RequireApproval: join_link_view_state::IsSet,
-    S::EnabledStatus: join_link_view_state::IsSet,
-    S::Code: join_link_view_state::IsSet,
-    S::CreatedAt: join_link_view_state::IsSet,
+    St: join_link_view_state::State,
+    St::Code: join_link_view_state::IsSet,
+    St::CreatedAt: join_link_view_state::IsSet,
+    St::EnabledStatus: join_link_view_state::IsSet,
+    St::JoinRule: join_link_view_state::IsSet,
+    St::RequireApproval: join_link_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> JoinLinkView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> JoinLinkView<S> {
         JoinLinkView {
             code: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),
@@ -1425,14 +1440,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> JoinLinkView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> JoinLinkView<S> {
         JoinLinkView {
             code: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),
@@ -1454,275 +1466,299 @@ pub mod join_request_convo_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type MemberCount;
-        type Owner;
-        type Name;
-        type MemberLimit;
         type ConvoId;
+        type MemberCount;
+        type MemberLimit;
+        type Name;
+        type Owner;
         type Viewer;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type MemberCount = Unset;
-        type Owner = Unset;
-        type Name = Unset;
-        type MemberLimit = Unset;
         type ConvoId = Unset;
+        type MemberCount = Unset;
+        type MemberLimit = Unset;
+        type Name = Unset;
+        type Owner = Unset;
         type Viewer = Unset;
     }
+    ///State transition - sets the `convo_id` field to Set
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
+        type ConvoId = Set<members::convo_id>;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = St::Owner;
+        type Viewer = St::Viewer;
+    }
     ///State transition - sets the `member_count` field to Set
-    pub struct SetMemberCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMemberCount<S> {}
-    impl<S: State> State for SetMemberCount<S> {
+    pub struct SetMemberCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMemberCount<St> {}
+    impl<St: State> State for SetMemberCount<St> {
+        type ConvoId = St::ConvoId;
         type MemberCount = Set<members::member_count>;
-        type Owner = S::Owner;
-        type Name = S::Name;
-        type MemberLimit = S::MemberLimit;
-        type ConvoId = S::ConvoId;
-        type Viewer = S::Viewer;
-    }
-    ///State transition - sets the `owner` field to Set
-    pub struct SetOwner<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetOwner<S> {}
-    impl<S: State> State for SetOwner<S> {
-        type MemberCount = S::MemberCount;
-        type Owner = Set<members::owner>;
-        type Name = S::Name;
-        type MemberLimit = S::MemberLimit;
-        type ConvoId = S::ConvoId;
-        type Viewer = S::Viewer;
-    }
-    ///State transition - sets the `name` field to Set
-    pub struct SetName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetName<S> {}
-    impl<S: State> State for SetName<S> {
-        type MemberCount = S::MemberCount;
-        type Owner = S::Owner;
-        type Name = Set<members::name>;
-        type MemberLimit = S::MemberLimit;
-        type ConvoId = S::ConvoId;
-        type Viewer = S::Viewer;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = St::Owner;
+        type Viewer = St::Viewer;
     }
     ///State transition - sets the `member_limit` field to Set
-    pub struct SetMemberLimit<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMemberLimit<S> {}
-    impl<S: State> State for SetMemberLimit<S> {
-        type MemberCount = S::MemberCount;
-        type Owner = S::Owner;
-        type Name = S::Name;
+    pub struct SetMemberLimit<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMemberLimit<St> {}
+    impl<St: State> State for SetMemberLimit<St> {
+        type ConvoId = St::ConvoId;
+        type MemberCount = St::MemberCount;
         type MemberLimit = Set<members::member_limit>;
-        type ConvoId = S::ConvoId;
-        type Viewer = S::Viewer;
+        type Name = St::Name;
+        type Owner = St::Owner;
+        type Viewer = St::Viewer;
     }
-    ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type MemberCount = S::MemberCount;
-        type Owner = S::Owner;
-        type Name = S::Name;
-        type MemberLimit = S::MemberLimit;
-        type ConvoId = Set<members::convo_id>;
-        type Viewer = S::Viewer;
+    ///State transition - sets the `name` field to Set
+    pub struct SetName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetName<St> {}
+    impl<St: State> State for SetName<St> {
+        type ConvoId = St::ConvoId;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = Set<members::name>;
+        type Owner = St::Owner;
+        type Viewer = St::Viewer;
+    }
+    ///State transition - sets the `owner` field to Set
+    pub struct SetOwner<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetOwner<St> {}
+    impl<St: State> State for SetOwner<St> {
+        type ConvoId = St::ConvoId;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = Set<members::owner>;
+        type Viewer = St::Viewer;
     }
     ///State transition - sets the `viewer` field to Set
-    pub struct SetViewer<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetViewer<S> {}
-    impl<S: State> State for SetViewer<S> {
-        type MemberCount = S::MemberCount;
-        type Owner = S::Owner;
-        type Name = S::Name;
-        type MemberLimit = S::MemberLimit;
-        type ConvoId = S::ConvoId;
+    pub struct SetViewer<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetViewer<St> {}
+    impl<St: State> State for SetViewer<St> {
+        type ConvoId = St::ConvoId;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+        type Owner = St::Owner;
         type Viewer = Set<members::viewer>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `member_count` field
-        pub struct member_count(());
-        ///Marker type for the `owner` field
-        pub struct owner(());
-        ///Marker type for the `name` field
-        pub struct name(());
-        ///Marker type for the `member_limit` field
-        pub struct member_limit(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
+        ///Marker type for the `member_count` field
+        pub struct member_count(());
+        ///Marker type for the `member_limit` field
+        pub struct member_limit(());
+        ///Marker type for the `name` field
+        pub struct name(());
+        ///Marker type for the `owner` field
+        pub struct owner(());
         ///Marker type for the `viewer` field
         pub struct viewer(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct JoinRequestConvoViewBuilder<'a, S: join_request_convo_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct JoinRequestConvoViewBuilder<
+    St: join_request_convo_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<i64>,
         Option<i64>,
-        Option<CowStr<'a>>,
-        Option<ProfileViewBasic<'a>>,
-        Option<group::JoinLinkViewerState<'a>>,
+        Option<S>,
+        Option<ProfileViewBasic<S>>,
+        Option<group::JoinLinkViewerState<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> JoinRequestConvoView<'a> {
-    /// Create a new builder for this type
+impl JoinRequestConvoView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> JoinRequestConvoViewBuilder<
-        'a,
         join_request_convo_view_state::Empty,
+        DefaultStr,
     > {
         JoinRequestConvoViewBuilder::new()
     }
 }
 
-impl<'a> JoinRequestConvoViewBuilder<'a, join_request_convo_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> JoinRequestConvoView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> JoinRequestConvoViewBuilder<
+        join_request_convo_view_state::Empty,
+        S,
+    > {
+        JoinRequestConvoViewBuilder::builder()
+    }
+}
+
+impl JoinRequestConvoViewBuilder<join_request_convo_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         JoinRequestConvoViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestConvoViewBuilder<'a, S>
+impl<S: BosStr> JoinRequestConvoViewBuilder<join_request_convo_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        JoinRequestConvoViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> JoinRequestConvoViewBuilder<St, S>
 where
-    S: join_request_convo_view_state::State,
-    S::ConvoId: join_request_convo_view_state::IsUnset,
+    St: join_request_convo_view_state::State,
+    St::ConvoId: join_request_convo_view_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> JoinRequestConvoViewBuilder<'a, join_request_convo_view_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> JoinRequestConvoViewBuilder<join_request_convo_view_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         JoinRequestConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestConvoViewBuilder<'a, S>
+impl<St, S: BosStr> JoinRequestConvoViewBuilder<St, S>
 where
-    S: join_request_convo_view_state::State,
-    S::MemberCount: join_request_convo_view_state::IsUnset,
+    St: join_request_convo_view_state::State,
+    St::MemberCount: join_request_convo_view_state::IsUnset,
 {
     /// Set the `memberCount` field (required)
     pub fn member_count(
         mut self,
         value: impl Into<i64>,
     ) -> JoinRequestConvoViewBuilder<
-        'a,
-        join_request_convo_view_state::SetMemberCount<S>,
+        join_request_convo_view_state::SetMemberCount<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         JoinRequestConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestConvoViewBuilder<'a, S>
+impl<St, S: BosStr> JoinRequestConvoViewBuilder<St, S>
 where
-    S: join_request_convo_view_state::State,
-    S::MemberLimit: join_request_convo_view_state::IsUnset,
+    St: join_request_convo_view_state::State,
+    St::MemberLimit: join_request_convo_view_state::IsUnset,
 {
     /// Set the `memberLimit` field (required)
     pub fn member_limit(
         mut self,
         value: impl Into<i64>,
     ) -> JoinRequestConvoViewBuilder<
-        'a,
-        join_request_convo_view_state::SetMemberLimit<S>,
+        join_request_convo_view_state::SetMemberLimit<St>,
+        S,
     > {
         self._fields.2 = Option::Some(value.into());
         JoinRequestConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestConvoViewBuilder<'a, S>
+impl<St, S: BosStr> JoinRequestConvoViewBuilder<St, S>
 where
-    S: join_request_convo_view_state::State,
-    S::Name: join_request_convo_view_state::IsUnset,
+    St: join_request_convo_view_state::State,
+    St::Name: join_request_convo_view_state::IsUnset,
 {
     /// Set the `name` field (required)
     pub fn name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> JoinRequestConvoViewBuilder<'a, join_request_convo_view_state::SetName<S>> {
+        value: impl Into<S>,
+    ) -> JoinRequestConvoViewBuilder<join_request_convo_view_state::SetName<St>, S> {
         self._fields.3 = Option::Some(value.into());
         JoinRequestConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestConvoViewBuilder<'a, S>
+impl<St, S: BosStr> JoinRequestConvoViewBuilder<St, S>
 where
-    S: join_request_convo_view_state::State,
-    S::Owner: join_request_convo_view_state::IsUnset,
+    St: join_request_convo_view_state::State,
+    St::Owner: join_request_convo_view_state::IsUnset,
 {
     /// Set the `owner` field (required)
     pub fn owner(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
-    ) -> JoinRequestConvoViewBuilder<'a, join_request_convo_view_state::SetOwner<S>> {
+        value: impl Into<ProfileViewBasic<S>>,
+    ) -> JoinRequestConvoViewBuilder<join_request_convo_view_state::SetOwner<St>, S> {
         self._fields.4 = Option::Some(value.into());
         JoinRequestConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestConvoViewBuilder<'a, S>
+impl<St, S: BosStr> JoinRequestConvoViewBuilder<St, S>
 where
-    S: join_request_convo_view_state::State,
-    S::Viewer: join_request_convo_view_state::IsUnset,
+    St: join_request_convo_view_state::State,
+    St::Viewer: join_request_convo_view_state::IsUnset,
 {
     /// Set the `viewer` field (required)
     pub fn viewer(
         mut self,
-        value: impl Into<group::JoinLinkViewerState<'a>>,
-    ) -> JoinRequestConvoViewBuilder<'a, join_request_convo_view_state::SetViewer<S>> {
+        value: impl Into<group::JoinLinkViewerState<S>>,
+    ) -> JoinRequestConvoViewBuilder<join_request_convo_view_state::SetViewer<St>, S> {
         self._fields.5 = Option::Some(value.into());
         JoinRequestConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestConvoViewBuilder<'a, S>
+impl<St, S: BosStr> JoinRequestConvoViewBuilder<St, S>
 where
-    S: join_request_convo_view_state::State,
-    S::MemberCount: join_request_convo_view_state::IsSet,
-    S::Owner: join_request_convo_view_state::IsSet,
-    S::Name: join_request_convo_view_state::IsSet,
-    S::MemberLimit: join_request_convo_view_state::IsSet,
-    S::ConvoId: join_request_convo_view_state::IsSet,
-    S::Viewer: join_request_convo_view_state::IsSet,
+    St: join_request_convo_view_state::State,
+    St::ConvoId: join_request_convo_view_state::IsSet,
+    St::MemberCount: join_request_convo_view_state::IsSet,
+    St::MemberLimit: join_request_convo_view_state::IsSet,
+    St::Name: join_request_convo_view_state::IsSet,
+    St::Owner: join_request_convo_view_state::IsSet,
+    St::Viewer: join_request_convo_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> JoinRequestConvoView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> JoinRequestConvoView<S> {
         JoinRequestConvoView {
             convo_id: self._fields.0.unwrap(),
             member_count: self._fields.1.unwrap(),
@@ -1733,14 +1769,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> JoinRequestConvoView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> JoinRequestConvoView<S> {
         JoinRequestConvoView {
             convo_id: self._fields.0.unwrap(),
             member_count: self._fields.1.unwrap(),
@@ -1763,145 +1796,166 @@ pub mod join_request_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type RequestedBy;
         type ConvoId;
         type RequestedAt;
+        type RequestedBy;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type RequestedBy = Unset;
         type ConvoId = Unset;
         type RequestedAt = Unset;
-    }
-    ///State transition - sets the `requested_by` field to Set
-    pub struct SetRequestedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRequestedBy<S> {}
-    impl<S: State> State for SetRequestedBy<S> {
-        type RequestedBy = Set<members::requested_by>;
-        type ConvoId = S::ConvoId;
-        type RequestedAt = S::RequestedAt;
+        type RequestedBy = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type RequestedBy = S::RequestedBy;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type RequestedAt = S::RequestedAt;
+        type RequestedAt = St::RequestedAt;
+        type RequestedBy = St::RequestedBy;
     }
     ///State transition - sets the `requested_at` field to Set
-    pub struct SetRequestedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRequestedAt<S> {}
-    impl<S: State> State for SetRequestedAt<S> {
-        type RequestedBy = S::RequestedBy;
-        type ConvoId = S::ConvoId;
+    pub struct SetRequestedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRequestedAt<St> {}
+    impl<St: State> State for SetRequestedAt<St> {
+        type ConvoId = St::ConvoId;
         type RequestedAt = Set<members::requested_at>;
+        type RequestedBy = St::RequestedBy;
+    }
+    ///State transition - sets the `requested_by` field to Set
+    pub struct SetRequestedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRequestedBy<St> {}
+    impl<St: State> State for SetRequestedBy<St> {
+        type ConvoId = St::ConvoId;
+        type RequestedAt = St::RequestedAt;
+        type RequestedBy = Set<members::requested_by>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `requested_by` field
-        pub struct requested_by(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `requested_at` field
         pub struct requested_at(());
+        ///Marker type for the `requested_by` field
+        pub struct requested_by(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct JoinRequestViewBuilder<'a, S: join_request_view_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<Datetime>, Option<ProfileViewBasic<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct JoinRequestViewBuilder<
+    St: join_request_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<Datetime>, Option<ProfileViewBasic<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> JoinRequestView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> JoinRequestViewBuilder<'a, join_request_view_state::Empty> {
+impl JoinRequestView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> JoinRequestViewBuilder<join_request_view_state::Empty, DefaultStr> {
         JoinRequestViewBuilder::new()
     }
 }
 
-impl<'a> JoinRequestViewBuilder<'a, join_request_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> JoinRequestView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> JoinRequestViewBuilder<join_request_view_state::Empty, S> {
+        JoinRequestViewBuilder::builder()
+    }
+}
+
+impl JoinRequestViewBuilder<join_request_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         JoinRequestViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestViewBuilder<'a, S>
+impl<S: BosStr> JoinRequestViewBuilder<join_request_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        JoinRequestViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> JoinRequestViewBuilder<St, S>
 where
-    S: join_request_view_state::State,
-    S::ConvoId: join_request_view_state::IsUnset,
+    St: join_request_view_state::State,
+    St::ConvoId: join_request_view_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> JoinRequestViewBuilder<'a, join_request_view_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> JoinRequestViewBuilder<join_request_view_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         JoinRequestViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestViewBuilder<'a, S>
+impl<St, S: BosStr> JoinRequestViewBuilder<St, S>
 where
-    S: join_request_view_state::State,
-    S::RequestedAt: join_request_view_state::IsUnset,
+    St: join_request_view_state::State,
+    St::RequestedAt: join_request_view_state::IsUnset,
 {
     /// Set the `requestedAt` field (required)
     pub fn requested_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> JoinRequestViewBuilder<'a, join_request_view_state::SetRequestedAt<S>> {
+    ) -> JoinRequestViewBuilder<join_request_view_state::SetRequestedAt<St>, S> {
         self._fields.1 = Option::Some(value.into());
         JoinRequestViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestViewBuilder<'a, S>
+impl<St, S: BosStr> JoinRequestViewBuilder<St, S>
 where
-    S: join_request_view_state::State,
-    S::RequestedBy: join_request_view_state::IsUnset,
+    St: join_request_view_state::State,
+    St::RequestedBy: join_request_view_state::IsUnset,
 {
     /// Set the `requestedBy` field (required)
     pub fn requested_by(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
-    ) -> JoinRequestViewBuilder<'a, join_request_view_state::SetRequestedBy<S>> {
+        value: impl Into<ProfileViewBasic<S>>,
+    ) -> JoinRequestViewBuilder<join_request_view_state::SetRequestedBy<St>, S> {
         self._fields.2 = Option::Some(value.into());
         JoinRequestViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> JoinRequestViewBuilder<'a, S>
+impl<St, S: BosStr> JoinRequestViewBuilder<St, S>
 where
-    S: join_request_view_state::State,
-    S::RequestedBy: join_request_view_state::IsSet,
-    S::ConvoId: join_request_view_state::IsSet,
-    S::RequestedAt: join_request_view_state::IsSet,
+    St: join_request_view_state::State,
+    St::ConvoId: join_request_view_state::IsSet,
+    St::RequestedAt: join_request_view_state::IsSet,
+    St::RequestedBy: join_request_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> JoinRequestView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> JoinRequestView<S> {
         JoinRequestView {
             convo_id: self._fields.0.unwrap(),
             requested_at: self._fields.1.unwrap(),
@@ -1909,14 +1963,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> JoinRequestView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> JoinRequestView<S> {
         JoinRequestView {
             convo_id: self._fields.0.unwrap(),
             requested_at: self._fields.1.unwrap(),

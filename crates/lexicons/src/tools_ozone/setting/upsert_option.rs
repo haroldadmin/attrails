@@ -10,42 +10,39 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Nsid;
 use jacquard_common::types::value::Data;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::setting::DefsOption;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UpsertOption<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UpsertOption<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub key: Nsid<'a>,
+    pub description: Option<S>,
+    pub key: Nsid<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub manager_role: Option<UpsertOptionManagerRole<'a>>,
-    #[serde(borrow)]
-    pub scope: UpsertOptionScope<'a>,
-    #[serde(borrow)]
-    pub value: Data<'a>,
+    pub manager_role: Option<UpsertOptionManagerRole<S>>,
+    pub scope: UpsertOptionScope<S>,
+    pub value: Data<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum UpsertOptionManagerRole<'a> {
+pub enum UpsertOptionManagerRole<S: BosStr = DefaultStr> {
     RoleModerator,
     RoleTriage,
     RoleVerifier,
     RoleAdmin,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> UpsertOptionManagerRole<'a> {
+impl<S: BosStr> UpsertOptionManagerRole<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::RoleModerator => "tools.ozone.team.defs#roleModerator",
@@ -55,74 +52,61 @@ impl<'a> UpsertOptionManagerRole<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for UpsertOptionManagerRole<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "tools.ozone.team.defs#roleModerator" => Self::RoleModerator,
             "tools.ozone.team.defs#roleTriage" => Self::RoleTriage,
             "tools.ozone.team.defs#roleVerifier" => Self::RoleVerifier,
             "tools.ozone.team.defs#roleAdmin" => Self::RoleAdmin,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for UpsertOptionManagerRole<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "tools.ozone.team.defs#roleModerator" => Self::RoleModerator,
-            "tools.ozone.team.defs#roleTriage" => Self::RoleTriage,
-            "tools.ozone.team.defs#roleVerifier" => Self::RoleVerifier,
-            "tools.ozone.team.defs#roleAdmin" => Self::RoleAdmin,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for UpsertOptionManagerRole<'a> {
+impl<S: BosStr> core::fmt::Display for UpsertOptionManagerRole<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for UpsertOptionManagerRole<'a> {
+impl<S: BosStr> AsRef<str> for UpsertOptionManagerRole<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for UpsertOptionManagerRole<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for UpsertOptionManagerRole<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for UpsertOptionManagerRole<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for UpsertOptionManagerRole<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for UpsertOptionManagerRole<'a> {
+impl<S: BosStr + Default> Default for UpsertOptionManagerRole<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for UpsertOptionManagerRole<'_> {
-    type Output = UpsertOptionManagerRole<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for UpsertOptionManagerRole<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = UpsertOptionManagerRole<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             UpsertOptionManagerRole::RoleModerator => {
@@ -142,13 +126,13 @@ impl jacquard_common::IntoStatic for UpsertOptionManagerRole<'_> {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum UpsertOptionScope<'a> {
+pub enum UpsertOptionScope<S: BosStr = DefaultStr> {
     Instance,
     Personal,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> UpsertOptionScope<'a> {
+impl<S: BosStr> UpsertOptionScope<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Instance => "instance",
@@ -156,70 +140,59 @@ impl<'a> UpsertOptionScope<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for UpsertOptionScope<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "instance" => Self::Instance,
             "personal" => Self::Personal,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for UpsertOptionScope<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "instance" => Self::Instance,
-            "personal" => Self::Personal,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for UpsertOptionScope<'a> {
+impl<S: BosStr> core::fmt::Display for UpsertOptionScope<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for UpsertOptionScope<'a> {
+impl<S: BosStr> AsRef<str> for UpsertOptionScope<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for UpsertOptionScope<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for UpsertOptionScope<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for UpsertOptionScope<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for UpsertOptionScope<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for UpsertOptionScope<'a> {
+impl<S: BosStr + Default> Default for UpsertOptionScope<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for UpsertOptionScope<'_> {
-    type Output = UpsertOptionScope<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for UpsertOptionScope<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = UpsertOptionScope<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             UpsertOptionScope::Instance => UpsertOptionScope::Instance,
@@ -230,24 +203,26 @@ impl jacquard_common::IntoStatic for UpsertOptionScope<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UpsertOptionOutput<'a> {
-    #[serde(borrow)]
-    pub option: DefsOption<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UpsertOptionOutput<S: BosStr = DefaultStr> {
+    pub option: DefsOption<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.setting.upsertOption
+/** Response marker for the `tools.ozone.setting.upsertOption` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `UpsertOptionOutput<S>` for this endpoint.*/
 pub struct UpsertOptionResponse;
 impl jacquard_common::xrpc::XrpcResp for UpsertOptionResponse {
     const NSID: &'static str = "tools.ozone.setting.upsertOption";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = UpsertOptionOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = UpsertOptionOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for UpsertOption<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for UpsertOption<S> {
     const NSID: &'static str = "tools.ozone.setting.upsertOption";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -255,14 +230,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for UpsertOption<'a> {
     type Response = UpsertOptionResponse;
 }
 
-/// Endpoint type for tools.ozone.setting.upsertOption
+/** Endpoint marker for the `tools.ozone.setting.upsertOption` procedure.
+
+Path: `/xrpc/tools.ozone.setting.upsertOption`. The request payload type is `UpsertOption<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct UpsertOptionRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for UpsertOptionRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.setting.upsertOption";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = UpsertOption<'de>;
+    type Request<S: BosStr> = UpsertOption<S>;
     type Response = UpsertOptionResponse;
 }
 
@@ -276,122 +253,140 @@ pub mod upsert_option_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Scope;
         type Key;
+        type Scope;
         type Value;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Scope = Unset;
         type Key = Unset;
+        type Scope = Unset;
         type Value = Unset;
     }
-    ///State transition - sets the `scope` field to Set
-    pub struct SetScope<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetScope<S> {}
-    impl<S: State> State for SetScope<S> {
-        type Scope = Set<members::scope>;
-        type Key = S::Key;
-        type Value = S::Value;
-    }
     ///State transition - sets the `key` field to Set
-    pub struct SetKey<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetKey<S> {}
-    impl<S: State> State for SetKey<S> {
-        type Scope = S::Scope;
+    pub struct SetKey<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetKey<St> {}
+    impl<St: State> State for SetKey<St> {
         type Key = Set<members::key>;
-        type Value = S::Value;
+        type Scope = St::Scope;
+        type Value = St::Value;
+    }
+    ///State transition - sets the `scope` field to Set
+    pub struct SetScope<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetScope<St> {}
+    impl<St: State> State for SetScope<St> {
+        type Key = St::Key;
+        type Scope = Set<members::scope>;
+        type Value = St::Value;
     }
     ///State transition - sets the `value` field to Set
-    pub struct SetValue<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetValue<S> {}
-    impl<S: State> State for SetValue<S> {
-        type Scope = S::Scope;
-        type Key = S::Key;
+    pub struct SetValue<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetValue<St> {}
+    impl<St: State> State for SetValue<St> {
+        type Key = St::Key;
+        type Scope = St::Scope;
         type Value = Set<members::value>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `scope` field
-        pub struct scope(());
         ///Marker type for the `key` field
         pub struct key(());
+        ///Marker type for the `scope` field
+        pub struct scope(());
         ///Marker type for the `value` field
         pub struct value(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct UpsertOptionBuilder<'a, S: upsert_option_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct UpsertOptionBuilder<St: upsert_option_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<Nsid<'a>>,
-        Option<UpsertOptionManagerRole<'a>>,
-        Option<UpsertOptionScope<'a>>,
-        Option<Data<'a>>,
+        Option<S>,
+        Option<Nsid<S>>,
+        Option<UpsertOptionManagerRole<S>>,
+        Option<UpsertOptionScope<S>>,
+        Option<Data<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> UpsertOption<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> UpsertOptionBuilder<'a, upsert_option_state::Empty> {
+impl UpsertOption<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> UpsertOptionBuilder<upsert_option_state::Empty, DefaultStr> {
         UpsertOptionBuilder::new()
     }
 }
 
-impl<'a> UpsertOptionBuilder<'a, upsert_option_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> UpsertOption<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> UpsertOptionBuilder<upsert_option_state::Empty, S> {
+        UpsertOptionBuilder::builder()
+    }
+}
+
+impl UpsertOptionBuilder<upsert_option_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         UpsertOptionBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: upsert_option_state::State> UpsertOptionBuilder<'a, S> {
+impl<S: BosStr> UpsertOptionBuilder<upsert_option_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        UpsertOptionBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: upsert_option_state::State, S: BosStr> UpsertOptionBuilder<St, S> {
     /// Set the `description` field (optional)
-    pub fn description(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn description(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `description` field to an Option value (optional)
-    pub fn maybe_description(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_description(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> UpsertOptionBuilder<'a, S>
+impl<St, S: BosStr> UpsertOptionBuilder<St, S>
 where
-    S: upsert_option_state::State,
-    S::Key: upsert_option_state::IsUnset,
+    St: upsert_option_state::State,
+    St::Key: upsert_option_state::IsUnset,
 {
     /// Set the `key` field (required)
     pub fn key(
         mut self,
-        value: impl Into<Nsid<'a>>,
-    ) -> UpsertOptionBuilder<'a, upsert_option_state::SetKey<S>> {
+        value: impl Into<Nsid<S>>,
+    ) -> UpsertOptionBuilder<upsert_option_state::SetKey<St>, S> {
         self._fields.1 = Option::Some(value.into());
         UpsertOptionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: upsert_option_state::State> UpsertOptionBuilder<'a, S> {
+impl<St: upsert_option_state::State, S: BosStr> UpsertOptionBuilder<St, S> {
     /// Set the `managerRole` field (optional)
     pub fn manager_role(
         mut self,
-        value: impl Into<Option<UpsertOptionManagerRole<'a>>>,
+        value: impl Into<Option<UpsertOptionManagerRole<S>>>,
     ) -> Self {
         self._fields.2 = value.into();
         self
@@ -399,60 +394,60 @@ impl<'a, S: upsert_option_state::State> UpsertOptionBuilder<'a, S> {
     /// Set the `managerRole` field to an Option value (optional)
     pub fn maybe_manager_role(
         mut self,
-        value: Option<UpsertOptionManagerRole<'a>>,
+        value: Option<UpsertOptionManagerRole<S>>,
     ) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> UpsertOptionBuilder<'a, S>
+impl<St, S: BosStr> UpsertOptionBuilder<St, S>
 where
-    S: upsert_option_state::State,
-    S::Scope: upsert_option_state::IsUnset,
+    St: upsert_option_state::State,
+    St::Scope: upsert_option_state::IsUnset,
 {
     /// Set the `scope` field (required)
     pub fn scope(
         mut self,
-        value: impl Into<UpsertOptionScope<'a>>,
-    ) -> UpsertOptionBuilder<'a, upsert_option_state::SetScope<S>> {
+        value: impl Into<UpsertOptionScope<S>>,
+    ) -> UpsertOptionBuilder<upsert_option_state::SetScope<St>, S> {
         self._fields.3 = Option::Some(value.into());
         UpsertOptionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UpsertOptionBuilder<'a, S>
+impl<St, S: BosStr> UpsertOptionBuilder<St, S>
 where
-    S: upsert_option_state::State,
-    S::Value: upsert_option_state::IsUnset,
+    St: upsert_option_state::State,
+    St::Value: upsert_option_state::IsUnset,
 {
     /// Set the `value` field (required)
     pub fn value(
         mut self,
-        value: impl Into<Data<'a>>,
-    ) -> UpsertOptionBuilder<'a, upsert_option_state::SetValue<S>> {
+        value: impl Into<Data<S>>,
+    ) -> UpsertOptionBuilder<upsert_option_state::SetValue<St>, S> {
         self._fields.4 = Option::Some(value.into());
         UpsertOptionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UpsertOptionBuilder<'a, S>
+impl<St, S: BosStr> UpsertOptionBuilder<St, S>
 where
-    S: upsert_option_state::State,
-    S::Scope: upsert_option_state::IsSet,
-    S::Key: upsert_option_state::IsSet,
-    S::Value: upsert_option_state::IsSet,
+    St: upsert_option_state::State,
+    St::Key: upsert_option_state::IsSet,
+    St::Scope: upsert_option_state::IsSet,
+    St::Value: upsert_option_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> UpsertOption<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> UpsertOption<S> {
         UpsertOption {
             description: self._fields.0,
             key: self._fields.1.unwrap(),
@@ -462,11 +457,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> UpsertOption<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> UpsertOption<S> {
         UpsertOption {
             description: self._fields.0,
             key: self._fields.1.unwrap(),

@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{IntoStatic, lexicon};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -29,46 +31,44 @@ use crate::app_attrails::v0::Image;
 use crate::com_atproto::repo::strong_ref::StrongRef;
 /// A review of a route: a 1-5 rating, optional text, and optional photos. Activity-neutral. The AppView treats the most recent review per (author, subject) as canonical.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase", rename = "app.attrails.v0.review", tag = "$type")]
-pub struct Review<'a> {
+#[serde(
+    rename_all = "camelCase",
+    rename = "app.attrails.v0.review",
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct Review<S: BosStr = DefaultStr> {
     ///When the reviewer last did the route (rode, ran, hiked), if they want to say.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<Datetime>,
     pub created_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub images: Option<Vec<Image<'a>>>,
+    pub images: Option<Vec<Image<S>>>,
     ///Star rating from 1 (worst) to 5 (best).
     pub rating: i64,
     ///Strong reference to an app.attrails.v0.route record. The AppView rejects reviews whose subject is not a route (lexicon cannot constrain the URI collection in-schema).
-    #[serde(borrow)]
-    pub subject: StrongRef<'a>,
+    pub subject: StrongRef<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub text: Option<CowStr<'a>>,
+    pub text: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct ReviewGetRecordOutput<'a> {
+pub struct ReviewGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Review<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Review<S>,
 }
 
-impl<'a> Review<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, ReviewRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Review<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, ReviewRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
@@ -79,18 +79,17 @@ pub struct ReviewRecord;
 impl XrpcResp for ReviewRecord {
     const NSID: &'static str = "app.attrails.v0.review";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ReviewGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = ReviewGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<ReviewGetRecordOutput<'_>> for Review<'_> {
-    fn from(output: ReviewGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<ReviewGetRecordOutput<S>> for Review<S> {
+    fn from(output: ReviewGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Review<'_> {
+impl<S: BosStr> Collection for Review<S> {
     const NSID: &'static str = "app.attrails.v0.review";
     type Record = ReviewRecord;
 }
@@ -100,7 +99,7 @@ impl Collection for ReviewRecord {
     type Record = ReviewRecord;
 }
 
-impl<'a> LexiconSchema for Review<'a> {
+impl<S: BosStr> LexiconSchema for Review<S> {
     fn nsid() -> &'static str {
         "app.attrails.v0.review"
     }
@@ -190,27 +189,27 @@ pub mod review_state {
         type Subject = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
-        type Rating = S::Rating;
-        type Subject = S::Subject;
+        type Rating = St::Rating;
+        type Subject = St::Subject;
     }
     ///State transition - sets the `rating` field to Set
-    pub struct SetRating<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRating<S> {}
-    impl<S: State> State for SetRating<S> {
-        type CreatedAt = S::CreatedAt;
+    pub struct SetRating<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRating<St> {}
+    impl<St: State> State for SetRating<St> {
+        type CreatedAt = St::CreatedAt;
         type Rating = Set<members::rating>;
-        type Subject = S::Subject;
+        type Subject = St::Subject;
     }
     ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
-        type CreatedAt = S::CreatedAt;
-        type Rating = S::Rating;
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
+        type CreatedAt = St::CreatedAt;
+        type Rating = St::Rating;
         type Subject = Set<members::subject>;
     }
     /// Marker types for field names
@@ -225,39 +224,57 @@ pub mod review_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReviewBuilder<'a, S: review_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ReviewBuilder<St: review_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<Datetime>,
         Option<Datetime>,
-        Option<Vec<Image<'a>>>,
+        Option<Vec<Image<S>>>,
         Option<i64>,
-        Option<StrongRef<'a>>,
-        Option<CowStr<'a>>,
+        Option<StrongRef<S>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Review<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReviewBuilder<'a, review_state::Empty> {
+impl Review<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReviewBuilder<review_state::Empty, DefaultStr> {
         ReviewBuilder::new()
     }
 }
 
-impl<'a> ReviewBuilder<'a, review_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Review<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReviewBuilder<review_state::Empty, S> {
+        ReviewBuilder::builder()
+    }
+}
+
+impl ReviewBuilder<review_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReviewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: review_state::State> ReviewBuilder<'a, S> {
+impl<S: BosStr> ReviewBuilder<review_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReviewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: review_state::State, S: BosStr> ReviewBuilder<St, S> {
     /// Set the `completedAt` field (optional)
     pub fn completed_at(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.0 = value.into();
@@ -270,98 +287,98 @@ impl<'a, S: review_state::State> ReviewBuilder<'a, S> {
     }
 }
 
-impl<'a, S> ReviewBuilder<'a, S>
+impl<St, S: BosStr> ReviewBuilder<St, S>
 where
-    S: review_state::State,
-    S::CreatedAt: review_state::IsUnset,
+    St: review_state::State,
+    St::CreatedAt: review_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> ReviewBuilder<'a, review_state::SetCreatedAt<S>> {
+    ) -> ReviewBuilder<review_state::SetCreatedAt<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ReviewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: review_state::State> ReviewBuilder<'a, S> {
+impl<St: review_state::State, S: BosStr> ReviewBuilder<St, S> {
     /// Set the `images` field (optional)
-    pub fn images(mut self, value: impl Into<Option<Vec<Image<'a>>>>) -> Self {
+    pub fn images(mut self, value: impl Into<Option<Vec<Image<S>>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `images` field to an Option value (optional)
-    pub fn maybe_images(mut self, value: Option<Vec<Image<'a>>>) -> Self {
+    pub fn maybe_images(mut self, value: Option<Vec<Image<S>>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> ReviewBuilder<'a, S>
+impl<St, S: BosStr> ReviewBuilder<St, S>
 where
-    S: review_state::State,
-    S::Rating: review_state::IsUnset,
+    St: review_state::State,
+    St::Rating: review_state::IsUnset,
 {
     /// Set the `rating` field (required)
     pub fn rating(
         mut self,
         value: impl Into<i64>,
-    ) -> ReviewBuilder<'a, review_state::SetRating<S>> {
+    ) -> ReviewBuilder<review_state::SetRating<St>, S> {
         self._fields.3 = Option::Some(value.into());
         ReviewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReviewBuilder<'a, S>
+impl<St, S: BosStr> ReviewBuilder<St, S>
 where
-    S: review_state::State,
-    S::Subject: review_state::IsUnset,
+    St: review_state::State,
+    St::Subject: review_state::IsUnset,
 {
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<StrongRef<'a>>,
-    ) -> ReviewBuilder<'a, review_state::SetSubject<S>> {
+        value: impl Into<StrongRef<S>>,
+    ) -> ReviewBuilder<review_state::SetSubject<St>, S> {
         self._fields.4 = Option::Some(value.into());
         ReviewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: review_state::State> ReviewBuilder<'a, S> {
+impl<St: review_state::State, S: BosStr> ReviewBuilder<St, S> {
     /// Set the `text` field (optional)
-    pub fn text(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn text(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `text` field to an Option value (optional)
-    pub fn maybe_text(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_text(mut self, value: Option<S>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S> ReviewBuilder<'a, S>
+impl<St, S: BosStr> ReviewBuilder<St, S>
 where
-    S: review_state::State,
-    S::CreatedAt: review_state::IsSet,
-    S::Rating: review_state::IsSet,
-    S::Subject: review_state::IsSet,
+    St: review_state::State,
+    St::CreatedAt: review_state::IsSet,
+    St::Rating: review_state::IsSet,
+    St::Subject: review_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Review<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Review<S> {
         Review {
             completed_at: self._fields.0,
             created_at: self._fields.1.unwrap(),
@@ -372,14 +389,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Review<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Review<S> {
         Review {
             completed_at: self._fields.0,
             created_at: self._fields.1.unwrap(),

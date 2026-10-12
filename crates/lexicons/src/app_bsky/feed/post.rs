@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime, Language};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{IntoStatic, lexicon, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -37,120 +39,112 @@ use crate::com_atproto::repo::strong_ref::StrongRef;
 use crate::app_bsky::feed::post;
 /// Deprecated: use facets instead.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Entity<'a> {
-    #[serde(borrow)]
-    pub index: post::TextSlice<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Entity<S: BosStr = DefaultStr> {
+    pub index: post::TextSlice<S>,
     ///Expected values are 'mention' and 'link'.
-    #[serde(borrow)]
-    pub r#type: CowStr<'a>,
-    #[serde(borrow)]
-    pub value: CowStr<'a>,
+    pub r#type: S,
+    pub value: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Record containing a Bluesky post.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase", rename = "app.bsky.feed.post", tag = "$type")]
-pub struct Post<'a> {
+#[serde(
+    rename_all = "camelCase",
+    rename = "app.bsky.feed.post",
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct Post<S: BosStr = DefaultStr> {
     ///Client-declared timestamp when this post was originally created.
     pub created_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embed: Option<PostEmbed<'a>>,
+    pub embed: Option<PostEmbed<S>>,
     ///DEPRECATED: replaced by app.bsky.richtext.facet.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub entities: Option<Vec<post::Entity<'a>>>,
+    pub entities: Option<Vec<post::Entity<S>>>,
     ///Annotations of text (mentions, URLs, hashtags, etc)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub facets: Option<Vec<Facet<'a>>>,
+    pub facets: Option<Vec<Facet<S>>>,
     ///Self-label values for this post. Effectively content warnings.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub labels: Option<SelfLabels<'a>>,
+    pub labels: Option<SelfLabels<S>>,
     ///Indicates human language of post primary text content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub langs: Option<Vec<Language>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reply: Option<post::ReplyRef<'a>>,
+    pub reply: Option<post::ReplyRef<S>>,
     ///Additional hashtags, in addition to any included in post text and facets.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub tags: Option<Vec<CowStr<'a>>>,
+    pub tags: Option<Vec<S>>,
     ///The primary post content. May be an empty string, if there are embeds.
-    #[serde(borrow)]
-    pub text: CowStr<'a>,
+    pub text: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum PostEmbed<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum PostEmbed<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.embed.images")]
-    Images(Box<Images<'a>>),
+    Images(Box<Images<S>>),
     #[serde(rename = "app.bsky.embed.video")]
-    Video(Box<Video<'a>>),
+    Video(Box<Video<S>>),
     #[serde(rename = "app.bsky.embed.gallery")]
-    Gallery(Box<Gallery<'a>>),
+    Gallery(Box<Gallery<S>>),
     #[serde(rename = "app.bsky.embed.external")]
-    External(Box<ExternalRecord<'a>>),
+    External(Box<ExternalRecord<S>>),
     #[serde(rename = "app.bsky.embed.record")]
-    Record(Box<Record<'a>>),
+    Record(Box<Record<S>>),
     #[serde(rename = "app.bsky.embed.recordWithMedia")]
-    RecordWithMedia(Box<RecordWithMedia<'a>>),
+    RecordWithMedia(Box<RecordWithMedia<S>>),
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct PostGetRecordOutput<'a> {
+pub struct PostGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Post<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Post<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReplyRef<'a> {
-    #[serde(borrow)]
-    pub parent: StrongRef<'a>,
-    #[serde(borrow)]
-    pub root: StrongRef<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReplyRef<S: BosStr = DefaultStr> {
+    pub parent: StrongRef<S>,
+    pub root: StrongRef<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Deprecated. Use app.bsky.richtext instead -- A text segment. Start is inclusive, end is exclusive. Indices are for utf16-encoded strings.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct TextSlice<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct TextSlice<S: BosStr = DefaultStr> {
     pub end: i64,
     pub start: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> Post<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, PostRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Post<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, PostRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
-impl<'a> LexiconSchema for Entity<'a> {
+impl<S: BosStr> LexiconSchema for Entity<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.post"
     }
@@ -172,18 +166,17 @@ pub struct PostRecord;
 impl XrpcResp for PostRecord {
     const NSID: &'static str = "app.bsky.feed.post";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = PostGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = PostGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<PostGetRecordOutput<'_>> for Post<'_> {
-    fn from(output: PostGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<PostGetRecordOutput<S>> for Post<S> {
+    fn from(output: PostGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Post<'_> {
+impl<S: BosStr> Collection for Post<S> {
     const NSID: &'static str = "app.bsky.feed.post";
     type Record = PostRecord;
 }
@@ -193,7 +186,7 @@ impl Collection for PostRecord {
     type Record = PostRecord;
 }
 
-impl<'a> LexiconSchema for Post<'a> {
+impl<S: BosStr> LexiconSchema for Post<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.post"
     }
@@ -224,6 +217,33 @@ impl<'a> LexiconSchema for Post<'a> {
                 });
             }
         }
+        if let Some(values) = &self.tags {
+            for value in values {
+                #[allow(unused_comparisons)]
+                if <str>::len(value.as_ref()) > 640usize {
+                    return Err(ConstraintError::MaxLength {
+                        path: ValidationPath::from_field("tags"),
+                        max: 640usize,
+                        actual: <str>::len(value.as_ref()),
+                    });
+                }
+            }
+        }
+        if let Some(values) = &self.tags {
+            for value in values {
+                {
+                    let count = UnicodeSegmentation::graphemes(value.as_ref(), true)
+                        .count();
+                    if count > 64usize {
+                        return Err(ConstraintError::MaxGraphemes {
+                            path: ValidationPath::from_field("tags"),
+                            max: 64usize,
+                            actual: count,
+                        });
+                    }
+                }
+            }
+        }
         {
             let value = &self.text;
             #[allow(unused_comparisons)]
@@ -252,7 +272,7 @@ impl<'a> LexiconSchema for Post<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReplyRef<'a> {
+impl<S: BosStr> LexiconSchema for ReplyRef<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.post"
     }
@@ -267,7 +287,7 @@ impl<'a> LexiconSchema for ReplyRef<'a> {
     }
 }
 
-impl<'a> LexiconSchema for TextSlice<'a> {
+impl<S: BosStr> LexiconSchema for TextSlice<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.post"
     }
@@ -313,144 +333,162 @@ pub mod entity_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type Index;
-        type Value;
         type Type;
+        type Value;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type Index = Unset;
-        type Value = Unset;
         type Type = Unset;
+        type Value = Unset;
     }
     ///State transition - sets the `index` field to Set
-    pub struct SetIndex<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetIndex<S> {}
-    impl<S: State> State for SetIndex<S> {
+    pub struct SetIndex<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetIndex<St> {}
+    impl<St: State> State for SetIndex<St> {
         type Index = Set<members::index>;
-        type Value = S::Value;
-        type Type = S::Type;
-    }
-    ///State transition - sets the `value` field to Set
-    pub struct SetValue<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetValue<S> {}
-    impl<S: State> State for SetValue<S> {
-        type Index = S::Index;
-        type Value = Set<members::value>;
-        type Type = S::Type;
+        type Type = St::Type;
+        type Value = St::Value;
     }
     ///State transition - sets the `type` field to Set
-    pub struct SetType<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetType<S> {}
-    impl<S: State> State for SetType<S> {
-        type Index = S::Index;
-        type Value = S::Value;
+    pub struct SetType<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetType<St> {}
+    impl<St: State> State for SetType<St> {
+        type Index = St::Index;
         type Type = Set<members::r#type>;
+        type Value = St::Value;
+    }
+    ///State transition - sets the `value` field to Set
+    pub struct SetValue<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetValue<St> {}
+    impl<St: State> State for SetValue<St> {
+        type Index = St::Index;
+        type Type = St::Type;
+        type Value = Set<members::value>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
         ///Marker type for the `index` field
         pub struct index(());
-        ///Marker type for the `value` field
-        pub struct value(());
         ///Marker type for the `type` field
         pub struct r#type(());
+        ///Marker type for the `value` field
+        pub struct value(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct EntityBuilder<'a, S: entity_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<post::TextSlice<'a>>, Option<CowStr<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct EntityBuilder<St: entity_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<post::TextSlice<S>>, Option<S>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Entity<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> EntityBuilder<'a, entity_state::Empty> {
+impl Entity<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> EntityBuilder<entity_state::Empty, DefaultStr> {
         EntityBuilder::new()
     }
 }
 
-impl<'a> EntityBuilder<'a, entity_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Entity<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> EntityBuilder<entity_state::Empty, S> {
+        EntityBuilder::builder()
+    }
+}
+
+impl EntityBuilder<entity_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         EntityBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EntityBuilder<'a, S>
+impl<S: BosStr> EntityBuilder<entity_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        EntityBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> EntityBuilder<St, S>
 where
-    S: entity_state::State,
-    S::Index: entity_state::IsUnset,
+    St: entity_state::State,
+    St::Index: entity_state::IsUnset,
 {
     /// Set the `index` field (required)
     pub fn index(
         mut self,
-        value: impl Into<post::TextSlice<'a>>,
-    ) -> EntityBuilder<'a, entity_state::SetIndex<S>> {
+        value: impl Into<post::TextSlice<S>>,
+    ) -> EntityBuilder<entity_state::SetIndex<St>, S> {
         self._fields.0 = Option::Some(value.into());
         EntityBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EntityBuilder<'a, S>
+impl<St, S: BosStr> EntityBuilder<St, S>
 where
-    S: entity_state::State,
-    S::Type: entity_state::IsUnset,
+    St: entity_state::State,
+    St::Type: entity_state::IsUnset,
 {
     /// Set the `type` field (required)
     pub fn r#type(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> EntityBuilder<'a, entity_state::SetType<S>> {
+        value: impl Into<S>,
+    ) -> EntityBuilder<entity_state::SetType<St>, S> {
         self._fields.1 = Option::Some(value.into());
         EntityBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EntityBuilder<'a, S>
+impl<St, S: BosStr> EntityBuilder<St, S>
 where
-    S: entity_state::State,
-    S::Value: entity_state::IsUnset,
+    St: entity_state::State,
+    St::Value: entity_state::IsUnset,
 {
     /// Set the `value` field (required)
     pub fn value(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> EntityBuilder<'a, entity_state::SetValue<S>> {
+        value: impl Into<S>,
+    ) -> EntityBuilder<entity_state::SetValue<St>, S> {
         self._fields.2 = Option::Some(value.into());
         EntityBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EntityBuilder<'a, S>
+impl<St, S: BosStr> EntityBuilder<St, S>
 where
-    S: entity_state::State,
-    S::Index: entity_state::IsSet,
-    S::Value: entity_state::IsSet,
-    S::Type: entity_state::IsSet,
+    St: entity_state::State,
+    St::Index: entity_state::IsSet,
+    St::Type: entity_state::IsSet,
+    St::Value: entity_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Entity<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Entity<S> {
         Entity {
             index: self._fields.0.unwrap(),
             r#type: self._fields.1.unwrap(),
@@ -458,14 +496,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Entity<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Entity<S> {
         Entity {
             index: self._fields.0.unwrap(),
             r#type: self._fields.1.unwrap(),
@@ -762,17 +794,17 @@ pub mod post_state {
         type Text = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
-        type Text = S::Text;
+        type Text = St::Text;
     }
     ///State transition - sets the `text` field to Set
-    pub struct SetText<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetText<S> {}
-    impl<S: State> State for SetText<S> {
-        type CreatedAt = S::CreatedAt;
+    pub struct SetText<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetText<St> {}
+    impl<St: State> State for SetText<St> {
+        type CreatedAt = St::CreatedAt;
         type Text = Set<members::text>;
     }
     /// Marker types for field names
@@ -785,113 +817,131 @@ pub mod post_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct PostBuilder<'a, S: post_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct PostBuilder<St: post_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<Datetime>,
-        Option<PostEmbed<'a>>,
-        Option<Vec<post::Entity<'a>>>,
-        Option<Vec<Facet<'a>>>,
-        Option<SelfLabels<'a>>,
+        Option<PostEmbed<S>>,
+        Option<Vec<post::Entity<S>>>,
+        Option<Vec<Facet<S>>>,
+        Option<SelfLabels<S>>,
         Option<Vec<Language>>,
-        Option<post::ReplyRef<'a>>,
-        Option<Vec<CowStr<'a>>>,
-        Option<CowStr<'a>>,
+        Option<post::ReplyRef<S>>,
+        Option<Vec<S>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Post<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> PostBuilder<'a, post_state::Empty> {
+impl Post<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> PostBuilder<post_state::Empty, DefaultStr> {
         PostBuilder::new()
     }
 }
 
-impl<'a> PostBuilder<'a, post_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Post<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> PostBuilder<post_state::Empty, S> {
+        PostBuilder::builder()
+    }
+}
+
+impl PostBuilder<post_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         PostBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> PostBuilder<'a, S>
+impl<S: BosStr> PostBuilder<post_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        PostBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> PostBuilder<St, S>
 where
-    S: post_state::State,
-    S::CreatedAt: post_state::IsUnset,
+    St: post_state::State,
+    St::CreatedAt: post_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> PostBuilder<'a, post_state::SetCreatedAt<S>> {
+    ) -> PostBuilder<post_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         PostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: post_state::State> PostBuilder<'a, S> {
+impl<St: post_state::State, S: BosStr> PostBuilder<St, S> {
     /// Set the `embed` field (optional)
-    pub fn embed(mut self, value: impl Into<Option<PostEmbed<'a>>>) -> Self {
+    pub fn embed(mut self, value: impl Into<Option<PostEmbed<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `embed` field to an Option value (optional)
-    pub fn maybe_embed(mut self, value: Option<PostEmbed<'a>>) -> Self {
+    pub fn maybe_embed(mut self, value: Option<PostEmbed<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: post_state::State> PostBuilder<'a, S> {
+impl<St: post_state::State, S: BosStr> PostBuilder<St, S> {
     /// Set the `entities` field (optional)
-    pub fn entities(mut self, value: impl Into<Option<Vec<post::Entity<'a>>>>) -> Self {
+    pub fn entities(mut self, value: impl Into<Option<Vec<post::Entity<S>>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `entities` field to an Option value (optional)
-    pub fn maybe_entities(mut self, value: Option<Vec<post::Entity<'a>>>) -> Self {
+    pub fn maybe_entities(mut self, value: Option<Vec<post::Entity<S>>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: post_state::State> PostBuilder<'a, S> {
+impl<St: post_state::State, S: BosStr> PostBuilder<St, S> {
     /// Set the `facets` field (optional)
-    pub fn facets(mut self, value: impl Into<Option<Vec<Facet<'a>>>>) -> Self {
+    pub fn facets(mut self, value: impl Into<Option<Vec<Facet<S>>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `facets` field to an Option value (optional)
-    pub fn maybe_facets(mut self, value: Option<Vec<Facet<'a>>>) -> Self {
+    pub fn maybe_facets(mut self, value: Option<Vec<Facet<S>>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: post_state::State> PostBuilder<'a, S> {
+impl<St: post_state::State, S: BosStr> PostBuilder<St, S> {
     /// Set the `labels` field (optional)
-    pub fn labels(mut self, value: impl Into<Option<SelfLabels<'a>>>) -> Self {
+    pub fn labels(mut self, value: impl Into<Option<SelfLabels<S>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `labels` field to an Option value (optional)
-    pub fn maybe_labels(mut self, value: Option<SelfLabels<'a>>) -> Self {
+    pub fn maybe_labels(mut self, value: Option<SelfLabels<S>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S: post_state::State> PostBuilder<'a, S> {
+impl<St: post_state::State, S: BosStr> PostBuilder<St, S> {
     /// Set the `langs` field (optional)
     pub fn langs(mut self, value: impl Into<Option<Vec<Language>>>) -> Self {
         self._fields.5 = value.into();
@@ -904,59 +954,59 @@ impl<'a, S: post_state::State> PostBuilder<'a, S> {
     }
 }
 
-impl<'a, S: post_state::State> PostBuilder<'a, S> {
+impl<St: post_state::State, S: BosStr> PostBuilder<St, S> {
     /// Set the `reply` field (optional)
-    pub fn reply(mut self, value: impl Into<Option<post::ReplyRef<'a>>>) -> Self {
+    pub fn reply(mut self, value: impl Into<Option<post::ReplyRef<S>>>) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `reply` field to an Option value (optional)
-    pub fn maybe_reply(mut self, value: Option<post::ReplyRef<'a>>) -> Self {
+    pub fn maybe_reply(mut self, value: Option<post::ReplyRef<S>>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S: post_state::State> PostBuilder<'a, S> {
+impl<St: post_state::State, S: BosStr> PostBuilder<St, S> {
     /// Set the `tags` field (optional)
-    pub fn tags(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn tags(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.7 = value.into();
         self
     }
     /// Set the `tags` field to an Option value (optional)
-    pub fn maybe_tags(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_tags(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.7 = value;
         self
     }
 }
 
-impl<'a, S> PostBuilder<'a, S>
+impl<St, S: BosStr> PostBuilder<St, S>
 where
-    S: post_state::State,
-    S::Text: post_state::IsUnset,
+    St: post_state::State,
+    St::Text: post_state::IsUnset,
 {
     /// Set the `text` field (required)
     pub fn text(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> PostBuilder<'a, post_state::SetText<S>> {
+        value: impl Into<S>,
+    ) -> PostBuilder<post_state::SetText<St>, S> {
         self._fields.8 = Option::Some(value.into());
         PostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> PostBuilder<'a, S>
+impl<St, S: BosStr> PostBuilder<St, S>
 where
-    S: post_state::State,
-    S::CreatedAt: post_state::IsSet,
-    S::Text: post_state::IsSet,
+    St: post_state::State,
+    St::CreatedAt: post_state::IsSet,
+    St::Text: post_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Post<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Post<S> {
         Post {
             created_at: self._fields.0.unwrap(),
             embed: self._fields.1,
@@ -970,14 +1020,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Post<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Post<S> {
         Post {
             created_at: self._fields.0.unwrap(),
             embed: self._fields.1,
@@ -1003,125 +1047,137 @@ pub mod reply_ref_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Root;
         type Parent;
+        type Root;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Root = Unset;
         type Parent = Unset;
-    }
-    ///State transition - sets the `root` field to Set
-    pub struct SetRoot<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRoot<S> {}
-    impl<S: State> State for SetRoot<S> {
-        type Root = Set<members::root>;
-        type Parent = S::Parent;
+        type Root = Unset;
     }
     ///State transition - sets the `parent` field to Set
-    pub struct SetParent<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetParent<S> {}
-    impl<S: State> State for SetParent<S> {
-        type Root = S::Root;
+    pub struct SetParent<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetParent<St> {}
+    impl<St: State> State for SetParent<St> {
         type Parent = Set<members::parent>;
+        type Root = St::Root;
+    }
+    ///State transition - sets the `root` field to Set
+    pub struct SetRoot<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRoot<St> {}
+    impl<St: State> State for SetRoot<St> {
+        type Parent = St::Parent;
+        type Root = Set<members::root>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `root` field
-        pub struct root(());
         ///Marker type for the `parent` field
         pub struct parent(());
+        ///Marker type for the `root` field
+        pub struct root(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReplyRefBuilder<'a, S: reply_ref_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<StrongRef<'a>>, Option<StrongRef<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ReplyRefBuilder<St: reply_ref_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<StrongRef<S>>, Option<StrongRef<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ReplyRef<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReplyRefBuilder<'a, reply_ref_state::Empty> {
+impl ReplyRef<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReplyRefBuilder<reply_ref_state::Empty, DefaultStr> {
         ReplyRefBuilder::new()
     }
 }
 
-impl<'a> ReplyRefBuilder<'a, reply_ref_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ReplyRef<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReplyRefBuilder<reply_ref_state::Empty, S> {
+        ReplyRefBuilder::builder()
+    }
+}
+
+impl ReplyRefBuilder<reply_ref_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReplyRefBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReplyRefBuilder<'a, S>
+impl<S: BosStr> ReplyRefBuilder<reply_ref_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReplyRefBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ReplyRefBuilder<St, S>
 where
-    S: reply_ref_state::State,
-    S::Parent: reply_ref_state::IsUnset,
+    St: reply_ref_state::State,
+    St::Parent: reply_ref_state::IsUnset,
 {
     /// Set the `parent` field (required)
     pub fn parent(
         mut self,
-        value: impl Into<StrongRef<'a>>,
-    ) -> ReplyRefBuilder<'a, reply_ref_state::SetParent<S>> {
+        value: impl Into<StrongRef<S>>,
+    ) -> ReplyRefBuilder<reply_ref_state::SetParent<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ReplyRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReplyRefBuilder<'a, S>
+impl<St, S: BosStr> ReplyRefBuilder<St, S>
 where
-    S: reply_ref_state::State,
-    S::Root: reply_ref_state::IsUnset,
+    St: reply_ref_state::State,
+    St::Root: reply_ref_state::IsUnset,
 {
     /// Set the `root` field (required)
     pub fn root(
         mut self,
-        value: impl Into<StrongRef<'a>>,
-    ) -> ReplyRefBuilder<'a, reply_ref_state::SetRoot<S>> {
+        value: impl Into<StrongRef<S>>,
+    ) -> ReplyRefBuilder<reply_ref_state::SetRoot<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ReplyRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReplyRefBuilder<'a, S>
+impl<St, S: BosStr> ReplyRefBuilder<St, S>
 where
-    S: reply_ref_state::State,
-    S::Root: reply_ref_state::IsSet,
-    S::Parent: reply_ref_state::IsSet,
+    St: reply_ref_state::State,
+    St::Parent: reply_ref_state::IsSet,
+    St::Root: reply_ref_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ReplyRef<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ReplyRef<S> {
         ReplyRef {
             parent: self._fields.0.unwrap(),
             root: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ReplyRef<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> ReplyRef<S> {
         ReplyRef {
             parent: self._fields.0.unwrap(),
             root: self._fields.1.unwrap(),
@@ -1151,17 +1207,17 @@ pub mod text_slice_state {
         type Start = Unset;
     }
     ///State transition - sets the `end` field to Set
-    pub struct SetEnd<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEnd<S> {}
-    impl<S: State> State for SetEnd<S> {
+    pub struct SetEnd<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetEnd<St> {}
+    impl<St: State> State for SetEnd<St> {
         type End = Set<members::end>;
-        type Start = S::Start;
+        type Start = St::Start;
     }
     ///State transition - sets the `start` field to Set
-    pub struct SetStart<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetStart<S> {}
-    impl<S: State> State for SetStart<S> {
-        type End = S::End;
+    pub struct SetStart<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetStart<St> {}
+    impl<St: State> State for SetStart<St> {
+        type End = St::End;
         type Start = Set<members::start>;
     }
     /// Marker types for field names
@@ -1174,91 +1230,106 @@ pub mod text_slice_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct TextSliceBuilder<'a, S: text_slice_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct TextSliceBuilder<St: text_slice_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (Option<i64>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> TextSlice<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> TextSliceBuilder<'a, text_slice_state::Empty> {
+impl TextSlice<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> TextSliceBuilder<text_slice_state::Empty, DefaultStr> {
         TextSliceBuilder::new()
     }
 }
 
-impl<'a> TextSliceBuilder<'a, text_slice_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> TextSlice<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> TextSliceBuilder<text_slice_state::Empty, S> {
+        TextSliceBuilder::builder()
+    }
+}
+
+impl TextSliceBuilder<text_slice_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         TextSliceBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TextSliceBuilder<'a, S>
+impl<S: BosStr> TextSliceBuilder<text_slice_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        TextSliceBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> TextSliceBuilder<St, S>
 where
-    S: text_slice_state::State,
-    S::End: text_slice_state::IsUnset,
+    St: text_slice_state::State,
+    St::End: text_slice_state::IsUnset,
 {
     /// Set the `end` field (required)
     pub fn end(
         mut self,
         value: impl Into<i64>,
-    ) -> TextSliceBuilder<'a, text_slice_state::SetEnd<S>> {
+    ) -> TextSliceBuilder<text_slice_state::SetEnd<St>, S> {
         self._fields.0 = Option::Some(value.into());
         TextSliceBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TextSliceBuilder<'a, S>
+impl<St, S: BosStr> TextSliceBuilder<St, S>
 where
-    S: text_slice_state::State,
-    S::Start: text_slice_state::IsUnset,
+    St: text_slice_state::State,
+    St::Start: text_slice_state::IsUnset,
 {
     /// Set the `start` field (required)
     pub fn start(
         mut self,
         value: impl Into<i64>,
-    ) -> TextSliceBuilder<'a, text_slice_state::SetStart<S>> {
+    ) -> TextSliceBuilder<text_slice_state::SetStart<St>, S> {
         self._fields.1 = Option::Some(value.into());
         TextSliceBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> TextSliceBuilder<'a, S>
+impl<St, S: BosStr> TextSliceBuilder<St, S>
 where
-    S: text_slice_state::State,
-    S::End: text_slice_state::IsSet,
-    S::Start: text_slice_state::IsSet,
+    St: text_slice_state::State,
+    St::End: text_slice_state::IsSet,
+    St::Start: text_slice_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> TextSlice<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> TextSlice<S> {
         TextSlice {
             end: self._fields.0.unwrap(),
             start: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> TextSlice<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> TextSlice<S> {
         TextSlice {
             end: self._fields.0.unwrap(),
             start: self._fields.1.unwrap(),

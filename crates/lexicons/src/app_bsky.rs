@@ -3,8 +3,18 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `app.bsky` Lexicon namespace/module.
 pub mod actor;
 pub mod ageassurance;
+pub mod auth_create_posts;
+pub mod auth_delete_content;
+pub mod auth_full_app;
+pub mod auth_manage_feed_declarations;
+pub mod auth_manage_labeler_service;
+pub mod auth_manage_moderation;
+pub mod auth_manage_notifications;
+pub mod auth_manage_profile;
+pub mod auth_view_all;
 pub mod bookmark;
 pub mod contact;
 pub mod draft;

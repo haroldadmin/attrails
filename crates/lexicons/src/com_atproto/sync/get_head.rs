@@ -10,29 +10,29 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Cid};
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetHead<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetHead<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetHeadOutput<'a> {
-    #[serde(borrow)]
-    pub root: Cid<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetHeadOutput<S: BosStr = DefaultStr> {
+    pub root: Cid<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -41,18 +41,19 @@ pub struct GetHeadOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetHeadError<'a> {
+pub enum GetHeadError {
     #[serde(rename = "HeadNotFound")]
-    HeadNotFound(Option<CowStr<'a>>),
+    HeadNotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetHeadError<'_> {
+impl core::fmt::Display for GetHeadError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::HeadNotFound(msg) => {
@@ -62,32 +63,42 @@ impl core::fmt::Display for GetHeadError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for com.atproto.sync.getHead
+/** Response marker for the `com.atproto.sync.getHead` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetHeadOutput<S>` for this endpoint.*/
 pub struct GetHeadResponse;
 impl jacquard_common::xrpc::XrpcResp for GetHeadResponse {
     const NSID: &'static str = "com.atproto.sync.getHead";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetHeadOutput<'de>;
-    type Err<'de> = GetHeadError<'de>;
+    type Output<S: BosStr> = GetHeadOutput<S>;
+    type Err = GetHeadError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetHead<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetHead<S> {
     const NSID: &'static str = "com.atproto.sync.getHead";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetHeadResponse;
 }
 
-/// Endpoint type for com.atproto.sync.getHead
+/** Endpoint marker for the `com.atproto.sync.getHead` query.
+
+Path: `/xrpc/com.atproto.sync.getHead`. The request payload type is `GetHead<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetHeadRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetHeadRequest {
     const PATH: &'static str = "/xrpc/com.atproto.sync.getHead";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetHead<'de>;
+    type Request<S: BosStr> = GetHead<S>;
     type Response = GetHeadResponse;
 }
 
@@ -110,9 +121,9 @@ pub mod get_head_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -123,57 +134,75 @@ pub mod get_head_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetHeadBuilder<'a, S: get_head_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetHeadBuilder<St: get_head_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetHead<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetHeadBuilder<'a, get_head_state::Empty> {
+impl GetHead<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetHeadBuilder<get_head_state::Empty, DefaultStr> {
         GetHeadBuilder::new()
     }
 }
 
-impl<'a> GetHeadBuilder<'a, get_head_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetHead<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetHeadBuilder<get_head_state::Empty, S> {
+        GetHeadBuilder::builder()
+    }
+}
+
+impl GetHeadBuilder<get_head_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetHeadBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetHeadBuilder<'a, S>
+impl<S: BosStr> GetHeadBuilder<get_head_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetHeadBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetHeadBuilder<St, S>
 where
-    S: get_head_state::State,
-    S::Did: get_head_state::IsUnset,
+    St: get_head_state::State,
+    St::Did: get_head_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> GetHeadBuilder<'a, get_head_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> GetHeadBuilder<get_head_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetHeadBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetHeadBuilder<'a, S>
+impl<St, S: BosStr> GetHeadBuilder<St, S>
 where
-    S: get_head_state::State,
-    S::Did: get_head_state::IsSet,
+    St: get_head_state::State,
+    St::Did: get_head_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetHead<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetHead<S> {
         GetHead {
             did: self._fields.0.unwrap(),
         }

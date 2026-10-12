@@ -10,33 +10,33 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::convo::ConvoView;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateRead<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UpdateRead<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub message_id: Option<CowStr<'a>>,
+    pub message_id: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateReadOutput<'a> {
-    #[serde(borrow)]
-    pub convo: ConvoView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UpdateReadOutput<S: BosStr = DefaultStr> {
+    pub convo: ConvoView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -45,18 +45,19 @@ pub struct UpdateReadOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum UpdateReadError<'a> {
+pub enum UpdateReadError {
     #[serde(rename = "InvalidConvo")]
-    InvalidConvo(Option<CowStr<'a>>),
+    InvalidConvo(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for UpdateReadError<'_> {
+impl core::fmt::Display for UpdateReadError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidConvo(msg) => {
@@ -66,21 +67,29 @@ impl core::fmt::Display for UpdateReadError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for chat.bsky.convo.updateRead
+/** Response marker for the `chat.bsky.convo.updateRead` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `UpdateReadOutput<S>` for this endpoint.*/
 pub struct UpdateReadResponse;
 impl jacquard_common::xrpc::XrpcResp for UpdateReadResponse {
     const NSID: &'static str = "chat.bsky.convo.updateRead";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = UpdateReadOutput<'de>;
-    type Err<'de> = UpdateReadError<'de>;
+    type Output<S: BosStr> = UpdateReadOutput<S>;
+    type Err = UpdateReadError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for UpdateRead<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for UpdateRead<S> {
     const NSID: &'static str = "chat.bsky.convo.updateRead";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -88,13 +97,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for UpdateRead<'a> {
     type Response = UpdateReadResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.updateRead
+/** Endpoint marker for the `chat.bsky.convo.updateRead` procedure.
+
+Path: `/xrpc/chat.bsky.convo.updateRead`. The request payload type is `UpdateRead<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct UpdateReadRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for UpdateReadRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.updateRead";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = UpdateRead<'de>;
+    type Request<S: BosStr> = UpdateRead<S>;
     type Response = UpdateReadResponse;
 }

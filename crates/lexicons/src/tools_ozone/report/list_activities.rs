@@ -10,18 +10,19 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::report::ReportActivityView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListActivities<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListActivities<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
@@ -29,38 +30,41 @@ pub struct ListActivities<'a> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListActivitiesOutput<'a> {
-    #[serde(borrow)]
-    pub activities: Vec<ReportActivityView<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListActivitiesOutput<S: BosStr = DefaultStr> {
+    pub activities: Vec<ReportActivityView<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.report.listActivities
+/** Response marker for the `tools.ozone.report.listActivities` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ListActivitiesOutput<S>` for this endpoint.*/
 pub struct ListActivitiesResponse;
 impl jacquard_common::xrpc::XrpcResp for ListActivitiesResponse {
     const NSID: &'static str = "tools.ozone.report.listActivities";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ListActivitiesOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ListActivitiesOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for ListActivities<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for ListActivities<S> {
     const NSID: &'static str = "tools.ozone.report.listActivities";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = ListActivitiesResponse;
 }
 
-/// Endpoint type for tools.ozone.report.listActivities
+/** Endpoint marker for the `tools.ozone.report.listActivities` query.
+
+Path: `/xrpc/tools.ozone.report.listActivities`. The request payload type is `ListActivities<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct ListActivitiesRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ListActivitiesRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.report.listActivities";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = ListActivities<'de>;
+    type Request<S: BosStr> = ListActivities<S>;
     type Response = ListActivitiesResponse;
 }
 
@@ -87,9 +91,9 @@ pub mod list_activities_state {
         type ReportId = Unset;
     }
     ///State transition - sets the `report_id` field to Set
-    pub struct SetReportId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReportId<S> {}
-    impl<S: State> State for SetReportId<S> {
+    pub struct SetReportId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReportId<St> {}
+    impl<St: State> State for SetReportId<St> {
         type ReportId = Set<members::report_id>;
     }
     /// Marker types for field names
@@ -100,45 +104,66 @@ pub mod list_activities_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ListActivitiesBuilder<'a, S: list_activities_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ListActivitiesBuilder<
+    St: list_activities_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ListActivities<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ListActivitiesBuilder<'a, list_activities_state::Empty> {
+impl ListActivities<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ListActivitiesBuilder<list_activities_state::Empty, DefaultStr> {
         ListActivitiesBuilder::new()
     }
 }
 
-impl<'a> ListActivitiesBuilder<'a, list_activities_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ListActivities<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ListActivitiesBuilder<list_activities_state::Empty, S> {
+        ListActivitiesBuilder::builder()
+    }
+}
+
+impl ListActivitiesBuilder<list_activities_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ListActivitiesBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: list_activities_state::State> ListActivitiesBuilder<'a, S> {
+impl<S: BosStr> ListActivitiesBuilder<list_activities_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ListActivitiesBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: list_activities_state::State, S: BosStr> ListActivitiesBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: list_activities_state::State> ListActivitiesBuilder<'a, S> {
+impl<St: list_activities_state::State, S: BosStr> ListActivitiesBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -151,32 +176,32 @@ impl<'a, S: list_activities_state::State> ListActivitiesBuilder<'a, S> {
     }
 }
 
-impl<'a, S> ListActivitiesBuilder<'a, S>
+impl<St, S: BosStr> ListActivitiesBuilder<St, S>
 where
-    S: list_activities_state::State,
-    S::ReportId: list_activities_state::IsUnset,
+    St: list_activities_state::State,
+    St::ReportId: list_activities_state::IsUnset,
 {
     /// Set the `reportId` field (required)
     pub fn report_id(
         mut self,
         value: impl Into<i64>,
-    ) -> ListActivitiesBuilder<'a, list_activities_state::SetReportId<S>> {
+    ) -> ListActivitiesBuilder<list_activities_state::SetReportId<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ListActivitiesBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ListActivitiesBuilder<'a, S>
+impl<St, S: BosStr> ListActivitiesBuilder<St, S>
 where
-    S: list_activities_state::State,
-    S::ReportId: list_activities_state::IsSet,
+    St: list_activities_state::State,
+    St::ReportId: list_activities_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ListActivities<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ListActivities<S> {
         ListActivities {
             cursor: self._fields.0,
             limit: self._fields.1,

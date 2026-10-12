@@ -10,66 +10,60 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::ident::AtIdentifier;
 use jacquard_common::types::string::{AtUri, Nsid, Cid, RecordKey, Rkey};
 use jacquard_common::types::value::Data;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::com_atproto::repo::CommitMeta;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateRecord<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CreateRecord<S: BosStr = DefaultStr> {
     ///The NSID of the record collection.
-    #[serde(borrow)]
-    pub collection: Nsid<'a>,
+    pub collection: Nsid<S>,
     ///The record itself. Must contain a $type field.
-    #[serde(borrow)]
-    pub record: Data<'a>,
+    pub record: Data<S>,
     ///The handle or DID of the repo (aka, current account).
-    #[serde(borrow)]
-    pub repo: AtIdentifier<'a>,
+    pub repo: AtIdentifier<S>,
     ///The Record Key.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub rkey: Option<RecordKey<Rkey<'a>>>,
+    pub rkey: Option<RecordKey<Rkey<S>>>,
     ///Compare and swap with the previous commit by CID.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub swap_commit: Option<Cid<'a>>,
+    pub swap_commit: Option<Cid<S>>,
     ///Can be set to 'false' to skip Lexicon schema validation of record data, 'true' to require it, or leave unset to validate only for known Lexicons.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub validate: Option<bool>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateRecordOutput<'a> {
-    #[serde(borrow)]
-    pub cid: Cid<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CreateRecordOutput<S: BosStr = DefaultStr> {
+    pub cid: Cid<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub commit: Option<CommitMeta<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub commit: Option<CommitMeta<S>>,
+    pub uri: AtUri<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub validation_status: Option<CreateRecordOutputValidationStatus<'a>>,
+    pub validation_status: Option<CreateRecordOutputValidationStatus<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum CreateRecordOutputValidationStatus<'a> {
+pub enum CreateRecordOutputValidationStatus<S: BosStr = DefaultStr> {
     Valid,
     Unknown,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> CreateRecordOutputValidationStatus<'a> {
+impl<S: BosStr> CreateRecordOutputValidationStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Valid => "valid",
@@ -77,70 +71,60 @@ impl<'a> CreateRecordOutputValidationStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for CreateRecordOutputValidationStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "valid" => Self::Valid,
             "unknown" => Self::Unknown,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for CreateRecordOutputValidationStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "valid" => Self::Valid,
-            "unknown" => Self::Unknown,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for CreateRecordOutputValidationStatus<'a> {
+impl<S: BosStr> core::fmt::Display for CreateRecordOutputValidationStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for CreateRecordOutputValidationStatus<'a> {
+impl<S: BosStr> AsRef<str> for CreateRecordOutputValidationStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for CreateRecordOutputValidationStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for CreateRecordOutputValidationStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for CreateRecordOutputValidationStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for CreateRecordOutputValidationStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for CreateRecordOutputValidationStatus<'a> {
+impl<S: BosStr + Default> Default for CreateRecordOutputValidationStatus<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for CreateRecordOutputValidationStatus<'_> {
-    type Output = CreateRecordOutputValidationStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for CreateRecordOutputValidationStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = CreateRecordOutputValidationStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             CreateRecordOutputValidationStatus::Valid => {
@@ -157,7 +141,6 @@ impl jacquard_common::IntoStatic for CreateRecordOutputValidationStatus<'_> {
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -166,19 +149,20 @@ impl jacquard_common::IntoStatic for CreateRecordOutputValidationStatus<'_> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum CreateRecordError<'a> {
+pub enum CreateRecordError {
     /// Indicates that 'swapCommit' didn't match current repo commit.
     #[serde(rename = "InvalidSwap")]
-    InvalidSwap(Option<CowStr<'a>>),
+    InvalidSwap(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for CreateRecordError<'_> {
+impl core::fmt::Display for CreateRecordError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidSwap(msg) => {
@@ -188,21 +172,29 @@ impl core::fmt::Display for CreateRecordError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for com.atproto.repo.createRecord
+/** Response marker for the `com.atproto.repo.createRecord` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `CreateRecordOutput<S>` for this endpoint.*/
 pub struct CreateRecordResponse;
 impl jacquard_common::xrpc::XrpcResp for CreateRecordResponse {
     const NSID: &'static str = "com.atproto.repo.createRecord";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = CreateRecordOutput<'de>;
-    type Err<'de> = CreateRecordError<'de>;
+    type Output<S: BosStr> = CreateRecordOutput<S>;
+    type Err = CreateRecordError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for CreateRecord<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for CreateRecord<S> {
     const NSID: &'static str = "com.atproto.repo.createRecord";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -210,14 +202,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for CreateRecord<'a> {
     type Response = CreateRecordResponse;
 }
 
-/// Endpoint type for com.atproto.repo.createRecord
+/** Endpoint marker for the `com.atproto.repo.createRecord` procedure.
+
+Path: `/xrpc/com.atproto.repo.createRecord`. The request payload type is `CreateRecord<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct CreateRecordRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for CreateRecordRequest {
     const PATH: &'static str = "/xrpc/com.atproto.repo.createRecord";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = CreateRecord<'de>;
+    type Request<S: BosStr> = CreateRecord<S>;
     type Response = CreateRecordResponse;
 }
 
@@ -244,27 +238,27 @@ pub mod create_record_state {
         type Repo = Unset;
     }
     ///State transition - sets the `collection` field to Set
-    pub struct SetCollection<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCollection<S> {}
-    impl<S: State> State for SetCollection<S> {
+    pub struct SetCollection<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCollection<St> {}
+    impl<St: State> State for SetCollection<St> {
         type Collection = Set<members::collection>;
-        type Record = S::Record;
-        type Repo = S::Repo;
+        type Record = St::Record;
+        type Repo = St::Repo;
     }
     ///State transition - sets the `record` field to Set
-    pub struct SetRecord<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRecord<S> {}
-    impl<S: State> State for SetRecord<S> {
-        type Collection = S::Collection;
+    pub struct SetRecord<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRecord<St> {}
+    impl<St: State> State for SetRecord<St> {
+        type Collection = St::Collection;
         type Record = Set<members::record>;
-        type Repo = S::Repo;
+        type Repo = St::Repo;
     }
     ///State transition - sets the `repo` field to Set
-    pub struct SetRepo<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRepo<S> {}
-    impl<S: State> State for SetRepo<S> {
-        type Collection = S::Collection;
-        type Record = S::Record;
+    pub struct SetRepo<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRepo<St> {}
+    impl<St: State> State for SetRepo<St> {
+        type Collection = St::Collection;
+        type Record = St::Record;
         type Repo = Set<members::repo>;
     }
     /// Marker types for field names
@@ -279,122 +273,140 @@ pub mod create_record_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct CreateRecordBuilder<'a, S: create_record_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct CreateRecordBuilder<St: create_record_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<Nsid<'a>>,
-        Option<Data<'a>>,
-        Option<AtIdentifier<'a>>,
-        Option<RecordKey<Rkey<'a>>>,
-        Option<Cid<'a>>,
+        Option<Nsid<S>>,
+        Option<Data<S>>,
+        Option<AtIdentifier<S>>,
+        Option<RecordKey<Rkey<S>>>,
+        Option<Cid<S>>,
         Option<bool>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> CreateRecord<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> CreateRecordBuilder<'a, create_record_state::Empty> {
+impl CreateRecord<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> CreateRecordBuilder<create_record_state::Empty, DefaultStr> {
         CreateRecordBuilder::new()
     }
 }
 
-impl<'a> CreateRecordBuilder<'a, create_record_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> CreateRecord<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> CreateRecordBuilder<create_record_state::Empty, S> {
+        CreateRecordBuilder::builder()
+    }
+}
+
+impl CreateRecordBuilder<create_record_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         CreateRecordBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> CreateRecordBuilder<'a, S>
+impl<S: BosStr> CreateRecordBuilder<create_record_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        CreateRecordBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> CreateRecordBuilder<St, S>
 where
-    S: create_record_state::State,
-    S::Collection: create_record_state::IsUnset,
+    St: create_record_state::State,
+    St::Collection: create_record_state::IsUnset,
 {
     /// Set the `collection` field (required)
     pub fn collection(
         mut self,
-        value: impl Into<Nsid<'a>>,
-    ) -> CreateRecordBuilder<'a, create_record_state::SetCollection<S>> {
+        value: impl Into<Nsid<S>>,
+    ) -> CreateRecordBuilder<create_record_state::SetCollection<St>, S> {
         self._fields.0 = Option::Some(value.into());
         CreateRecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> CreateRecordBuilder<'a, S>
+impl<St, S: BosStr> CreateRecordBuilder<St, S>
 where
-    S: create_record_state::State,
-    S::Record: create_record_state::IsUnset,
+    St: create_record_state::State,
+    St::Record: create_record_state::IsUnset,
 {
     /// Set the `record` field (required)
     pub fn record(
         mut self,
-        value: impl Into<Data<'a>>,
-    ) -> CreateRecordBuilder<'a, create_record_state::SetRecord<S>> {
+        value: impl Into<Data<S>>,
+    ) -> CreateRecordBuilder<create_record_state::SetRecord<St>, S> {
         self._fields.1 = Option::Some(value.into());
         CreateRecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> CreateRecordBuilder<'a, S>
+impl<St, S: BosStr> CreateRecordBuilder<St, S>
 where
-    S: create_record_state::State,
-    S::Repo: create_record_state::IsUnset,
+    St: create_record_state::State,
+    St::Repo: create_record_state::IsUnset,
 {
     /// Set the `repo` field (required)
     pub fn repo(
         mut self,
-        value: impl Into<AtIdentifier<'a>>,
-    ) -> CreateRecordBuilder<'a, create_record_state::SetRepo<S>> {
+        value: impl Into<AtIdentifier<S>>,
+    ) -> CreateRecordBuilder<create_record_state::SetRepo<St>, S> {
         self._fields.2 = Option::Some(value.into());
         CreateRecordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: create_record_state::State> CreateRecordBuilder<'a, S> {
+impl<St: create_record_state::State, S: BosStr> CreateRecordBuilder<St, S> {
     /// Set the `rkey` field (optional)
-    pub fn rkey(mut self, value: impl Into<Option<RecordKey<Rkey<'a>>>>) -> Self {
+    pub fn rkey(mut self, value: impl Into<Option<RecordKey<Rkey<S>>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `rkey` field to an Option value (optional)
-    pub fn maybe_rkey(mut self, value: Option<RecordKey<Rkey<'a>>>) -> Self {
+    pub fn maybe_rkey(mut self, value: Option<RecordKey<Rkey<S>>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: create_record_state::State> CreateRecordBuilder<'a, S> {
+impl<St: create_record_state::State, S: BosStr> CreateRecordBuilder<St, S> {
     /// Set the `swapCommit` field (optional)
-    pub fn swap_commit(mut self, value: impl Into<Option<Cid<'a>>>) -> Self {
+    pub fn swap_commit(mut self, value: impl Into<Option<Cid<S>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `swapCommit` field to an Option value (optional)
-    pub fn maybe_swap_commit(mut self, value: Option<Cid<'a>>) -> Self {
+    pub fn maybe_swap_commit(mut self, value: Option<Cid<S>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S: create_record_state::State> CreateRecordBuilder<'a, S> {
+impl<St: create_record_state::State, S: BosStr> CreateRecordBuilder<St, S> {
     /// Set the `validate` field (optional)
     pub fn validate(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.5 = value.into();
@@ -407,15 +419,15 @@ impl<'a, S: create_record_state::State> CreateRecordBuilder<'a, S> {
     }
 }
 
-impl<'a, S> CreateRecordBuilder<'a, S>
+impl<St, S: BosStr> CreateRecordBuilder<St, S>
 where
-    S: create_record_state::State,
-    S::Collection: create_record_state::IsSet,
-    S::Record: create_record_state::IsSet,
-    S::Repo: create_record_state::IsSet,
+    St: create_record_state::State,
+    St::Collection: create_record_state::IsSet,
+    St::Record: create_record_state::IsSet,
+    St::Repo: create_record_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> CreateRecord<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> CreateRecord<S> {
         CreateRecord {
             collection: self._fields.0.unwrap(),
             record: self._fields.1.unwrap(),
@@ -426,11 +438,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> CreateRecord<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> CreateRecord<S> {
         CreateRecord {
             collection: self._fields.0.unwrap(),
             record: self._fields.1.unwrap(),

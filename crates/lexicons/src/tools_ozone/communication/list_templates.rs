@@ -10,29 +10,36 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::communication::TemplateView;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListTemplatesOutput<'a> {
-    #[serde(borrow)]
-    pub communication_templates: Vec<TemplateView<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListTemplatesOutput<S: BosStr = DefaultStr> {
+    pub communication_templates: Vec<TemplateView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// XRPC request marker type.
+/** Request marker for the `tools.ozone.communication.listTemplates` query.
+
+This endpoint has no request parameters or input body; send this marker with `jacquard::Client`.*/
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Copy)]
 pub struct ListTemplates;
-/// Response type for tools.ozone.communication.listTemplates
+/** Response marker for the `tools.ozone.communication.listTemplates` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ListTemplatesOutput<S>` for this endpoint.*/
 pub struct ListTemplatesResponse;
 impl jacquard_common::xrpc::XrpcResp for ListTemplatesResponse {
     const NSID: &'static str = "tools.ozone.communication.listTemplates";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ListTemplatesOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ListTemplatesOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for ListTemplates {
@@ -41,11 +48,13 @@ impl jacquard_common::xrpc::XrpcRequest for ListTemplates {
     type Response = ListTemplatesResponse;
 }
 
-/// Endpoint type for tools.ozone.communication.listTemplates
+/** Endpoint marker for the `tools.ozone.communication.listTemplates` query.
+
+Path: `/xrpc/tools.ozone.communication.listTemplates`. The request payload type is `ListTemplates`; use this marker with lower-level `XrpcEndpoint` APIs when you need endpoint metadata.*/
 pub struct ListTemplatesRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ListTemplatesRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.communication.listTemplates";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = ListTemplates;
+    type Request<S: BosStr> = ListTemplates;
     type Response = ListTemplatesResponse;
 }

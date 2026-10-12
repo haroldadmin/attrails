@@ -10,61 +10,64 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::graph::StarterPackView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchStarterPacksV2<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SearchStarterPacksV2<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `25`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `25`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
-    #[serde(borrow)]
-    pub q: CowStr<'a>,
+    pub q: S,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchStarterPacksV2Output<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SearchStarterPacksV2Output<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
     ///Estimated total number of matching hits. May be rounded or truncated.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hits_total: Option<i64>,
-    #[serde(borrow)]
-    pub starter_packs: Vec<StarterPackView<'a>>,
+    pub starter_packs: Vec<StarterPackView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.graph.searchStarterPacksV2
+/** Response marker for the `app.bsky.graph.searchStarterPacksV2` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `SearchStarterPacksV2Output<S>` for this endpoint.*/
 pub struct SearchStarterPacksV2Response;
 impl jacquard_common::xrpc::XrpcResp for SearchStarterPacksV2Response {
     const NSID: &'static str = "app.bsky.graph.searchStarterPacksV2";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = SearchStarterPacksV2Output<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = SearchStarterPacksV2Output<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for SearchStarterPacksV2<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for SearchStarterPacksV2<S> {
     const NSID: &'static str = "app.bsky.graph.searchStarterPacksV2";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = SearchStarterPacksV2Response;
 }
 
-/// Endpoint type for app.bsky.graph.searchStarterPacksV2
+/** Endpoint marker for the `app.bsky.graph.searchStarterPacksV2` query.
+
+Path: `/xrpc/app.bsky.graph.searchStarterPacksV2`. The request payload type is `SearchStarterPacksV2<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct SearchStarterPacksV2Request;
 impl jacquard_common::xrpc::XrpcEndpoint for SearchStarterPacksV2Request {
     const PATH: &'static str = "/xrpc/app.bsky.graph.searchStarterPacksV2";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = SearchStarterPacksV2<'de>;
+    type Request<S: BosStr> = SearchStarterPacksV2<S>;
     type Response = SearchStarterPacksV2Response;
 }
 
@@ -91,9 +94,9 @@ pub mod search_starter_packs_v2_state {
         type Q = Unset;
     }
     ///State transition - sets the `q` field to Set
-    pub struct SetQ<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetQ<S> {}
-    impl<S: State> State for SetQ<S> {
+    pub struct SetQ<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetQ<St> {}
+    impl<St: State> State for SetQ<St> {
         type Q = Set<members::q>;
     }
     /// Marker types for field names
@@ -104,48 +107,78 @@ pub mod search_starter_packs_v2_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SearchStarterPacksV2Builder<'a, S: search_starter_packs_v2_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct SearchStarterPacksV2Builder<
+    St: search_starter_packs_v2_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SearchStarterPacksV2<'a> {
-    /// Create a new builder for this type
+impl SearchStarterPacksV2<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SearchStarterPacksV2Builder<
-        'a,
         search_starter_packs_v2_state::Empty,
+        DefaultStr,
     > {
         SearchStarterPacksV2Builder::new()
     }
 }
 
-impl<'a> SearchStarterPacksV2Builder<'a, search_starter_packs_v2_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SearchStarterPacksV2<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SearchStarterPacksV2Builder<
+        search_starter_packs_v2_state::Empty,
+        S,
+    > {
+        SearchStarterPacksV2Builder::builder()
+    }
+}
+
+impl SearchStarterPacksV2Builder<search_starter_packs_v2_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SearchStarterPacksV2Builder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: search_starter_packs_v2_state::State> SearchStarterPacksV2Builder<'a, S> {
+impl<S: BosStr> SearchStarterPacksV2Builder<search_starter_packs_v2_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SearchStarterPacksV2Builder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: search_starter_packs_v2_state::State,
+    S: BosStr,
+> SearchStarterPacksV2Builder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: search_starter_packs_v2_state::State> SearchStarterPacksV2Builder<'a, S> {
+impl<
+    St: search_starter_packs_v2_state::State,
+    S: BosStr,
+> SearchStarterPacksV2Builder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -158,32 +191,32 @@ impl<'a, S: search_starter_packs_v2_state::State> SearchStarterPacksV2Builder<'a
     }
 }
 
-impl<'a, S> SearchStarterPacksV2Builder<'a, S>
+impl<St, S: BosStr> SearchStarterPacksV2Builder<St, S>
 where
-    S: search_starter_packs_v2_state::State,
-    S::Q: search_starter_packs_v2_state::IsUnset,
+    St: search_starter_packs_v2_state::State,
+    St::Q: search_starter_packs_v2_state::IsUnset,
 {
     /// Set the `q` field (required)
     pub fn q(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> SearchStarterPacksV2Builder<'a, search_starter_packs_v2_state::SetQ<S>> {
+        value: impl Into<S>,
+    ) -> SearchStarterPacksV2Builder<search_starter_packs_v2_state::SetQ<St>, S> {
         self._fields.2 = Option::Some(value.into());
         SearchStarterPacksV2Builder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SearchStarterPacksV2Builder<'a, S>
+impl<St, S: BosStr> SearchStarterPacksV2Builder<St, S>
 where
-    S: search_starter_packs_v2_state::State,
-    S::Q: search_starter_packs_v2_state::IsSet,
+    St: search_starter_packs_v2_state::State,
+    St::Q: search_starter_packs_v2_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SearchStarterPacksV2<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SearchStarterPacksV2<S> {
         SearchStarterPacksV2 {
             cursor: self._fields.0,
             limit: self._fields.1,

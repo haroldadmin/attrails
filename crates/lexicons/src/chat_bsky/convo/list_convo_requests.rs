@@ -10,68 +10,72 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::convo::ConvoView;
 use crate::chat_bsky::group::JoinRequestConvoView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListConvoRequests<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListConvoRequests<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListConvoRequestsOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListConvoRequestsOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub requests: Vec<ListConvoRequestsOutputRequestsItem<'a>>,
+    pub cursor: Option<S>,
+    pub requests: Vec<ListConvoRequestsOutputRequestsItem<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ListConvoRequestsOutputRequestsItem<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ListConvoRequestsOutputRequestsItem<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#convoView")]
-    ConvoView(Box<ConvoView<'a>>),
+    ConvoView(Box<ConvoView<S>>),
     #[serde(rename = "chat.bsky.group.defs#joinRequestConvoView")]
-    JoinRequestConvoView(Box<JoinRequestConvoView<'a>>),
+    JoinRequestConvoView(Box<JoinRequestConvoView<S>>),
 }
 
-/// Response type for chat.bsky.convo.listConvoRequests
+/** Response marker for the `chat.bsky.convo.listConvoRequests` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ListConvoRequestsOutput<S>` for this endpoint.*/
 pub struct ListConvoRequestsResponse;
 impl jacquard_common::xrpc::XrpcResp for ListConvoRequestsResponse {
     const NSID: &'static str = "chat.bsky.convo.listConvoRequests";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ListConvoRequestsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ListConvoRequestsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for ListConvoRequests<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for ListConvoRequests<S> {
     const NSID: &'static str = "chat.bsky.convo.listConvoRequests";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = ListConvoRequestsResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.listConvoRequests
+/** Endpoint marker for the `chat.bsky.convo.listConvoRequests` query.
+
+Path: `/xrpc/chat.bsky.convo.listConvoRequests`. The request payload type is `ListConvoRequests<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct ListConvoRequestsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ListConvoRequestsRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.listConvoRequests";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = ListConvoRequests<'de>;
+    type Request<S: BosStr> = ListConvoRequests<S>;
     type Response = ListConvoRequestsResponse;
 }
 
@@ -98,45 +102,69 @@ pub mod list_convo_requests_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct ListConvoRequestsBuilder<'a, S: list_convo_requests_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ListConvoRequestsBuilder<
+    St: list_convo_requests_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ListConvoRequests<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ListConvoRequestsBuilder<'a, list_convo_requests_state::Empty> {
+impl ListConvoRequests<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ListConvoRequestsBuilder<
+        list_convo_requests_state::Empty,
+        DefaultStr,
+    > {
         ListConvoRequestsBuilder::new()
     }
 }
 
-impl<'a> ListConvoRequestsBuilder<'a, list_convo_requests_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ListConvoRequests<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ListConvoRequestsBuilder<list_convo_requests_state::Empty, S> {
+        ListConvoRequestsBuilder::builder()
+    }
+}
+
+impl ListConvoRequestsBuilder<list_convo_requests_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ListConvoRequestsBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: list_convo_requests_state::State> ListConvoRequestsBuilder<'a, S> {
+impl<S: BosStr> ListConvoRequestsBuilder<list_convo_requests_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ListConvoRequestsBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: list_convo_requests_state::State, S: BosStr> ListConvoRequestsBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: list_convo_requests_state::State> ListConvoRequestsBuilder<'a, S> {
+impl<St: list_convo_requests_state::State, S: BosStr> ListConvoRequestsBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -149,12 +177,12 @@ impl<'a, S: list_convo_requests_state::State> ListConvoRequestsBuilder<'a, S> {
     }
 }
 
-impl<'a, S> ListConvoRequestsBuilder<'a, S>
+impl<St, S: BosStr> ListConvoRequestsBuilder<St, S>
 where
-    S: list_convo_requests_state::State,
+    St: list_convo_requests_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> ListConvoRequests<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ListConvoRequests<S> {
         ListConvoRequests {
             cursor: self._fields.0,
             limit: self._fields.1,

@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{IntoStatic, lexicon};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -27,39 +29,35 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 /// Record declaring a recommendation of a document.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(
     rename_all = "camelCase",
     rename = "site.standard.graph.recommend",
-    tag = "$type"
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
-pub struct Recommend<'a> {
+pub struct Recommend<S: BosStr = DefaultStr> {
     pub created_at: Datetime,
     ///AT-URI reference to the document record being recommended (ex: at://did:plc:abc123/site.standard.document/xyz789).
-    #[serde(borrow)]
-    pub document: AtUri<'a>,
+    pub document: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct RecommendGetRecordOutput<'a> {
+pub struct RecommendGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Recommend<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Recommend<S>,
 }
 
-impl<'a> Recommend<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, RecommendRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Recommend<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, RecommendRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
@@ -70,18 +68,17 @@ pub struct RecommendRecord;
 impl XrpcResp for RecommendRecord {
     const NSID: &'static str = "site.standard.graph.recommend";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = RecommendGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = RecommendGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<RecommendGetRecordOutput<'_>> for Recommend<'_> {
-    fn from(output: RecommendGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<RecommendGetRecordOutput<S>> for Recommend<S> {
+    fn from(output: RecommendGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Recommend<'_> {
+impl<S: BosStr> Collection for Recommend<S> {
     const NSID: &'static str = "site.standard.graph.recommend";
     type Record = RecommendRecord;
 }
@@ -91,7 +88,7 @@ impl Collection for RecommendRecord {
     type Record = RecommendRecord;
 }
 
-impl<'a> LexiconSchema for Recommend<'a> {
+impl<S: BosStr> LexiconSchema for Recommend<S> {
     fn nsid() -> &'static str {
         "site.standard.graph.recommend"
     }
@@ -116,125 +113,140 @@ pub mod recommend_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Document;
         type CreatedAt;
+        type Document;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Document = Unset;
         type CreatedAt = Unset;
-    }
-    ///State transition - sets the `document` field to Set
-    pub struct SetDocument<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDocument<S> {}
-    impl<S: State> State for SetDocument<S> {
-        type Document = Set<members::document>;
-        type CreatedAt = S::CreatedAt;
+        type Document = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Document = S::Document;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
+        type Document = St::Document;
+    }
+    ///State transition - sets the `document` field to Set
+    pub struct SetDocument<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDocument<St> {}
+    impl<St: State> State for SetDocument<St> {
+        type CreatedAt = St::CreatedAt;
+        type Document = Set<members::document>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `document` field
-        pub struct document(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `document` field
+        pub struct document(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct RecommendBuilder<'a, S: recommend_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Datetime>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct RecommendBuilder<St: recommend_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Datetime>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Recommend<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> RecommendBuilder<'a, recommend_state::Empty> {
+impl Recommend<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> RecommendBuilder<recommend_state::Empty, DefaultStr> {
         RecommendBuilder::new()
     }
 }
 
-impl<'a> RecommendBuilder<'a, recommend_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Recommend<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> RecommendBuilder<recommend_state::Empty, S> {
+        RecommendBuilder::builder()
+    }
+}
+
+impl RecommendBuilder<recommend_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         RecommendBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RecommendBuilder<'a, S>
+impl<S: BosStr> RecommendBuilder<recommend_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        RecommendBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> RecommendBuilder<St, S>
 where
-    S: recommend_state::State,
-    S::CreatedAt: recommend_state::IsUnset,
+    St: recommend_state::State,
+    St::CreatedAt: recommend_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> RecommendBuilder<'a, recommend_state::SetCreatedAt<S>> {
+    ) -> RecommendBuilder<recommend_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         RecommendBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RecommendBuilder<'a, S>
+impl<St, S: BosStr> RecommendBuilder<St, S>
 where
-    S: recommend_state::State,
-    S::Document: recommend_state::IsUnset,
+    St: recommend_state::State,
+    St::Document: recommend_state::IsUnset,
 {
     /// Set the `document` field (required)
     pub fn document(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> RecommendBuilder<'a, recommend_state::SetDocument<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> RecommendBuilder<recommend_state::SetDocument<St>, S> {
         self._fields.1 = Option::Some(value.into());
         RecommendBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RecommendBuilder<'a, S>
+impl<St, S: BosStr> RecommendBuilder<St, S>
 where
-    S: recommend_state::State,
-    S::Document: recommend_state::IsSet,
-    S::CreatedAt: recommend_state::IsSet,
+    St: recommend_state::State,
+    St::CreatedAt: recommend_state::IsSet,
+    St::Document: recommend_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Recommend<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Recommend<S> {
         Recommend {
             created_at: self._fields.0.unwrap(),
             document: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Recommend<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> Recommend<S> {
         Recommend {
             created_at: self._fields.0.unwrap(),
             document: self._fields.1.unwrap(),

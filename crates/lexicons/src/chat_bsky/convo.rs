@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `chat.bsky.convo` Lexicon namespace/module.
 pub mod accept_convo;
 pub mod add_reaction;
 pub mod delete_message_for_self;
@@ -34,12 +35,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Datetime};
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -57,13 +60,13 @@ use crate::chat_bsky::convo;
 use crate::chat_bsky::embed::join_link;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ConvoKind<'a> {
+pub enum ConvoKind<S: BosStr = DefaultStr> {
     Direct,
     Group,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> ConvoKind<'a> {
+impl<S: BosStr> ConvoKind<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Direct => "direct",
@@ -71,64 +74,53 @@ impl<'a> ConvoKind<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for ConvoKind<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "direct" => Self::Direct,
             "group" => Self::Group,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for ConvoKind<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "direct" => Self::Direct,
-            "group" => Self::Group,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for ConvoKind<'a> {
+impl<S: BosStr> AsRef<str> for ConvoKind<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for ConvoKind<'a> {
+impl<S: BosStr> core::fmt::Display for ConvoKind<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for ConvoKind<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for ConvoKind<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for ConvoKind<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for ConvoKind<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for ConvoKind<'_> {
-    type Output = ConvoKind<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for ConvoKind<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ConvoKind<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             ConvoKind::Direct => ConvoKind::Direct,
@@ -140,14 +132,14 @@ impl jacquard_common::IntoStatic for ConvoKind<'_> {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ConvoLockStatus<'a> {
+pub enum ConvoLockStatus<S: BosStr = DefaultStr> {
     Unlocked,
     Locked,
     LockedPermanently,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> ConvoLockStatus<'a> {
+impl<S: BosStr> ConvoLockStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Unlocked => "unlocked",
@@ -156,66 +148,54 @@ impl<'a> ConvoLockStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for ConvoLockStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "unlocked" => Self::Unlocked,
             "locked" => Self::Locked,
             "locked-permanently" => Self::LockedPermanently,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for ConvoLockStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "unlocked" => Self::Unlocked,
-            "locked" => Self::Locked,
-            "locked-permanently" => Self::LockedPermanently,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for ConvoLockStatus<'a> {
+impl<S: BosStr> AsRef<str> for ConvoLockStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for ConvoLockStatus<'a> {
+impl<S: BosStr> core::fmt::Display for ConvoLockStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for ConvoLockStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for ConvoLockStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for ConvoLockStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for ConvoLockStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for ConvoLockStatus<'_> {
-    type Output = ConvoLockStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for ConvoLockStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ConvoLockStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             ConvoLockStatus::Unlocked => ConvoLockStatus::Unlocked,
@@ -227,25 +207,24 @@ impl jacquard_common::IntoStatic for ConvoLockStatus<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ConvoRef<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ConvoRef<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub did: Did<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ConvoStatus<'a> {
+pub enum ConvoStatus<S: BosStr = DefaultStr> {
     Request,
     Accepted,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> ConvoStatus<'a> {
+impl<S: BosStr> ConvoStatus<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Request => "request",
@@ -253,64 +232,53 @@ impl<'a> ConvoStatus<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for ConvoStatus<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "request" => Self::Request,
             "accepted" => Self::Accepted,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for ConvoStatus<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "request" => Self::Request,
-            "accepted" => Self::Accepted,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for ConvoStatus<'a> {
+impl<S: BosStr> AsRef<str> for ConvoStatus<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for ConvoStatus<'a> {
+impl<S: BosStr> core::fmt::Display for ConvoStatus<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for ConvoStatus<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for ConvoStatus<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for ConvoStatus<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for ConvoStatus<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for ConvoStatus<'_> {
-    type Output = ConvoStatus<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for ConvoStatus<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ConvoStatus<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             ConvoStatus::Request => ConvoStatus::Request,
@@ -321,93 +289,85 @@ impl jacquard_common::IntoStatic for ConvoStatus<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ConvoView<'a> {
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ConvoView<S: BosStr = DefaultStr> {
+    pub id: S,
     ///Union field that has data specific to different kinds of convos.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub kind: Option<ConvoViewKind<'a>>,
+    pub kind: Option<ConvoViewKind<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub last_message: Option<ConvoViewLastMessage<'a>>,
+    pub last_message: Option<ConvoViewLastMessage<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub last_reaction: Option<convo::MessageAndReactionView<'a>>,
+    pub last_reaction: Option<convo::MessageAndReactionView<S>>,
     ///Members of this conversation. For direct convos, it will be an immutable list of the 2 members. For group convos, it will a list of important members (the first few members, the viewer, the member who added the viewer, the member who sent the last message, the member who sent the last reaction), but will not contain the full list of members. Use chat.bsky.convo.getConvoMembers to list all members.
-    #[serde(borrow)]
-    pub members: Vec<ProfileViewBasic<'a>>,
+    pub members: Vec<ProfileViewBasic<S>>,
     pub muted: bool,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub rev: S,
     ///Convo status for the viewer member (not the convo itself).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub status: Option<convo::ConvoStatus<'a>>,
+    pub status: Option<convo::ConvoStatus<S>>,
     pub unread_count: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ConvoViewKind<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ConvoViewKind<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#directConvo")]
-    DirectConvo(Box<convo::DirectConvo<'a>>),
+    DirectConvo(Box<convo::DirectConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#groupConvo")]
-    GroupConvo(Box<convo::GroupConvo<'a>>),
+    GroupConvo(Box<convo::GroupConvo<S>>),
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ConvoViewLastMessage<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ConvoViewLastMessage<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#messageView")]
-    MessageView(Box<convo::MessageView<'a>>),
+    MessageView(Box<convo::MessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#deletedMessageView")]
-    DeletedMessageView(Box<convo::DeletedMessageView<'a>>),
+    DeletedMessageView(Box<convo::DeletedMessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageView")]
-    SystemMessageView(Box<convo::SystemMessageView<'a>>),
+    SystemMessageView(Box<convo::SystemMessageView<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DeletedMessageView<'a> {
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
-    #[serde(borrow)]
-    pub sender: convo::MessageViewSender<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DeletedMessageView<S: BosStr = DefaultStr> {
+    pub id: S,
+    pub rev: S,
+    pub sender: convo::MessageViewSender<S>,
     pub sent_at: Datetime,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DirectConvo<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DirectConvo<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
 
-#[lexicon]
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GroupConvo<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GroupConvo<S: BosStr = DefaultStr> {
     pub created_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub join_link: Option<JoinLinkView<'a>>,
+    pub join_link: Option<JoinLinkView<S>>,
     ///The total number of pending join requests for the group conversation. Only present for the owner. Capped at 21.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub join_request_count: Option<i64>,
     ///The lock status of the conversation.
-    #[serde(borrow)]
-    pub lock_status: convo::ConvoLockStatus<'a>,
+    pub lock_status: convo::ConvoLockStatus<S>,
     ///Whether the lock status is being forced by a moderation override (account inactivation or convo takedown) rather than the owner's own setting.
     pub lock_status_moderation_override: bool,
     ///The total number of members in the group conversation.
@@ -415,884 +375,814 @@ pub struct GroupConvo<'a> {
     ///The maximum number of members allowed in the group conversation.
     pub member_limit: i64,
     ///The display name of the group conversation.
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    pub name: S,
     ///The number of unread join requests for the group conversation. Only present for the owner.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unread_join_request_count: Option<i64>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating the viewer accepted a convo, and it can be moved out of the request inbox. Can be direct or group.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LogAcceptConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogAcceptConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a member was added to a group convo. The member who was added gets a logBeginConvo (to create the convo) but also a logAddMember (to show the system message as the first message the user sees).
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogAddMember<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogAddMember<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataAddMember
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
+    pub message: convo::SystemMessageView<S>,
     ///Profiles referred in the system message.
-    #[serde(borrow)]
-    pub related_profiles: Vec<ProfileViewBasic<'a>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Vec<ProfileViewBasic<S>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a reaction was added to a message.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogAddReaction<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub message: LogAddReactionMessage<'a>,
-    #[serde(borrow)]
-    pub reaction: convo::ReactionView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogAddReaction<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub message: LogAddReactionMessage<S>,
+    pub reaction: convo::ReactionView<S>,
     ///Profiles referred in the message and reaction views. This isn't required for compatibility, because it was added later, but should generally be present.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub related_profiles: Option<Vec<ProfileViewBasic<'a>>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Option<Vec<ProfileViewBasic<S>>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum LogAddReactionMessage<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum LogAddReactionMessage<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#messageView")]
-    MessageView(Box<convo::MessageView<'a>>),
+    MessageView(Box<convo::MessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#deletedMessageView")]
-    DeletedMessageView(Box<convo::DeletedMessageView<'a>>),
+    DeletedMessageView(Box<convo::DeletedMessageView<S>>),
 }
 
 /// Event indicating a join request was approved by the viewer. Only the owner gets this. The approved member gets a logBeginConvo.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogApproveJoinRequest<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogApproveJoinRequest<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///Prospective member who requested to join.
-    #[serde(borrow)]
-    pub member: ProfileViewBasic<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub member: ProfileViewBasic<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a convo containing the viewer was started. Can be direct or group. When a member is added to a group convo, they also get this event.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LogBeginConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogBeginConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a join link was created for a group convo.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogCreateJoinLink<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogCreateJoinLink<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataCreateJoinLink
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub message: convo::SystemMessageView<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a user-originated message was created. Is not emitted for system messages.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogCreateMessage<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub message: LogCreateMessageMessage<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogCreateMessage<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub message: LogCreateMessageMessage<S>,
     ///Profiles referred to in the message view. This isn't required for compatibility, because it was added later, but should generally be present.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub related_profiles: Option<Vec<ProfileViewBasic<'a>>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Option<Vec<ProfileViewBasic<S>>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum LogCreateMessageMessage<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum LogCreateMessageMessage<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#messageView")]
-    MessageView(Box<convo::MessageView<'a>>),
+    MessageView(Box<convo::MessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#deletedMessageView")]
-    DeletedMessageView(Box<convo::DeletedMessageView<'a>>),
+    DeletedMessageView(Box<convo::DeletedMessageView<S>>),
 }
 
 /// Event indicating a user-originated message was deleted. Is not emitted for system messages.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogDeleteMessage<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub message: LogDeleteMessageMessage<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogDeleteMessage<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub message: LogDeleteMessageMessage<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum LogDeleteMessageMessage<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum LogDeleteMessageMessage<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#messageView")]
-    MessageView(Box<convo::MessageView<'a>>),
+    MessageView(Box<convo::MessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#deletedMessageView")]
-    DeletedMessageView(Box<convo::DeletedMessageView<'a>>),
+    DeletedMessageView(Box<convo::DeletedMessageView<S>>),
 }
 
 /// Event indicating a join link was disabled for a group convo.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogDisableJoinLink<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogDisableJoinLink<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataDisableJoinLink
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub message: convo::SystemMessageView<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating info about group convo was edited.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogEditGroup<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogEditGroup<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataEditGroup
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub message: convo::SystemMessageView<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a settings about a join link for a group convo were edited.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogEditJoinLink<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogEditJoinLink<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataEditJoinLink
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub message: convo::SystemMessageView<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a join link was enabled for a group convo.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogEnableJoinLink<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogEnableJoinLink<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataEnableJoinLink
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub message: convo::SystemMessageView<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a join request was made to a group the viewer owns. Only the owner gets this.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogIncomingJoinRequest<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogIncomingJoinRequest<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///Prospective member who requested to join.
-    #[serde(borrow)]
-    pub member: ProfileViewBasic<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub member: ProfileViewBasic<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating the viewer left a convo. Can be direct or group.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LogLeaveConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogLeaveConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a group convo was locked.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogLockConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogLockConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataLockConvo
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
+    pub message: convo::SystemMessageView<S>,
     ///Profiles referred in the system message.
-    #[serde(borrow)]
-    pub related_profiles: Vec<ProfileViewBasic<'a>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Vec<ProfileViewBasic<S>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a group convo was locked permanently.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogLockConvoPermanently<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogLockConvoPermanently<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataLockConvoPermanently
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
+    pub message: convo::SystemMessageView<S>,
     ///Profiles referred in the system message.
-    #[serde(borrow)]
-    pub related_profiles: Vec<ProfileViewBasic<'a>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Vec<ProfileViewBasic<S>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a member joined a group convo via join link. The member who was added gets a logBeginConvo (to create the convo) but also a logMemberJoin (to show the system message as the first message the user sees).
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogMemberJoin<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogMemberJoin<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataMemberJoin
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
+    pub message: convo::SystemMessageView<S>,
     ///Profiles referred in the system message.
-    #[serde(borrow)]
-    pub related_profiles: Vec<ProfileViewBasic<'a>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Vec<ProfileViewBasic<S>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a member voluntarily left a group convo. The member who was removed gets a logLeaveConvo (to leave the convo) but not a logMemberLeave (because they already left, so can't see the system message).
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogMemberLeave<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogMemberLeave<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataMemberLeave
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
+    pub message: convo::SystemMessageView<S>,
     ///Profiles referred in the system message.
-    #[serde(borrow)]
-    pub related_profiles: Vec<ProfileViewBasic<'a>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Vec<ProfileViewBasic<S>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating the viewer muted a convo. Can be direct or group.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LogMuteConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogMuteConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a join request was made by the requester. Only requester actor gets this.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LogOutgoingJoinRequest<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogOutgoingJoinRequest<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a convo was read up to a certain message.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogReadConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub message: LogReadConvoMessage<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogReadConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub message: LogReadConvoMessage<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum LogReadConvoMessage<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum LogReadConvoMessage<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#messageView")]
-    MessageView(Box<convo::MessageView<'a>>),
+    MessageView(Box<convo::MessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#deletedMessageView")]
-    DeletedMessageView(Box<convo::DeletedMessageView<'a>>),
+    DeletedMessageView(Box<convo::DeletedMessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageView")]
-    SystemMessageView(Box<convo::SystemMessageView<'a>>),
+    SystemMessageView(Box<convo::SystemMessageView<S>>),
 }
 
 /// Event indicating the group owner marked join requests as read. Only the owner gets this.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LogReadJoinRequests<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogReadJoinRequests<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// DEPRECATED: use logReadConvo instead. Event indicating a convo was read up to a certain message.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogReadMessage<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub message: LogReadMessageMessage<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogReadMessage<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub message: LogReadMessageMessage<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum LogReadMessageMessage<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum LogReadMessageMessage<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#messageView")]
-    MessageView(Box<convo::MessageView<'a>>),
+    MessageView(Box<convo::MessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#deletedMessageView")]
-    DeletedMessageView(Box<convo::DeletedMessageView<'a>>),
+    DeletedMessageView(Box<convo::DeletedMessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageView")]
-    SystemMessageView(Box<convo::SystemMessageView<'a>>),
+    SystemMessageView(Box<convo::SystemMessageView<S>>),
 }
 
 /// Event indicating a join request was rejected by the viewer. Only the owner gets this.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogRejectJoinRequest<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogRejectJoinRequest<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///Prospective member who requested to join.
-    #[serde(borrow)]
-    pub member: ProfileViewBasic<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub member: ProfileViewBasic<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a member was removed from a group convo. The member who was removed gets a logLeaveConvo (to leave the convo) but not a logRemoveMember (because they already left, so can't see the system message).
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogRemoveMember<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogRemoveMember<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataRemoveMember
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
+    pub message: convo::SystemMessageView<S>,
     ///Profiles referred in the system message.
-    #[serde(borrow)]
-    pub related_profiles: Vec<ProfileViewBasic<'a>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Vec<ProfileViewBasic<S>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a reaction was removed from a message.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogRemoveReaction<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub message: LogRemoveReactionMessage<'a>,
-    #[serde(borrow)]
-    pub reaction: convo::ReactionView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogRemoveReaction<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub message: LogRemoveReactionMessage<S>,
+    pub reaction: convo::ReactionView<S>,
     ///Profiles referred in the message and reaction views. This isn't required for compatibility, because it was added later, but should generally be present.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub related_profiles: Option<Vec<ProfileViewBasic<'a>>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Option<Vec<ProfileViewBasic<S>>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum LogRemoveReactionMessage<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum LogRemoveReactionMessage<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#messageView")]
-    MessageView(Box<convo::MessageView<'a>>),
+    MessageView(Box<convo::MessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#deletedMessageView")]
-    DeletedMessageView(Box<convo::DeletedMessageView<'a>>),
+    DeletedMessageView(Box<convo::DeletedMessageView<S>>),
 }
 
 /// Event indicating a group convo was unlocked.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogUnlockConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogUnlockConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///A system message with data of type #systemMessageDataUnlockConvo
-    #[serde(borrow)]
-    pub message: convo::SystemMessageView<'a>,
+    pub message: convo::SystemMessageView<S>,
     ///Profiles referred in the system message.
-    #[serde(borrow)]
-    pub related_profiles: Vec<ProfileViewBasic<'a>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub related_profiles: Vec<ProfileViewBasic<S>>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating the viewer unmuted a convo. Can be direct or group.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LogUnmuteConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogUnmuteConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating a prospective member withdrew their join request. Only the owner gets this.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct LogWithdrawIncomingJoinRequest<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogWithdrawIncomingJoinRequest<S: BosStr = DefaultStr> {
+    pub convo_id: S,
     ///Prospective member who withdrew their join request.
-    #[serde(borrow)]
-    pub member: ProfileViewBasic<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+    pub member: ProfileViewBasic<S>,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Event indicating the viewer withdrew their own join request. Only requester actor gets this.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LogWithdrawOutgoingJoinRequest<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LogWithdrawOutgoingJoinRequest<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct MessageAndReactionView<'a> {
-    #[serde(borrow)]
-    pub message: convo::MessageView<'a>,
-    #[serde(borrow)]
-    pub reaction: convo::ReactionView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct MessageAndReactionView<S: BosStr = DefaultStr> {
+    pub message: convo::MessageView<S>,
+    pub reaction: convo::ReactionView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Placeholder embedded in place of a reply's parent message when that parent was sent before the viewer joined the group convo. The viewer has no access to that history, so no message data is carried.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct MessageBeforeUserJoinedGroupView<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct MessageBeforeUserJoinedGroupView<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
 
-#[lexicon]
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct MessageInput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct MessageInput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embed: Option<MessageInputEmbed<'a>>,
+    pub embed: Option<MessageInputEmbed<S>>,
     ///Annotations of text (mentions, URLs, hashtags, etc)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub facets: Option<Vec<Facet<'a>>>,
+    pub facets: Option<Vec<Facet<S>>>,
     ///If set, the message this message is replying to. The referenced message must be in the same convo.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reply_to: Option<convo::ReplyRef<'a>>,
-    #[serde(borrow)]
-    pub text: CowStr<'a>,
+    pub reply_to: Option<convo::ReplyRef<S>>,
+    pub text: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum MessageInputEmbed<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum MessageInputEmbed<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.embed.record")]
-    Record(Box<Record<'a>>),
+    Record(Box<Record<S>>),
     #[serde(rename = "chat.bsky.embed.joinLink")]
-    JoinLink(Box<JoinLink<'a>>),
+    JoinLink(Box<JoinLink<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct MessageRef<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub did: Did<'a>,
-    #[serde(borrow)]
-    pub message_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct MessageRef<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub did: Did<S>,
+    pub message_id: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct MessageView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct MessageView<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embed: Option<MessageViewEmbed<'a>>,
+    pub embed: Option<MessageViewEmbed<S>>,
     ///Annotations of text (mentions, URLs, hashtags, etc)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub facets: Option<Vec<Facet<'a>>>,
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
+    pub facets: Option<Vec<Facet<S>>>,
+    pub id: S,
     ///Reactions to this message, in ascending order of creation time.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reactions: Option<Vec<convo::ReactionView<'a>>>,
+    pub reactions: Option<Vec<convo::ReactionView<S>>>,
     ///If set, the message this message is replying to. The full view of the referenced message is embedded so the client can render it inline. Only a single level is embedded: the embedded message will not itself have a populated 'replyTo' field even if it was also a reply.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reply_to: Option<MessageViewReplyTo<'a>>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
-    #[serde(borrow)]
-    pub sender: convo::MessageViewSender<'a>,
+    pub reply_to: Option<MessageViewReplyTo<S>>,
+    pub rev: S,
+    pub sender: convo::MessageViewSender<S>,
     pub sent_at: Datetime,
-    #[serde(borrow)]
-    pub text: CowStr<'a>,
+    pub text: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum MessageViewEmbed<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum MessageViewEmbed<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.embed.record#view")]
-    RecordView(Box<record::View<'a>>),
+    RecordView(Box<record::View<S>>),
     #[serde(rename = "chat.bsky.embed.joinLink#view")]
-    JoinLinkView(Box<join_link::View<'a>>),
+    JoinLinkView(Box<join_link::View<S>>),
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum MessageViewReplyTo<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum MessageViewReplyTo<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#messageView")]
-    MessageView(Box<convo::MessageView<'a>>),
+    MessageView(Box<convo::MessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#deletedMessageView")]
-    DeletedMessageView(Box<convo::DeletedMessageView<'a>>),
+    DeletedMessageView(Box<convo::DeletedMessageView<S>>),
     #[serde(rename = "chat.bsky.convo.defs#messageBeforeUserJoinedGroupView")]
-    MessageBeforeUserJoinedGroupView(Box<convo::MessageBeforeUserJoinedGroupView<'a>>),
+    MessageBeforeUserJoinedGroupView(Box<convo::MessageBeforeUserJoinedGroupView<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct MessageViewSender<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct MessageViewSender<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReactionView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReactionView<S: BosStr = DefaultStr> {
     pub created_at: Datetime,
-    #[serde(borrow)]
-    pub sender: convo::ReactionViewSender<'a>,
-    #[serde(borrow)]
-    pub value: CowStr<'a>,
+    pub sender: convo::ReactionViewSender<S>,
+    pub value: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReactionViewSender<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReactionViewSender<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// A reference to another message within the same convo, used to indicate that a message is a reply to it.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ReplyRef<'a> {
-    #[serde(borrow)]
-    pub message_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReplyRef<S: BosStr = DefaultStr> {
+    pub message_id: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// System message indicating a user was added to the group convo.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataAddMember<'a> {
-    #[serde(borrow)]
-    pub added_by: convo::SystemMessageReferredUser<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataAddMember<S: BosStr = DefaultStr> {
+    pub added_by: convo::SystemMessageReferredUser<S>,
     ///Current view of the member who was added.
-    #[serde(borrow)]
-    pub member: convo::SystemMessageReferredUser<'a>,
+    pub member: convo::SystemMessageReferredUser<S>,
     ///Role the user was added to the group with. The role from 'member' will reflect the current data, not historical.
-    #[serde(borrow)]
-    pub role: MemberRole<'a>,
+    pub role: MemberRole<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// System message indicating the group join link was created.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataCreateJoinLink<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataCreateJoinLink<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
 /// System message indicating the group join link was disabled.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataDisableJoinLink<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataDisableJoinLink<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
 /// System message indicating the group info was edited.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataEditGroup<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataEditGroup<S: BosStr = DefaultStr> {
     ///Group name that replaced the old.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub new_name: Option<CowStr<'a>>,
+    pub new_name: Option<S>,
     ///Group name that was replaced.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub old_name: Option<CowStr<'a>>,
+    pub old_name: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// System message indicating the group join link was edited.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataEditJoinLink<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataEditJoinLink<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
 /// System message indicating the group join link was enabled.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataEnableJoinLink<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataEnableJoinLink<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
 /// System message indicating the group convo was locked.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataLockConvo<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataLockConvo<S: BosStr = DefaultStr> {
     ///Current view of the member who locked the group.
-    #[serde(borrow)]
-    pub locked_by: convo::SystemMessageReferredUser<'a>,
+    pub locked_by: convo::SystemMessageReferredUser<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// System message indicating the group convo was locked permanently.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataLockConvoPermanently<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataLockConvoPermanently<S: BosStr = DefaultStr> {
     ///Current view of the member who locked the group.
-    #[serde(borrow)]
-    pub locked_by: convo::SystemMessageReferredUser<'a>,
+    pub locked_by: convo::SystemMessageReferredUser<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// System message indicating a user joined the group convo via join link.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataMemberJoin<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataMemberJoin<S: BosStr = DefaultStr> {
     ///If join link was configured to require approval, this will be set to who approved the request. Undefined if approval was not required.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub approved_by: Option<convo::SystemMessageReferredUser<'a>>,
+    pub approved_by: Option<convo::SystemMessageReferredUser<S>>,
     ///Current view of the member who joined.
-    #[serde(borrow)]
-    pub member: convo::SystemMessageReferredUser<'a>,
+    pub member: convo::SystemMessageReferredUser<S>,
     ///Role the user was added to the group with. The role from 'member' will reflect the current data, not historical.
-    #[serde(borrow)]
-    pub role: MemberRole<'a>,
+    pub role: MemberRole<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// System message indicating a user voluntarily left the group convo.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataMemberLeave<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataMemberLeave<S: BosStr = DefaultStr> {
     ///Current view of the member who left the group.
-    #[serde(borrow)]
-    pub member: convo::SystemMessageReferredUser<'a>,
+    pub member: convo::SystemMessageReferredUser<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// System message indicating a user was removed from the group convo.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataRemoveMember<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataRemoveMember<S: BosStr = DefaultStr> {
     ///Current view of the member who was removed.
-    #[serde(borrow)]
-    pub member: convo::SystemMessageReferredUser<'a>,
-    #[serde(borrow)]
-    pub removed_by: convo::SystemMessageReferredUser<'a>,
+    pub member: convo::SystemMessageReferredUser<S>,
+    pub removed_by: convo::SystemMessageReferredUser<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// System message indicating the group convo was unlocked.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageDataUnlockConvo<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageDataUnlockConvo<S: BosStr = DefaultStr> {
     ///Current view of the member who unlocked the group.
-    #[serde(borrow)]
-    pub unlocked_by: convo::SystemMessageReferredUser<'a>,
+    pub unlocked_by: convo::SystemMessageReferredUser<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageReferredUser<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageReferredUser<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemMessageView<'a> {
-    #[serde(borrow)]
-    pub data: SystemMessageViewData<'a>,
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SystemMessageView<S: BosStr = DefaultStr> {
+    pub data: SystemMessageViewData<S>,
+    pub id: S,
+    pub rev: S,
     pub sent_at: Datetime,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum SystemMessageViewData<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum SystemMessageViewData<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataAddMember")]
-    SystemMessageDataAddMember(Box<convo::SystemMessageDataAddMember<'a>>),
+    SystemMessageDataAddMember(Box<convo::SystemMessageDataAddMember<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataRemoveMember")]
-    SystemMessageDataRemoveMember(Box<convo::SystemMessageDataRemoveMember<'a>>),
+    SystemMessageDataRemoveMember(Box<convo::SystemMessageDataRemoveMember<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataMemberJoin")]
-    SystemMessageDataMemberJoin(Box<convo::SystemMessageDataMemberJoin<'a>>),
+    SystemMessageDataMemberJoin(Box<convo::SystemMessageDataMemberJoin<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataMemberLeave")]
-    SystemMessageDataMemberLeave(Box<convo::SystemMessageDataMemberLeave<'a>>),
+    SystemMessageDataMemberLeave(Box<convo::SystemMessageDataMemberLeave<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataLockConvo")]
-    SystemMessageDataLockConvo(Box<convo::SystemMessageDataLockConvo<'a>>),
+    SystemMessageDataLockConvo(Box<convo::SystemMessageDataLockConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataUnlockConvo")]
-    SystemMessageDataUnlockConvo(Box<convo::SystemMessageDataUnlockConvo<'a>>),
+    SystemMessageDataUnlockConvo(Box<convo::SystemMessageDataUnlockConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataLockConvoPermanently")]
     SystemMessageDataLockConvoPermanently(
-        Box<convo::SystemMessageDataLockConvoPermanently<'a>>,
+        Box<convo::SystemMessageDataLockConvoPermanently<S>>,
     ),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataEditGroup")]
-    SystemMessageDataEditGroup(Box<convo::SystemMessageDataEditGroup<'a>>),
+    SystemMessageDataEditGroup(Box<convo::SystemMessageDataEditGroup<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataCreateJoinLink")]
-    SystemMessageDataCreateJoinLink(Box<convo::SystemMessageDataCreateJoinLink<'a>>),
+    SystemMessageDataCreateJoinLink(Box<convo::SystemMessageDataCreateJoinLink<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataEditJoinLink")]
-    SystemMessageDataEditJoinLink(Box<convo::SystemMessageDataEditJoinLink<'a>>),
+    SystemMessageDataEditJoinLink(Box<convo::SystemMessageDataEditJoinLink<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataEnableJoinLink")]
-    SystemMessageDataEnableJoinLink(Box<convo::SystemMessageDataEnableJoinLink<'a>>),
+    SystemMessageDataEnableJoinLink(Box<convo::SystemMessageDataEnableJoinLink<S>>),
     #[serde(rename = "chat.bsky.convo.defs#systemMessageDataDisableJoinLink")]
-    SystemMessageDataDisableJoinLink(Box<convo::SystemMessageDataDisableJoinLink<'a>>),
+    SystemMessageDataDisableJoinLink(Box<convo::SystemMessageDataDisableJoinLink<S>>),
 }
 
-impl<'a> LexiconSchema for ConvoRef<'a> {
+impl<S: BosStr> LexiconSchema for ConvoRef<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1307,7 +1197,7 @@ impl<'a> LexiconSchema for ConvoRef<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ConvoView<'a> {
+impl<S: BosStr> LexiconSchema for ConvoView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1322,7 +1212,7 @@ impl<'a> LexiconSchema for ConvoView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DeletedMessageView<'a> {
+impl<S: BosStr> LexiconSchema for DeletedMessageView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1337,7 +1227,7 @@ impl<'a> LexiconSchema for DeletedMessageView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for DirectConvo<'a> {
+impl<S: BosStr> LexiconSchema for DirectConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1352,7 +1242,7 @@ impl<'a> LexiconSchema for DirectConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for GroupConvo<'a> {
+impl<S: BosStr> LexiconSchema for GroupConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1391,7 +1281,7 @@ impl<'a> LexiconSchema for GroupConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogAcceptConvo<'a> {
+impl<S: BosStr> LexiconSchema for LogAcceptConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1406,7 +1296,7 @@ impl<'a> LexiconSchema for LogAcceptConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogAddMember<'a> {
+impl<S: BosStr> LexiconSchema for LogAddMember<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1421,7 +1311,7 @@ impl<'a> LexiconSchema for LogAddMember<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogAddReaction<'a> {
+impl<S: BosStr> LexiconSchema for LogAddReaction<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1436,7 +1326,7 @@ impl<'a> LexiconSchema for LogAddReaction<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogApproveJoinRequest<'a> {
+impl<S: BosStr> LexiconSchema for LogApproveJoinRequest<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1451,7 +1341,7 @@ impl<'a> LexiconSchema for LogApproveJoinRequest<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogBeginConvo<'a> {
+impl<S: BosStr> LexiconSchema for LogBeginConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1466,7 +1356,7 @@ impl<'a> LexiconSchema for LogBeginConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogCreateJoinLink<'a> {
+impl<S: BosStr> LexiconSchema for LogCreateJoinLink<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1481,7 +1371,7 @@ impl<'a> LexiconSchema for LogCreateJoinLink<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogCreateMessage<'a> {
+impl<S: BosStr> LexiconSchema for LogCreateMessage<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1496,7 +1386,7 @@ impl<'a> LexiconSchema for LogCreateMessage<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogDeleteMessage<'a> {
+impl<S: BosStr> LexiconSchema for LogDeleteMessage<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1511,7 +1401,7 @@ impl<'a> LexiconSchema for LogDeleteMessage<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogDisableJoinLink<'a> {
+impl<S: BosStr> LexiconSchema for LogDisableJoinLink<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1526,7 +1416,7 @@ impl<'a> LexiconSchema for LogDisableJoinLink<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogEditGroup<'a> {
+impl<S: BosStr> LexiconSchema for LogEditGroup<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1541,7 +1431,7 @@ impl<'a> LexiconSchema for LogEditGroup<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogEditJoinLink<'a> {
+impl<S: BosStr> LexiconSchema for LogEditJoinLink<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1556,7 +1446,7 @@ impl<'a> LexiconSchema for LogEditJoinLink<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogEnableJoinLink<'a> {
+impl<S: BosStr> LexiconSchema for LogEnableJoinLink<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1571,7 +1461,7 @@ impl<'a> LexiconSchema for LogEnableJoinLink<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogIncomingJoinRequest<'a> {
+impl<S: BosStr> LexiconSchema for LogIncomingJoinRequest<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1586,7 +1476,7 @@ impl<'a> LexiconSchema for LogIncomingJoinRequest<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogLeaveConvo<'a> {
+impl<S: BosStr> LexiconSchema for LogLeaveConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1601,7 +1491,7 @@ impl<'a> LexiconSchema for LogLeaveConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogLockConvo<'a> {
+impl<S: BosStr> LexiconSchema for LogLockConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1616,7 +1506,7 @@ impl<'a> LexiconSchema for LogLockConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogLockConvoPermanently<'a> {
+impl<S: BosStr> LexiconSchema for LogLockConvoPermanently<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1631,7 +1521,7 @@ impl<'a> LexiconSchema for LogLockConvoPermanently<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogMemberJoin<'a> {
+impl<S: BosStr> LexiconSchema for LogMemberJoin<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1646,7 +1536,7 @@ impl<'a> LexiconSchema for LogMemberJoin<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogMemberLeave<'a> {
+impl<S: BosStr> LexiconSchema for LogMemberLeave<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1661,7 +1551,7 @@ impl<'a> LexiconSchema for LogMemberLeave<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogMuteConvo<'a> {
+impl<S: BosStr> LexiconSchema for LogMuteConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1676,7 +1566,7 @@ impl<'a> LexiconSchema for LogMuteConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogOutgoingJoinRequest<'a> {
+impl<S: BosStr> LexiconSchema for LogOutgoingJoinRequest<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1691,7 +1581,7 @@ impl<'a> LexiconSchema for LogOutgoingJoinRequest<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogReadConvo<'a> {
+impl<S: BosStr> LexiconSchema for LogReadConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1706,7 +1596,7 @@ impl<'a> LexiconSchema for LogReadConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogReadJoinRequests<'a> {
+impl<S: BosStr> LexiconSchema for LogReadJoinRequests<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1721,7 +1611,7 @@ impl<'a> LexiconSchema for LogReadJoinRequests<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogReadMessage<'a> {
+impl<S: BosStr> LexiconSchema for LogReadMessage<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1736,7 +1626,7 @@ impl<'a> LexiconSchema for LogReadMessage<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogRejectJoinRequest<'a> {
+impl<S: BosStr> LexiconSchema for LogRejectJoinRequest<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1751,7 +1641,7 @@ impl<'a> LexiconSchema for LogRejectJoinRequest<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogRemoveMember<'a> {
+impl<S: BosStr> LexiconSchema for LogRemoveMember<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1766,7 +1656,7 @@ impl<'a> LexiconSchema for LogRemoveMember<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogRemoveReaction<'a> {
+impl<S: BosStr> LexiconSchema for LogRemoveReaction<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1781,7 +1671,7 @@ impl<'a> LexiconSchema for LogRemoveReaction<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogUnlockConvo<'a> {
+impl<S: BosStr> LexiconSchema for LogUnlockConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1796,7 +1686,7 @@ impl<'a> LexiconSchema for LogUnlockConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogUnmuteConvo<'a> {
+impl<S: BosStr> LexiconSchema for LogUnmuteConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1811,7 +1701,7 @@ impl<'a> LexiconSchema for LogUnmuteConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogWithdrawIncomingJoinRequest<'a> {
+impl<S: BosStr> LexiconSchema for LogWithdrawIncomingJoinRequest<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1826,7 +1716,7 @@ impl<'a> LexiconSchema for LogWithdrawIncomingJoinRequest<'a> {
     }
 }
 
-impl<'a> LexiconSchema for LogWithdrawOutgoingJoinRequest<'a> {
+impl<S: BosStr> LexiconSchema for LogWithdrawOutgoingJoinRequest<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1841,7 +1731,7 @@ impl<'a> LexiconSchema for LogWithdrawOutgoingJoinRequest<'a> {
     }
 }
 
-impl<'a> LexiconSchema for MessageAndReactionView<'a> {
+impl<S: BosStr> LexiconSchema for MessageAndReactionView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1856,7 +1746,7 @@ impl<'a> LexiconSchema for MessageAndReactionView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for MessageBeforeUserJoinedGroupView<'a> {
+impl<S: BosStr> LexiconSchema for MessageBeforeUserJoinedGroupView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1871,7 +1761,7 @@ impl<'a> LexiconSchema for MessageBeforeUserJoinedGroupView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for MessageInput<'a> {
+impl<S: BosStr> LexiconSchema for MessageInput<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1910,7 +1800,7 @@ impl<'a> LexiconSchema for MessageInput<'a> {
     }
 }
 
-impl<'a> LexiconSchema for MessageRef<'a> {
+impl<S: BosStr> LexiconSchema for MessageRef<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1925,7 +1815,7 @@ impl<'a> LexiconSchema for MessageRef<'a> {
     }
 }
 
-impl<'a> LexiconSchema for MessageView<'a> {
+impl<S: BosStr> LexiconSchema for MessageView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1964,7 +1854,7 @@ impl<'a> LexiconSchema for MessageView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for MessageViewSender<'a> {
+impl<S: BosStr> LexiconSchema for MessageViewSender<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1979,7 +1869,7 @@ impl<'a> LexiconSchema for MessageViewSender<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReactionView<'a> {
+impl<S: BosStr> LexiconSchema for ReactionView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -1994,7 +1884,7 @@ impl<'a> LexiconSchema for ReactionView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReactionViewSender<'a> {
+impl<S: BosStr> LexiconSchema for ReactionViewSender<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2009,7 +1899,7 @@ impl<'a> LexiconSchema for ReactionViewSender<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReplyRef<'a> {
+impl<S: BosStr> LexiconSchema for ReplyRef<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2024,7 +1914,7 @@ impl<'a> LexiconSchema for ReplyRef<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataAddMember<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataAddMember<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2039,7 +1929,7 @@ impl<'a> LexiconSchema for SystemMessageDataAddMember<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataCreateJoinLink<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataCreateJoinLink<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2054,7 +1944,7 @@ impl<'a> LexiconSchema for SystemMessageDataCreateJoinLink<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataDisableJoinLink<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataDisableJoinLink<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2069,7 +1959,7 @@ impl<'a> LexiconSchema for SystemMessageDataDisableJoinLink<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataEditGroup<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataEditGroup<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2084,7 +1974,7 @@ impl<'a> LexiconSchema for SystemMessageDataEditGroup<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataEditJoinLink<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataEditJoinLink<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2099,7 +1989,7 @@ impl<'a> LexiconSchema for SystemMessageDataEditJoinLink<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataEnableJoinLink<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataEnableJoinLink<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2114,7 +2004,7 @@ impl<'a> LexiconSchema for SystemMessageDataEnableJoinLink<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataLockConvo<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataLockConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2129,7 +2019,7 @@ impl<'a> LexiconSchema for SystemMessageDataLockConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataLockConvoPermanently<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataLockConvoPermanently<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2144,7 +2034,7 @@ impl<'a> LexiconSchema for SystemMessageDataLockConvoPermanently<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataMemberJoin<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataMemberJoin<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2159,7 +2049,7 @@ impl<'a> LexiconSchema for SystemMessageDataMemberJoin<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataMemberLeave<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataMemberLeave<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2174,7 +2064,7 @@ impl<'a> LexiconSchema for SystemMessageDataMemberLeave<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataRemoveMember<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataRemoveMember<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2189,7 +2079,7 @@ impl<'a> LexiconSchema for SystemMessageDataRemoveMember<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageDataUnlockConvo<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageDataUnlockConvo<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2204,7 +2094,7 @@ impl<'a> LexiconSchema for SystemMessageDataUnlockConvo<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageReferredUser<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageReferredUser<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2219,7 +2109,7 @@ impl<'a> LexiconSchema for SystemMessageReferredUser<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SystemMessageView<'a> {
+impl<S: BosStr> LexiconSchema for SystemMessageView<S> {
     fn nsid() -> &'static str {
         "chat.bsky.convo.defs"
     }
@@ -2244,125 +2134,137 @@ pub mod convo_ref_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Did;
         type ConvoId;
+        type Did;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Did = Unset;
         type ConvoId = Unset;
-    }
-    ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
-        type Did = Set<members::did>;
-        type ConvoId = S::ConvoId;
+        type Did = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Did = S::Did;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
+        type Did = St::Did;
+    }
+    ///State transition - sets the `did` field to Set
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
+        type ConvoId = St::ConvoId;
+        type Did = Set<members::did>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `did` field
-        pub struct did(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
+        ///Marker type for the `did` field
+        pub struct did(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ConvoRefBuilder<'a, S: convo_ref_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<Did<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ConvoRefBuilder<St: convo_ref_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<Did<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ConvoRef<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ConvoRefBuilder<'a, convo_ref_state::Empty> {
+impl ConvoRef<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ConvoRefBuilder<convo_ref_state::Empty, DefaultStr> {
         ConvoRefBuilder::new()
     }
 }
 
-impl<'a> ConvoRefBuilder<'a, convo_ref_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ConvoRef<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ConvoRefBuilder<convo_ref_state::Empty, S> {
+        ConvoRefBuilder::builder()
+    }
+}
+
+impl ConvoRefBuilder<convo_ref_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ConvoRefBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ConvoRefBuilder<'a, S>
+impl<S: BosStr> ConvoRefBuilder<convo_ref_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ConvoRefBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ConvoRefBuilder<St, S>
 where
-    S: convo_ref_state::State,
-    S::ConvoId: convo_ref_state::IsUnset,
+    St: convo_ref_state::State,
+    St::ConvoId: convo_ref_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> ConvoRefBuilder<'a, convo_ref_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> ConvoRefBuilder<convo_ref_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ConvoRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ConvoRefBuilder<'a, S>
+impl<St, S: BosStr> ConvoRefBuilder<St, S>
 where
-    S: convo_ref_state::State,
-    S::Did: convo_ref_state::IsUnset,
+    St: convo_ref_state::State,
+    St::Did: convo_ref_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> ConvoRefBuilder<'a, convo_ref_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> ConvoRefBuilder<convo_ref_state::SetDid<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ConvoRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ConvoRefBuilder<'a, S>
+impl<St, S: BosStr> ConvoRefBuilder<St, S>
 where
-    S: convo_ref_state::State,
-    S::Did: convo_ref_state::IsSet,
-    S::ConvoId: convo_ref_state::IsSet,
+    St: convo_ref_state::State,
+    St::ConvoId: convo_ref_state::IsSet,
+    St::Did: convo_ref_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ConvoRef<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ConvoRef<S> {
         ConvoRef {
             convo_id: self._fields.0.unwrap(),
             did: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ConvoRef<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> ConvoRef<S> {
         ConvoRef {
             convo_id: self._fields.0.unwrap(),
             did: self._fields.1.unwrap(),
@@ -4632,179 +4534,194 @@ pub mod convo_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
-        type Muted;
-        type Members;
         type Id;
+        type Members;
+        type Muted;
+        type Rev;
         type UnreadCount;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
-        type Muted = Unset;
-        type Members = Unset;
         type Id = Unset;
+        type Members = Unset;
+        type Muted = Unset;
+        type Rev = Unset;
         type UnreadCount = Unset;
     }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type Muted = S::Muted;
-        type Members = S::Members;
-        type Id = S::Id;
-        type UnreadCount = S::UnreadCount;
-    }
-    ///State transition - sets the `muted` field to Set
-    pub struct SetMuted<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMuted<S> {}
-    impl<S: State> State for SetMuted<S> {
-        type Rev = S::Rev;
-        type Muted = Set<members::muted>;
-        type Members = S::Members;
-        type Id = S::Id;
-        type UnreadCount = S::UnreadCount;
+    ///State transition - sets the `id` field to Set
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type Id = Set<members::id>;
+        type Members = St::Members;
+        type Muted = St::Muted;
+        type Rev = St::Rev;
+        type UnreadCount = St::UnreadCount;
     }
     ///State transition - sets the `members` field to Set
-    pub struct SetMembers<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMembers<S> {}
-    impl<S: State> State for SetMembers<S> {
-        type Rev = S::Rev;
-        type Muted = S::Muted;
+    pub struct SetMembers<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMembers<St> {}
+    impl<St: State> State for SetMembers<St> {
+        type Id = St::Id;
         type Members = Set<members::members>;
-        type Id = S::Id;
-        type UnreadCount = S::UnreadCount;
+        type Muted = St::Muted;
+        type Rev = St::Rev;
+        type UnreadCount = St::UnreadCount;
     }
-    ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type Rev = S::Rev;
-        type Muted = S::Muted;
-        type Members = S::Members;
-        type Id = Set<members::id>;
-        type UnreadCount = S::UnreadCount;
+    ///State transition - sets the `muted` field to Set
+    pub struct SetMuted<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMuted<St> {}
+    impl<St: State> State for SetMuted<St> {
+        type Id = St::Id;
+        type Members = St::Members;
+        type Muted = Set<members::muted>;
+        type Rev = St::Rev;
+        type UnreadCount = St::UnreadCount;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type Id = St::Id;
+        type Members = St::Members;
+        type Muted = St::Muted;
+        type Rev = Set<members::rev>;
+        type UnreadCount = St::UnreadCount;
     }
     ///State transition - sets the `unread_count` field to Set
-    pub struct SetUnreadCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUnreadCount<S> {}
-    impl<S: State> State for SetUnreadCount<S> {
-        type Rev = S::Rev;
-        type Muted = S::Muted;
-        type Members = S::Members;
-        type Id = S::Id;
+    pub struct SetUnreadCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUnreadCount<St> {}
+    impl<St: State> State for SetUnreadCount<St> {
+        type Id = St::Id;
+        type Members = St::Members;
+        type Muted = St::Muted;
+        type Rev = St::Rev;
         type UnreadCount = Set<members::unread_count>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
-        ///Marker type for the `muted` field
-        pub struct muted(());
-        ///Marker type for the `members` field
-        pub struct members(());
         ///Marker type for the `id` field
         pub struct id(());
+        ///Marker type for the `members` field
+        pub struct members(());
+        ///Marker type for the `muted` field
+        pub struct muted(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
         ///Marker type for the `unread_count` field
         pub struct unread_count(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ConvoViewBuilder<'a, S: convo_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ConvoViewBuilder<St: convo_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<ConvoViewKind<'a>>,
-        Option<ConvoViewLastMessage<'a>>,
-        Option<convo::MessageAndReactionView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
+        Option<S>,
+        Option<ConvoViewKind<S>>,
+        Option<ConvoViewLastMessage<S>>,
+        Option<convo::MessageAndReactionView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
         Option<bool>,
-        Option<CowStr<'a>>,
-        Option<convo::ConvoStatus<'a>>,
+        Option<S>,
+        Option<convo::ConvoStatus<S>>,
         Option<i64>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ConvoView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ConvoViewBuilder<'a, convo_view_state::Empty> {
+impl ConvoView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ConvoViewBuilder<convo_view_state::Empty, DefaultStr> {
         ConvoViewBuilder::new()
     }
 }
 
-impl<'a> ConvoViewBuilder<'a, convo_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ConvoView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ConvoViewBuilder<convo_view_state::Empty, S> {
+        ConvoViewBuilder::builder()
+    }
+}
+
+impl ConvoViewBuilder<convo_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ConvoViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ConvoViewBuilder<'a, S>
+impl<S: BosStr> ConvoViewBuilder<convo_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ConvoViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ConvoViewBuilder<St, S>
 where
-    S: convo_view_state::State,
-    S::Id: convo_view_state::IsUnset,
+    St: convo_view_state::State,
+    St::Id: convo_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> ConvoViewBuilder<'a, convo_view_state::SetId<S>> {
+        value: impl Into<S>,
+    ) -> ConvoViewBuilder<convo_view_state::SetId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: convo_view_state::State> ConvoViewBuilder<'a, S> {
+impl<St: convo_view_state::State, S: BosStr> ConvoViewBuilder<St, S> {
     /// Set the `kind` field (optional)
-    pub fn kind(mut self, value: impl Into<Option<ConvoViewKind<'a>>>) -> Self {
+    pub fn kind(mut self, value: impl Into<Option<ConvoViewKind<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `kind` field to an Option value (optional)
-    pub fn maybe_kind(mut self, value: Option<ConvoViewKind<'a>>) -> Self {
+    pub fn maybe_kind(mut self, value: Option<ConvoViewKind<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: convo_view_state::State> ConvoViewBuilder<'a, S> {
+impl<St: convo_view_state::State, S: BosStr> ConvoViewBuilder<St, S> {
     /// Set the `lastMessage` field (optional)
     pub fn last_message(
         mut self,
-        value: impl Into<Option<ConvoViewLastMessage<'a>>>,
+        value: impl Into<Option<ConvoViewLastMessage<S>>>,
     ) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `lastMessage` field to an Option value (optional)
-    pub fn maybe_last_message(
-        mut self,
-        value: Option<ConvoViewLastMessage<'a>>,
-    ) -> Self {
+    pub fn maybe_last_message(mut self, value: Option<ConvoViewLastMessage<S>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: convo_view_state::State> ConvoViewBuilder<'a, S> {
+impl<St: convo_view_state::State, S: BosStr> ConvoViewBuilder<St, S> {
     /// Set the `lastReaction` field (optional)
     pub fn last_reaction(
         mut self,
-        value: impl Into<Option<convo::MessageAndReactionView<'a>>>,
+        value: impl Into<Option<convo::MessageAndReactionView<S>>>,
     ) -> Self {
         self._fields.3 = value.into();
         self
@@ -4812,113 +4729,113 @@ impl<'a, S: convo_view_state::State> ConvoViewBuilder<'a, S> {
     /// Set the `lastReaction` field to an Option value (optional)
     pub fn maybe_last_reaction(
         mut self,
-        value: Option<convo::MessageAndReactionView<'a>>,
+        value: Option<convo::MessageAndReactionView<S>>,
     ) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> ConvoViewBuilder<'a, S>
+impl<St, S: BosStr> ConvoViewBuilder<St, S>
 where
-    S: convo_view_state::State,
-    S::Members: convo_view_state::IsUnset,
+    St: convo_view_state::State,
+    St::Members: convo_view_state::IsUnset,
 {
     /// Set the `members` field (required)
     pub fn members(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
-    ) -> ConvoViewBuilder<'a, convo_view_state::SetMembers<S>> {
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
+    ) -> ConvoViewBuilder<convo_view_state::SetMembers<St>, S> {
         self._fields.4 = Option::Some(value.into());
         ConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ConvoViewBuilder<'a, S>
+impl<St, S: BosStr> ConvoViewBuilder<St, S>
 where
-    S: convo_view_state::State,
-    S::Muted: convo_view_state::IsUnset,
+    St: convo_view_state::State,
+    St::Muted: convo_view_state::IsUnset,
 {
     /// Set the `muted` field (required)
     pub fn muted(
         mut self,
         value: impl Into<bool>,
-    ) -> ConvoViewBuilder<'a, convo_view_state::SetMuted<S>> {
+    ) -> ConvoViewBuilder<convo_view_state::SetMuted<St>, S> {
         self._fields.5 = Option::Some(value.into());
         ConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ConvoViewBuilder<'a, S>
+impl<St, S: BosStr> ConvoViewBuilder<St, S>
 where
-    S: convo_view_state::State,
-    S::Rev: convo_view_state::IsUnset,
+    St: convo_view_state::State,
+    St::Rev: convo_view_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> ConvoViewBuilder<'a, convo_view_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> ConvoViewBuilder<convo_view_state::SetRev<St>, S> {
         self._fields.6 = Option::Some(value.into());
         ConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: convo_view_state::State> ConvoViewBuilder<'a, S> {
+impl<St: convo_view_state::State, S: BosStr> ConvoViewBuilder<St, S> {
     /// Set the `status` field (optional)
-    pub fn status(mut self, value: impl Into<Option<convo::ConvoStatus<'a>>>) -> Self {
+    pub fn status(mut self, value: impl Into<Option<convo::ConvoStatus<S>>>) -> Self {
         self._fields.7 = value.into();
         self
     }
     /// Set the `status` field to an Option value (optional)
-    pub fn maybe_status(mut self, value: Option<convo::ConvoStatus<'a>>) -> Self {
+    pub fn maybe_status(mut self, value: Option<convo::ConvoStatus<S>>) -> Self {
         self._fields.7 = value;
         self
     }
 }
 
-impl<'a, S> ConvoViewBuilder<'a, S>
+impl<St, S: BosStr> ConvoViewBuilder<St, S>
 where
-    S: convo_view_state::State,
-    S::UnreadCount: convo_view_state::IsUnset,
+    St: convo_view_state::State,
+    St::UnreadCount: convo_view_state::IsUnset,
 {
     /// Set the `unreadCount` field (required)
     pub fn unread_count(
         mut self,
         value: impl Into<i64>,
-    ) -> ConvoViewBuilder<'a, convo_view_state::SetUnreadCount<S>> {
+    ) -> ConvoViewBuilder<convo_view_state::SetUnreadCount<St>, S> {
         self._fields.8 = Option::Some(value.into());
         ConvoViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ConvoViewBuilder<'a, S>
+impl<St, S: BosStr> ConvoViewBuilder<St, S>
 where
-    S: convo_view_state::State,
-    S::Rev: convo_view_state::IsSet,
-    S::Muted: convo_view_state::IsSet,
-    S::Members: convo_view_state::IsSet,
-    S::Id: convo_view_state::IsSet,
-    S::UnreadCount: convo_view_state::IsSet,
+    St: convo_view_state::State,
+    St::Id: convo_view_state::IsSet,
+    St::Members: convo_view_state::IsSet,
+    St::Muted: convo_view_state::IsSet,
+    St::Rev: convo_view_state::IsSet,
+    St::UnreadCount: convo_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ConvoView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ConvoView<S> {
         ConvoView {
             id: self._fields.0.unwrap(),
             kind: self._fields.1,
@@ -4932,14 +4849,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ConvoView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ConvoView<S> {
         ConvoView {
             id: self._fields.0.unwrap(),
             kind: self._fields.1,
@@ -4965,186 +4879,210 @@ pub mod deleted_message_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type SentAt;
-        type Rev;
         type Id;
+        type Rev;
         type Sender;
+        type SentAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type SentAt = Unset;
-        type Rev = Unset;
         type Id = Unset;
+        type Rev = Unset;
         type Sender = Unset;
-    }
-    ///State transition - sets the `sent_at` field to Set
-    pub struct SetSentAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSentAt<S> {}
-    impl<S: State> State for SetSentAt<S> {
-        type SentAt = Set<members::sent_at>;
-        type Rev = S::Rev;
-        type Id = S::Id;
-        type Sender = S::Sender;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type SentAt = S::SentAt;
-        type Rev = Set<members::rev>;
-        type Id = S::Id;
-        type Sender = S::Sender;
+        type SentAt = Unset;
     }
     ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type SentAt = S::SentAt;
-        type Rev = S::Rev;
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
         type Id = Set<members::id>;
-        type Sender = S::Sender;
+        type Rev = St::Rev;
+        type Sender = St::Sender;
+        type SentAt = St::SentAt;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type Id = St::Id;
+        type Rev = Set<members::rev>;
+        type Sender = St::Sender;
+        type SentAt = St::SentAt;
     }
     ///State transition - sets the `sender` field to Set
-    pub struct SetSender<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSender<S> {}
-    impl<S: State> State for SetSender<S> {
-        type SentAt = S::SentAt;
-        type Rev = S::Rev;
-        type Id = S::Id;
+    pub struct SetSender<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSender<St> {}
+    impl<St: State> State for SetSender<St> {
+        type Id = St::Id;
+        type Rev = St::Rev;
         type Sender = Set<members::sender>;
+        type SentAt = St::SentAt;
+    }
+    ///State transition - sets the `sent_at` field to Set
+    pub struct SetSentAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSentAt<St> {}
+    impl<St: State> State for SetSentAt<St> {
+        type Id = St::Id;
+        type Rev = St::Rev;
+        type Sender = St::Sender;
+        type SentAt = Set<members::sent_at>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `sent_at` field
-        pub struct sent_at(());
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `id` field
         pub struct id(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
         ///Marker type for the `sender` field
         pub struct sender(());
+        ///Marker type for the `sent_at` field
+        pub struct sent_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct DeletedMessageViewBuilder<'a, S: deleted_message_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct DeletedMessageViewBuilder<
+    St: deleted_message_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<convo::MessageViewSender<'a>>,
+        Option<S>,
+        Option<S>,
+        Option<convo::MessageViewSender<S>>,
         Option<Datetime>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> DeletedMessageView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> DeletedMessageViewBuilder<'a, deleted_message_view_state::Empty> {
+impl DeletedMessageView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> DeletedMessageViewBuilder<
+        deleted_message_view_state::Empty,
+        DefaultStr,
+    > {
         DeletedMessageViewBuilder::new()
     }
 }
 
-impl<'a> DeletedMessageViewBuilder<'a, deleted_message_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> DeletedMessageView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> DeletedMessageViewBuilder<deleted_message_view_state::Empty, S> {
+        DeletedMessageViewBuilder::builder()
+    }
+}
+
+impl DeletedMessageViewBuilder<deleted_message_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         DeletedMessageViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DeletedMessageViewBuilder<'a, S>
+impl<S: BosStr> DeletedMessageViewBuilder<deleted_message_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        DeletedMessageViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> DeletedMessageViewBuilder<St, S>
 where
-    S: deleted_message_view_state::State,
-    S::Id: deleted_message_view_state::IsUnset,
+    St: deleted_message_view_state::State,
+    St::Id: deleted_message_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> DeletedMessageViewBuilder<'a, deleted_message_view_state::SetId<S>> {
+        value: impl Into<S>,
+    ) -> DeletedMessageViewBuilder<deleted_message_view_state::SetId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         DeletedMessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DeletedMessageViewBuilder<'a, S>
+impl<St, S: BosStr> DeletedMessageViewBuilder<St, S>
 where
-    S: deleted_message_view_state::State,
-    S::Rev: deleted_message_view_state::IsUnset,
+    St: deleted_message_view_state::State,
+    St::Rev: deleted_message_view_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> DeletedMessageViewBuilder<'a, deleted_message_view_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> DeletedMessageViewBuilder<deleted_message_view_state::SetRev<St>, S> {
         self._fields.1 = Option::Some(value.into());
         DeletedMessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DeletedMessageViewBuilder<'a, S>
+impl<St, S: BosStr> DeletedMessageViewBuilder<St, S>
 where
-    S: deleted_message_view_state::State,
-    S::Sender: deleted_message_view_state::IsUnset,
+    St: deleted_message_view_state::State,
+    St::Sender: deleted_message_view_state::IsUnset,
 {
     /// Set the `sender` field (required)
     pub fn sender(
         mut self,
-        value: impl Into<convo::MessageViewSender<'a>>,
-    ) -> DeletedMessageViewBuilder<'a, deleted_message_view_state::SetSender<S>> {
+        value: impl Into<convo::MessageViewSender<S>>,
+    ) -> DeletedMessageViewBuilder<deleted_message_view_state::SetSender<St>, S> {
         self._fields.2 = Option::Some(value.into());
         DeletedMessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DeletedMessageViewBuilder<'a, S>
+impl<St, S: BosStr> DeletedMessageViewBuilder<St, S>
 where
-    S: deleted_message_view_state::State,
-    S::SentAt: deleted_message_view_state::IsUnset,
+    St: deleted_message_view_state::State,
+    St::SentAt: deleted_message_view_state::IsUnset,
 {
     /// Set the `sentAt` field (required)
     pub fn sent_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> DeletedMessageViewBuilder<'a, deleted_message_view_state::SetSentAt<S>> {
+    ) -> DeletedMessageViewBuilder<deleted_message_view_state::SetSentAt<St>, S> {
         self._fields.3 = Option::Some(value.into());
         DeletedMessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> DeletedMessageViewBuilder<'a, S>
+impl<St, S: BosStr> DeletedMessageViewBuilder<St, S>
 where
-    S: deleted_message_view_state::State,
-    S::SentAt: deleted_message_view_state::IsSet,
-    S::Rev: deleted_message_view_state::IsSet,
-    S::Id: deleted_message_view_state::IsSet,
-    S::Sender: deleted_message_view_state::IsSet,
+    St: deleted_message_view_state::State,
+    St::Id: deleted_message_view_state::IsSet,
+    St::Rev: deleted_message_view_state::IsSet,
+    St::Sender: deleted_message_view_state::IsSet,
+    St::SentAt: deleted_message_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> DeletedMessageView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> DeletedMessageView<S> {
         DeletedMessageView {
             id: self._fields.0.unwrap(),
             rev: self._fields.1.unwrap(),
@@ -5153,14 +5091,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> DeletedMessageView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> DeletedMessageView<S> {
         DeletedMessageView {
             id: self._fields.0.unwrap(),
             rev: self._fields.1.unwrap(),
@@ -5181,178 +5116,198 @@ pub mod group_convo_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type LockStatus;
-        type Name;
         type CreatedAt;
+        type LockStatus;
+        type LockStatusModerationOverride;
         type MemberCount;
         type MemberLimit;
-        type LockStatusModerationOverride;
+        type Name;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type LockStatus = Unset;
-        type Name = Unset;
         type CreatedAt = Unset;
+        type LockStatus = Unset;
+        type LockStatusModerationOverride = Unset;
         type MemberCount = Unset;
         type MemberLimit = Unset;
-        type LockStatusModerationOverride = Unset;
-    }
-    ///State transition - sets the `lock_status` field to Set
-    pub struct SetLockStatus<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLockStatus<S> {}
-    impl<S: State> State for SetLockStatus<S> {
-        type LockStatus = Set<members::lock_status>;
-        type Name = S::Name;
-        type CreatedAt = S::CreatedAt;
-        type MemberCount = S::MemberCount;
-        type MemberLimit = S::MemberLimit;
-        type LockStatusModerationOverride = S::LockStatusModerationOverride;
-    }
-    ///State transition - sets the `name` field to Set
-    pub struct SetName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetName<S> {}
-    impl<S: State> State for SetName<S> {
-        type LockStatus = S::LockStatus;
-        type Name = Set<members::name>;
-        type CreatedAt = S::CreatedAt;
-        type MemberCount = S::MemberCount;
-        type MemberLimit = S::MemberLimit;
-        type LockStatusModerationOverride = S::LockStatusModerationOverride;
+        type Name = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type LockStatus = S::LockStatus;
-        type Name = S::Name;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
-        type MemberCount = S::MemberCount;
-        type MemberLimit = S::MemberLimit;
-        type LockStatusModerationOverride = S::LockStatusModerationOverride;
+        type LockStatus = St::LockStatus;
+        type LockStatusModerationOverride = St::LockStatusModerationOverride;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
     }
-    ///State transition - sets the `member_count` field to Set
-    pub struct SetMemberCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMemberCount<S> {}
-    impl<S: State> State for SetMemberCount<S> {
-        type LockStatus = S::LockStatus;
-        type Name = S::Name;
-        type CreatedAt = S::CreatedAt;
-        type MemberCount = Set<members::member_count>;
-        type MemberLimit = S::MemberLimit;
-        type LockStatusModerationOverride = S::LockStatusModerationOverride;
-    }
-    ///State transition - sets the `member_limit` field to Set
-    pub struct SetMemberLimit<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMemberLimit<S> {}
-    impl<S: State> State for SetMemberLimit<S> {
-        type LockStatus = S::LockStatus;
-        type Name = S::Name;
-        type CreatedAt = S::CreatedAt;
-        type MemberCount = S::MemberCount;
-        type MemberLimit = Set<members::member_limit>;
-        type LockStatusModerationOverride = S::LockStatusModerationOverride;
+    ///State transition - sets the `lock_status` field to Set
+    pub struct SetLockStatus<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLockStatus<St> {}
+    impl<St: State> State for SetLockStatus<St> {
+        type CreatedAt = St::CreatedAt;
+        type LockStatus = Set<members::lock_status>;
+        type LockStatusModerationOverride = St::LockStatusModerationOverride;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
     }
     ///State transition - sets the `lock_status_moderation_override` field to Set
-    pub struct SetLockStatusModerationOverride<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLockStatusModerationOverride<S> {}
-    impl<S: State> State for SetLockStatusModerationOverride<S> {
-        type LockStatus = S::LockStatus;
-        type Name = S::Name;
-        type CreatedAt = S::CreatedAt;
-        type MemberCount = S::MemberCount;
-        type MemberLimit = S::MemberLimit;
+    pub struct SetLockStatusModerationOverride<St: State = Empty>(
+        PhantomData<fn() -> St>,
+    );
+    impl<St: State> sealed::Sealed for SetLockStatusModerationOverride<St> {}
+    impl<St: State> State for SetLockStatusModerationOverride<St> {
+        type CreatedAt = St::CreatedAt;
+        type LockStatus = St::LockStatus;
         type LockStatusModerationOverride = Set<
             members::lock_status_moderation_override,
         >;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+    }
+    ///State transition - sets the `member_count` field to Set
+    pub struct SetMemberCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMemberCount<St> {}
+    impl<St: State> State for SetMemberCount<St> {
+        type CreatedAt = St::CreatedAt;
+        type LockStatus = St::LockStatus;
+        type LockStatusModerationOverride = St::LockStatusModerationOverride;
+        type MemberCount = Set<members::member_count>;
+        type MemberLimit = St::MemberLimit;
+        type Name = St::Name;
+    }
+    ///State transition - sets the `member_limit` field to Set
+    pub struct SetMemberLimit<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMemberLimit<St> {}
+    impl<St: State> State for SetMemberLimit<St> {
+        type CreatedAt = St::CreatedAt;
+        type LockStatus = St::LockStatus;
+        type LockStatusModerationOverride = St::LockStatusModerationOverride;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = Set<members::member_limit>;
+        type Name = St::Name;
+    }
+    ///State transition - sets the `name` field to Set
+    pub struct SetName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetName<St> {}
+    impl<St: State> State for SetName<St> {
+        type CreatedAt = St::CreatedAt;
+        type LockStatus = St::LockStatus;
+        type LockStatusModerationOverride = St::LockStatusModerationOverride;
+        type MemberCount = St::MemberCount;
+        type MemberLimit = St::MemberLimit;
+        type Name = Set<members::name>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `lock_status` field
-        pub struct lock_status(());
-        ///Marker type for the `name` field
-        pub struct name(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `lock_status` field
+        pub struct lock_status(());
+        ///Marker type for the `lock_status_moderation_override` field
+        pub struct lock_status_moderation_override(());
         ///Marker type for the `member_count` field
         pub struct member_count(());
         ///Marker type for the `member_limit` field
         pub struct member_limit(());
-        ///Marker type for the `lock_status_moderation_override` field
-        pub struct lock_status_moderation_override(());
+        ///Marker type for the `name` field
+        pub struct name(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GroupConvoBuilder<'a, S: group_convo_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct GroupConvoBuilder<St: group_convo_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<Datetime>,
-        Option<JoinLinkView<'a>>,
+        Option<JoinLinkView<S>>,
         Option<i64>,
-        Option<convo::ConvoLockStatus<'a>>,
+        Option<convo::ConvoLockStatus<S>>,
         Option<bool>,
         Option<i64>,
         Option<i64>,
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<i64>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GroupConvo<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GroupConvoBuilder<'a, group_convo_state::Empty> {
+impl GroupConvo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GroupConvoBuilder<group_convo_state::Empty, DefaultStr> {
         GroupConvoBuilder::new()
     }
 }
 
-impl<'a> GroupConvoBuilder<'a, group_convo_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GroupConvo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GroupConvoBuilder<group_convo_state::Empty, S> {
+        GroupConvoBuilder::builder()
+    }
+}
+
+impl GroupConvoBuilder<group_convo_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<S: BosStr> GroupConvoBuilder<group_convo_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GroupConvoBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::CreatedAt: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::CreatedAt: group_convo_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetCreatedAt<S>> {
+    ) -> GroupConvoBuilder<group_convo_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: group_convo_state::State> GroupConvoBuilder<'a, S> {
+impl<St: group_convo_state::State, S: BosStr> GroupConvoBuilder<St, S> {
     /// Set the `joinLink` field (optional)
-    pub fn join_link(mut self, value: impl Into<Option<JoinLinkView<'a>>>) -> Self {
+    pub fn join_link(mut self, value: impl Into<Option<JoinLinkView<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `joinLink` field to an Option value (optional)
-    pub fn maybe_join_link(mut self, value: Option<JoinLinkView<'a>>) -> Self {
+    pub fn maybe_join_link(mut self, value: Option<JoinLinkView<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: group_convo_state::State> GroupConvoBuilder<'a, S> {
+impl<St: group_convo_state::State, S: BosStr> GroupConvoBuilder<St, S> {
     /// Set the `joinRequestCount` field (optional)
     pub fn join_request_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.2 = value.into();
@@ -5365,102 +5320,102 @@ impl<'a, S: group_convo_state::State> GroupConvoBuilder<'a, S> {
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::LockStatus: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::LockStatus: group_convo_state::IsUnset,
 {
     /// Set the `lockStatus` field (required)
     pub fn lock_status(
         mut self,
-        value: impl Into<convo::ConvoLockStatus<'a>>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetLockStatus<S>> {
+        value: impl Into<convo::ConvoLockStatus<S>>,
+    ) -> GroupConvoBuilder<group_convo_state::SetLockStatus<St>, S> {
         self._fields.3 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::LockStatusModerationOverride: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::LockStatusModerationOverride: group_convo_state::IsUnset,
 {
     /// Set the `lockStatusModerationOverride` field (required)
     pub fn lock_status_moderation_override(
         mut self,
         value: impl Into<bool>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetLockStatusModerationOverride<S>> {
+    ) -> GroupConvoBuilder<group_convo_state::SetLockStatusModerationOverride<St>, S> {
         self._fields.4 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::MemberCount: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::MemberCount: group_convo_state::IsUnset,
 {
     /// Set the `memberCount` field (required)
     pub fn member_count(
         mut self,
         value: impl Into<i64>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetMemberCount<S>> {
+    ) -> GroupConvoBuilder<group_convo_state::SetMemberCount<St>, S> {
         self._fields.5 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::MemberLimit: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::MemberLimit: group_convo_state::IsUnset,
 {
     /// Set the `memberLimit` field (required)
     pub fn member_limit(
         mut self,
         value: impl Into<i64>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetMemberLimit<S>> {
+    ) -> GroupConvoBuilder<group_convo_state::SetMemberLimit<St>, S> {
         self._fields.6 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::Name: group_convo_state::IsUnset,
+    St: group_convo_state::State,
+    St::Name: group_convo_state::IsUnset,
 {
     /// Set the `name` field (required)
     pub fn name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> GroupConvoBuilder<'a, group_convo_state::SetName<S>> {
+        value: impl Into<S>,
+    ) -> GroupConvoBuilder<group_convo_state::SetName<St>, S> {
         self._fields.7 = Option::Some(value.into());
         GroupConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: group_convo_state::State> GroupConvoBuilder<'a, S> {
+impl<St: group_convo_state::State, S: BosStr> GroupConvoBuilder<St, S> {
     /// Set the `unreadJoinRequestCount` field (optional)
     pub fn unread_join_request_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.8 = value.into();
@@ -5473,18 +5428,18 @@ impl<'a, S: group_convo_state::State> GroupConvoBuilder<'a, S> {
     }
 }
 
-impl<'a, S> GroupConvoBuilder<'a, S>
+impl<St, S: BosStr> GroupConvoBuilder<St, S>
 where
-    S: group_convo_state::State,
-    S::LockStatus: group_convo_state::IsSet,
-    S::Name: group_convo_state::IsSet,
-    S::CreatedAt: group_convo_state::IsSet,
-    S::MemberCount: group_convo_state::IsSet,
-    S::MemberLimit: group_convo_state::IsSet,
-    S::LockStatusModerationOverride: group_convo_state::IsSet,
+    St: group_convo_state::State,
+    St::CreatedAt: group_convo_state::IsSet,
+    St::LockStatus: group_convo_state::IsSet,
+    St::LockStatusModerationOverride: group_convo_state::IsSet,
+    St::MemberCount: group_convo_state::IsSet,
+    St::MemberLimit: group_convo_state::IsSet,
+    St::Name: group_convo_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GroupConvo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GroupConvo<S> {
         GroupConvo {
             created_at: self._fields.0.unwrap(),
             join_link: self._fields.1,
@@ -5498,14 +5453,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> GroupConvo<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> GroupConvo<S> {
         GroupConvo {
             created_at: self._fields.0.unwrap(),
             join_link: self._fields.1,
@@ -5531,186 +5483,204 @@ pub mod log_add_member_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type RelatedProfiles;
-        type Rev;
         type ConvoId;
         type Message;
+        type RelatedProfiles;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type RelatedProfiles = Unset;
-        type Rev = Unset;
         type ConvoId = Unset;
         type Message = Unset;
-    }
-    ///State transition - sets the `related_profiles` field to Set
-    pub struct SetRelatedProfiles<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRelatedProfiles<S> {}
-    impl<S: State> State for SetRelatedProfiles<S> {
-        type RelatedProfiles = Set<members::related_profiles>;
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type RelatedProfiles = S::RelatedProfiles;
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
+        type RelatedProfiles = Unset;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type RelatedProfiles = S::RelatedProfiles;
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Message = S::Message;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type RelatedProfiles = S::RelatedProfiles;
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `related_profiles` field to Set
+    pub struct SetRelatedProfiles<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRelatedProfiles<St> {}
+    impl<St: State> State for SetRelatedProfiles<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = Set<members::related_profiles>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `related_profiles` field
-        pub struct related_profiles(());
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `message` field
         pub struct message(());
+        ///Marker type for the `related_profiles` field
+        pub struct related_profiles(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogAddMemberBuilder<'a, S: log_add_member_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct LogAddMemberBuilder<St: log_add_member_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<convo::SystemMessageView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogAddMember<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogAddMemberBuilder<'a, log_add_member_state::Empty> {
+impl LogAddMember<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogAddMemberBuilder<log_add_member_state::Empty, DefaultStr> {
         LogAddMemberBuilder::new()
     }
 }
 
-impl<'a> LogAddMemberBuilder<'a, log_add_member_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogAddMember<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogAddMemberBuilder<log_add_member_state::Empty, S> {
+        LogAddMemberBuilder::builder()
+    }
+}
+
+impl LogAddMemberBuilder<log_add_member_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogAddMemberBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogAddMemberBuilder<'a, S>
+impl<S: BosStr> LogAddMemberBuilder<log_add_member_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogAddMemberBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogAddMemberBuilder<St, S>
 where
-    S: log_add_member_state::State,
-    S::ConvoId: log_add_member_state::IsUnset,
+    St: log_add_member_state::State,
+    St::ConvoId: log_add_member_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogAddMemberBuilder<'a, log_add_member_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogAddMemberBuilder<log_add_member_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogAddMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogAddMemberBuilder<'a, S>
+impl<St, S: BosStr> LogAddMemberBuilder<St, S>
 where
-    S: log_add_member_state::State,
-    S::Message: log_add_member_state::IsUnset,
+    St: log_add_member_state::State,
+    St::Message: log_add_member_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogAddMemberBuilder<'a, log_add_member_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogAddMemberBuilder<log_add_member_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogAddMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogAddMemberBuilder<'a, S>
+impl<St, S: BosStr> LogAddMemberBuilder<St, S>
 where
-    S: log_add_member_state::State,
-    S::RelatedProfiles: log_add_member_state::IsUnset,
+    St: log_add_member_state::State,
+    St::RelatedProfiles: log_add_member_state::IsUnset,
 {
     /// Set the `relatedProfiles` field (required)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
-    ) -> LogAddMemberBuilder<'a, log_add_member_state::SetRelatedProfiles<S>> {
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
+    ) -> LogAddMemberBuilder<log_add_member_state::SetRelatedProfiles<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogAddMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogAddMemberBuilder<'a, S>
+impl<St, S: BosStr> LogAddMemberBuilder<St, S>
 where
-    S: log_add_member_state::State,
-    S::Rev: log_add_member_state::IsUnset,
+    St: log_add_member_state::State,
+    St::Rev: log_add_member_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogAddMemberBuilder<'a, log_add_member_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogAddMemberBuilder<log_add_member_state::SetRev<St>, S> {
         self._fields.3 = Option::Some(value.into());
         LogAddMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogAddMemberBuilder<'a, S>
+impl<St, S: BosStr> LogAddMemberBuilder<St, S>
 where
-    S: log_add_member_state::State,
-    S::RelatedProfiles: log_add_member_state::IsSet,
-    S::Rev: log_add_member_state::IsSet,
-    S::ConvoId: log_add_member_state::IsSet,
-    S::Message: log_add_member_state::IsSet,
+    St: log_add_member_state::State,
+    St::ConvoId: log_add_member_state::IsSet,
+    St::Message: log_add_member_state::IsSet,
+    St::RelatedProfiles: log_add_member_state::IsSet,
+    St::Rev: log_add_member_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogAddMember<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogAddMember<S> {
         LogAddMember {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -5719,14 +5689,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogAddMember<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogAddMember<S> {
         LogAddMember {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -5747,163 +5714,184 @@ pub mod log_add_reaction_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
-        type Reaction;
-        type Message;
         type ConvoId;
+        type Message;
+        type Reaction;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
-        type Reaction = Unset;
-        type Message = Unset;
         type ConvoId = Unset;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type Reaction = S::Reaction;
-        type Message = S::Message;
-        type ConvoId = S::ConvoId;
-    }
-    ///State transition - sets the `reaction` field to Set
-    pub struct SetReaction<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReaction<S> {}
-    impl<S: State> State for SetReaction<S> {
-        type Rev = S::Rev;
-        type Reaction = Set<members::reaction>;
-        type Message = S::Message;
-        type ConvoId = S::ConvoId;
-    }
-    ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type Rev = S::Rev;
-        type Reaction = S::Reaction;
-        type Message = Set<members::message>;
-        type ConvoId = S::ConvoId;
+        type Message = Unset;
+        type Reaction = Unset;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Rev = S::Rev;
-        type Reaction = S::Reaction;
-        type Message = S::Message;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
+        type Message = St::Message;
+        type Reaction = St::Reaction;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `message` field to Set
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
+        type Message = Set<members::message>;
+        type Reaction = St::Reaction;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `reaction` field to Set
+    pub struct SetReaction<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReaction<St> {}
+    impl<St: State> State for SetReaction<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type Reaction = Set<members::reaction>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type Reaction = St::Reaction;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
-        ///Marker type for the `reaction` field
-        pub struct reaction(());
-        ///Marker type for the `message` field
-        pub struct message(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
+        ///Marker type for the `message` field
+        pub struct message(());
+        ///Marker type for the `reaction` field
+        pub struct reaction(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogAddReactionBuilder<'a, S: log_add_reaction_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct LogAddReactionBuilder<
+    St: log_add_reaction_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<LogAddReactionMessage<'a>>,
-        Option<convo::ReactionView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<LogAddReactionMessage<S>>,
+        Option<convo::ReactionView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogAddReaction<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogAddReactionBuilder<'a, log_add_reaction_state::Empty> {
+impl LogAddReaction<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogAddReactionBuilder<log_add_reaction_state::Empty, DefaultStr> {
         LogAddReactionBuilder::new()
     }
 }
 
-impl<'a> LogAddReactionBuilder<'a, log_add_reaction_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogAddReaction<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogAddReactionBuilder<log_add_reaction_state::Empty, S> {
+        LogAddReactionBuilder::builder()
+    }
+}
+
+impl LogAddReactionBuilder<log_add_reaction_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogAddReactionBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogAddReactionBuilder<'a, S>
+impl<S: BosStr> LogAddReactionBuilder<log_add_reaction_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogAddReactionBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogAddReactionBuilder<St, S>
 where
-    S: log_add_reaction_state::State,
-    S::ConvoId: log_add_reaction_state::IsUnset,
+    St: log_add_reaction_state::State,
+    St::ConvoId: log_add_reaction_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogAddReactionBuilder<'a, log_add_reaction_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogAddReactionBuilder<log_add_reaction_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogAddReactionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogAddReactionBuilder<'a, S>
+impl<St, S: BosStr> LogAddReactionBuilder<St, S>
 where
-    S: log_add_reaction_state::State,
-    S::Message: log_add_reaction_state::IsUnset,
+    St: log_add_reaction_state::State,
+    St::Message: log_add_reaction_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<LogAddReactionMessage<'a>>,
-    ) -> LogAddReactionBuilder<'a, log_add_reaction_state::SetMessage<S>> {
+        value: impl Into<LogAddReactionMessage<S>>,
+    ) -> LogAddReactionBuilder<log_add_reaction_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogAddReactionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogAddReactionBuilder<'a, S>
+impl<St, S: BosStr> LogAddReactionBuilder<St, S>
 where
-    S: log_add_reaction_state::State,
-    S::Reaction: log_add_reaction_state::IsUnset,
+    St: log_add_reaction_state::State,
+    St::Reaction: log_add_reaction_state::IsUnset,
 {
     /// Set the `reaction` field (required)
     pub fn reaction(
         mut self,
-        value: impl Into<convo::ReactionView<'a>>,
-    ) -> LogAddReactionBuilder<'a, log_add_reaction_state::SetReaction<S>> {
+        value: impl Into<convo::ReactionView<S>>,
+    ) -> LogAddReactionBuilder<log_add_reaction_state::SetReaction<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogAddReactionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: log_add_reaction_state::State> LogAddReactionBuilder<'a, S> {
+impl<St: log_add_reaction_state::State, S: BosStr> LogAddReactionBuilder<St, S> {
     /// Set the `relatedProfiles` field (optional)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Option<Vec<ProfileViewBasic<'a>>>>,
+        value: impl Into<Option<Vec<ProfileViewBasic<S>>>>,
     ) -> Self {
         self._fields.3 = value.into();
         self
@@ -5911,42 +5899,42 @@ impl<'a, S: log_add_reaction_state::State> LogAddReactionBuilder<'a, S> {
     /// Set the `relatedProfiles` field to an Option value (optional)
     pub fn maybe_related_profiles(
         mut self,
-        value: Option<Vec<ProfileViewBasic<'a>>>,
+        value: Option<Vec<ProfileViewBasic<S>>>,
     ) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> LogAddReactionBuilder<'a, S>
+impl<St, S: BosStr> LogAddReactionBuilder<St, S>
 where
-    S: log_add_reaction_state::State,
-    S::Rev: log_add_reaction_state::IsUnset,
+    St: log_add_reaction_state::State,
+    St::Rev: log_add_reaction_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogAddReactionBuilder<'a, log_add_reaction_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogAddReactionBuilder<log_add_reaction_state::SetRev<St>, S> {
         self._fields.4 = Option::Some(value.into());
         LogAddReactionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogAddReactionBuilder<'a, S>
+impl<St, S: BosStr> LogAddReactionBuilder<St, S>
 where
-    S: log_add_reaction_state::State,
-    S::Rev: log_add_reaction_state::IsSet,
-    S::Reaction: log_add_reaction_state::IsSet,
-    S::Message: log_add_reaction_state::IsSet,
-    S::ConvoId: log_add_reaction_state::IsSet,
+    St: log_add_reaction_state::State,
+    St::ConvoId: log_add_reaction_state::IsSet,
+    St::Message: log_add_reaction_state::IsSet,
+    St::Reaction: log_add_reaction_state::IsSet,
+    St::Rev: log_add_reaction_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogAddReaction<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogAddReaction<S> {
         LogAddReaction {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -5956,14 +5944,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogAddReaction<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogAddReaction<S> {
         LogAddReaction {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -5985,151 +5970,175 @@ pub mod log_approve_join_request_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
         type ConvoId;
         type Member;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
         type ConvoId = Unset;
         type Member = Unset;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
-        type Member = S::Member;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Member = S::Member;
+        type Member = St::Member;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `member` field to Set
-    pub struct SetMember<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMember<S> {}
-    impl<S: State> State for SetMember<S> {
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
+    pub struct SetMember<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMember<St> {}
+    impl<St: State> State for SetMember<St> {
+        type ConvoId = St::ConvoId;
         type Member = Set<members::member>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Member = St::Member;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `member` field
         pub struct member(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogApproveJoinRequestBuilder<'a, S: log_approve_join_request_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<ProfileViewBasic<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogApproveJoinRequestBuilder<
+    St: log_approve_join_request_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<ProfileViewBasic<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogApproveJoinRequest<'a> {
-    /// Create a new builder for this type
+impl LogApproveJoinRequest<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> LogApproveJoinRequestBuilder<
-        'a,
         log_approve_join_request_state::Empty,
+        DefaultStr,
     > {
         LogApproveJoinRequestBuilder::new()
     }
 }
 
-impl<'a> LogApproveJoinRequestBuilder<'a, log_approve_join_request_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogApproveJoinRequest<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogApproveJoinRequestBuilder<
+        log_approve_join_request_state::Empty,
+        S,
+    > {
+        LogApproveJoinRequestBuilder::builder()
+    }
+}
+
+impl LogApproveJoinRequestBuilder<log_approve_join_request_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogApproveJoinRequestBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogApproveJoinRequestBuilder<'a, S>
+impl<S: BosStr> LogApproveJoinRequestBuilder<log_approve_join_request_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogApproveJoinRequestBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogApproveJoinRequestBuilder<St, S>
 where
-    S: log_approve_join_request_state::State,
-    S::ConvoId: log_approve_join_request_state::IsUnset,
+    St: log_approve_join_request_state::State,
+    St::ConvoId: log_approve_join_request_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
+        value: impl Into<S>,
     ) -> LogApproveJoinRequestBuilder<
-        'a,
-        log_approve_join_request_state::SetConvoId<S>,
+        log_approve_join_request_state::SetConvoId<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         LogApproveJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogApproveJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogApproveJoinRequestBuilder<St, S>
 where
-    S: log_approve_join_request_state::State,
-    S::Member: log_approve_join_request_state::IsUnset,
+    St: log_approve_join_request_state::State,
+    St::Member: log_approve_join_request_state::IsUnset,
 {
     /// Set the `member` field (required)
     pub fn member(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
-    ) -> LogApproveJoinRequestBuilder<'a, log_approve_join_request_state::SetMember<S>> {
+        value: impl Into<ProfileViewBasic<S>>,
+    ) -> LogApproveJoinRequestBuilder<log_approve_join_request_state::SetMember<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogApproveJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogApproveJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogApproveJoinRequestBuilder<St, S>
 where
-    S: log_approve_join_request_state::State,
-    S::Rev: log_approve_join_request_state::IsUnset,
+    St: log_approve_join_request_state::State,
+    St::Rev: log_approve_join_request_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogApproveJoinRequestBuilder<'a, log_approve_join_request_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogApproveJoinRequestBuilder<log_approve_join_request_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogApproveJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogApproveJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogApproveJoinRequestBuilder<St, S>
 where
-    S: log_approve_join_request_state::State,
-    S::Rev: log_approve_join_request_state::IsSet,
-    S::ConvoId: log_approve_join_request_state::IsSet,
-    S::Member: log_approve_join_request_state::IsSet,
+    St: log_approve_join_request_state::State,
+    St::ConvoId: log_approve_join_request_state::IsSet,
+    St::Member: log_approve_join_request_state::IsSet,
+    St::Rev: log_approve_join_request_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogApproveJoinRequest<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogApproveJoinRequest<S> {
         LogApproveJoinRequest {
             convo_id: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -6137,14 +6146,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogApproveJoinRequest<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogApproveJoinRequest<S> {
         LogApproveJoinRequest {
             convo_id: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -6164,149 +6170,169 @@ pub mod log_create_join_link_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Message;
         type ConvoId;
+        type Message;
         type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Message = Unset;
         type ConvoId = Unset;
+        type Message = Unset;
         type Rev = Unset;
     }
-    ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type Message = Set<members::message>;
-        type ConvoId = S::ConvoId;
-        type Rev = S::Rev;
-    }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Message = S::Message;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Rev = S::Rev;
+        type Message = St::Message;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `message` field to Set
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
+        type Message = Set<members::message>;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Message = S::Message;
-        type ConvoId = S::ConvoId;
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
         type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `message` field
-        pub struct message(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
+        ///Marker type for the `message` field
+        pub struct message(());
         ///Marker type for the `rev` field
         pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogCreateJoinLinkBuilder<'a, S: log_create_join_link_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogCreateJoinLinkBuilder<
+    St: log_create_join_link_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<convo::SystemMessageView<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogCreateJoinLink<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogCreateJoinLinkBuilder<'a, log_create_join_link_state::Empty> {
+impl LogCreateJoinLink<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogCreateJoinLinkBuilder<
+        log_create_join_link_state::Empty,
+        DefaultStr,
+    > {
         LogCreateJoinLinkBuilder::new()
     }
 }
 
-impl<'a> LogCreateJoinLinkBuilder<'a, log_create_join_link_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogCreateJoinLink<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogCreateJoinLinkBuilder<log_create_join_link_state::Empty, S> {
+        LogCreateJoinLinkBuilder::builder()
+    }
+}
+
+impl LogCreateJoinLinkBuilder<log_create_join_link_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogCreateJoinLinkBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogCreateJoinLinkBuilder<'a, S>
+impl<S: BosStr> LogCreateJoinLinkBuilder<log_create_join_link_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogCreateJoinLinkBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogCreateJoinLinkBuilder<St, S>
 where
-    S: log_create_join_link_state::State,
-    S::ConvoId: log_create_join_link_state::IsUnset,
+    St: log_create_join_link_state::State,
+    St::ConvoId: log_create_join_link_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogCreateJoinLinkBuilder<'a, log_create_join_link_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogCreateJoinLinkBuilder<log_create_join_link_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogCreateJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogCreateJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogCreateJoinLinkBuilder<St, S>
 where
-    S: log_create_join_link_state::State,
-    S::Message: log_create_join_link_state::IsUnset,
+    St: log_create_join_link_state::State,
+    St::Message: log_create_join_link_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogCreateJoinLinkBuilder<'a, log_create_join_link_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogCreateJoinLinkBuilder<log_create_join_link_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogCreateJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogCreateJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogCreateJoinLinkBuilder<St, S>
 where
-    S: log_create_join_link_state::State,
-    S::Rev: log_create_join_link_state::IsUnset,
+    St: log_create_join_link_state::State,
+    St::Rev: log_create_join_link_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogCreateJoinLinkBuilder<'a, log_create_join_link_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogCreateJoinLinkBuilder<log_create_join_link_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogCreateJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogCreateJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogCreateJoinLinkBuilder<St, S>
 where
-    S: log_create_join_link_state::State,
-    S::Message: log_create_join_link_state::IsSet,
-    S::ConvoId: log_create_join_link_state::IsSet,
-    S::Rev: log_create_join_link_state::IsSet,
+    St: log_create_join_link_state::State,
+    St::ConvoId: log_create_join_link_state::IsSet,
+    St::Message: log_create_join_link_state::IsSet,
+    St::Rev: log_create_join_link_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogCreateJoinLink<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogCreateJoinLink<S> {
         LogCreateJoinLink {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -6314,14 +6340,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogCreateJoinLink<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogCreateJoinLink<S> {
         LogCreateJoinLink {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -6342,126 +6365,150 @@ pub mod log_create_message_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type ConvoId;
-        type Rev;
         type Message;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type ConvoId = Unset;
-        type Rev = Unset;
         type Message = Unset;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Rev = S::Rev;
-        type Message = S::Message;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type ConvoId = S::ConvoId;
-        type Rev = Set<members::rev>;
-        type Message = S::Message;
+        type Message = St::Message;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type ConvoId = S::ConvoId;
-        type Rev = S::Rev;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `message` field
         pub struct message(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogCreateMessageBuilder<'a, S: log_create_message_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct LogCreateMessageBuilder<
+    St: log_create_message_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<LogCreateMessageMessage<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<LogCreateMessageMessage<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogCreateMessage<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogCreateMessageBuilder<'a, log_create_message_state::Empty> {
+impl LogCreateMessage<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogCreateMessageBuilder<
+        log_create_message_state::Empty,
+        DefaultStr,
+    > {
         LogCreateMessageBuilder::new()
     }
 }
 
-impl<'a> LogCreateMessageBuilder<'a, log_create_message_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogCreateMessage<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogCreateMessageBuilder<log_create_message_state::Empty, S> {
+        LogCreateMessageBuilder::builder()
+    }
+}
+
+impl LogCreateMessageBuilder<log_create_message_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogCreateMessageBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogCreateMessageBuilder<'a, S>
+impl<S: BosStr> LogCreateMessageBuilder<log_create_message_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogCreateMessageBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogCreateMessageBuilder<St, S>
 where
-    S: log_create_message_state::State,
-    S::ConvoId: log_create_message_state::IsUnset,
+    St: log_create_message_state::State,
+    St::ConvoId: log_create_message_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogCreateMessageBuilder<'a, log_create_message_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogCreateMessageBuilder<log_create_message_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogCreateMessageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogCreateMessageBuilder<'a, S>
+impl<St, S: BosStr> LogCreateMessageBuilder<St, S>
 where
-    S: log_create_message_state::State,
-    S::Message: log_create_message_state::IsUnset,
+    St: log_create_message_state::State,
+    St::Message: log_create_message_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<LogCreateMessageMessage<'a>>,
-    ) -> LogCreateMessageBuilder<'a, log_create_message_state::SetMessage<S>> {
+        value: impl Into<LogCreateMessageMessage<S>>,
+    ) -> LogCreateMessageBuilder<log_create_message_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogCreateMessageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: log_create_message_state::State> LogCreateMessageBuilder<'a, S> {
+impl<St: log_create_message_state::State, S: BosStr> LogCreateMessageBuilder<St, S> {
     /// Set the `relatedProfiles` field (optional)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Option<Vec<ProfileViewBasic<'a>>>>,
+        value: impl Into<Option<Vec<ProfileViewBasic<S>>>>,
     ) -> Self {
         self._fields.2 = value.into();
         self
@@ -6469,41 +6516,41 @@ impl<'a, S: log_create_message_state::State> LogCreateMessageBuilder<'a, S> {
     /// Set the `relatedProfiles` field to an Option value (optional)
     pub fn maybe_related_profiles(
         mut self,
-        value: Option<Vec<ProfileViewBasic<'a>>>,
+        value: Option<Vec<ProfileViewBasic<S>>>,
     ) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> LogCreateMessageBuilder<'a, S>
+impl<St, S: BosStr> LogCreateMessageBuilder<St, S>
 where
-    S: log_create_message_state::State,
-    S::Rev: log_create_message_state::IsUnset,
+    St: log_create_message_state::State,
+    St::Rev: log_create_message_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogCreateMessageBuilder<'a, log_create_message_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogCreateMessageBuilder<log_create_message_state::SetRev<St>, S> {
         self._fields.3 = Option::Some(value.into());
         LogCreateMessageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogCreateMessageBuilder<'a, S>
+impl<St, S: BosStr> LogCreateMessageBuilder<St, S>
 where
-    S: log_create_message_state::State,
-    S::ConvoId: log_create_message_state::IsSet,
-    S::Rev: log_create_message_state::IsSet,
-    S::Message: log_create_message_state::IsSet,
+    St: log_create_message_state::State,
+    St::ConvoId: log_create_message_state::IsSet,
+    St::Message: log_create_message_state::IsSet,
+    St::Rev: log_create_message_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogCreateMessage<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogCreateMessage<S> {
         LogCreateMessage {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -6512,14 +6559,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogCreateMessage<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogCreateMessage<S> {
         LogCreateMessage {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -6540,149 +6584,169 @@ pub mod log_delete_message_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Message;
         type ConvoId;
+        type Message;
         type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Message = Unset;
         type ConvoId = Unset;
+        type Message = Unset;
         type Rev = Unset;
     }
-    ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type Message = Set<members::message>;
-        type ConvoId = S::ConvoId;
-        type Rev = S::Rev;
-    }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Message = S::Message;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Rev = S::Rev;
+        type Message = St::Message;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `message` field to Set
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
+        type Message = Set<members::message>;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Message = S::Message;
-        type ConvoId = S::ConvoId;
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
         type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `message` field
-        pub struct message(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
+        ///Marker type for the `message` field
+        pub struct message(());
         ///Marker type for the `rev` field
         pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogDeleteMessageBuilder<'a, S: log_delete_message_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<LogDeleteMessageMessage<'a>>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogDeleteMessageBuilder<
+    St: log_delete_message_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<LogDeleteMessageMessage<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogDeleteMessage<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogDeleteMessageBuilder<'a, log_delete_message_state::Empty> {
+impl LogDeleteMessage<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogDeleteMessageBuilder<
+        log_delete_message_state::Empty,
+        DefaultStr,
+    > {
         LogDeleteMessageBuilder::new()
     }
 }
 
-impl<'a> LogDeleteMessageBuilder<'a, log_delete_message_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogDeleteMessage<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogDeleteMessageBuilder<log_delete_message_state::Empty, S> {
+        LogDeleteMessageBuilder::builder()
+    }
+}
+
+impl LogDeleteMessageBuilder<log_delete_message_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogDeleteMessageBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogDeleteMessageBuilder<'a, S>
+impl<S: BosStr> LogDeleteMessageBuilder<log_delete_message_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogDeleteMessageBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogDeleteMessageBuilder<St, S>
 where
-    S: log_delete_message_state::State,
-    S::ConvoId: log_delete_message_state::IsUnset,
+    St: log_delete_message_state::State,
+    St::ConvoId: log_delete_message_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogDeleteMessageBuilder<'a, log_delete_message_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogDeleteMessageBuilder<log_delete_message_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogDeleteMessageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogDeleteMessageBuilder<'a, S>
+impl<St, S: BosStr> LogDeleteMessageBuilder<St, S>
 where
-    S: log_delete_message_state::State,
-    S::Message: log_delete_message_state::IsUnset,
+    St: log_delete_message_state::State,
+    St::Message: log_delete_message_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<LogDeleteMessageMessage<'a>>,
-    ) -> LogDeleteMessageBuilder<'a, log_delete_message_state::SetMessage<S>> {
+        value: impl Into<LogDeleteMessageMessage<S>>,
+    ) -> LogDeleteMessageBuilder<log_delete_message_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogDeleteMessageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogDeleteMessageBuilder<'a, S>
+impl<St, S: BosStr> LogDeleteMessageBuilder<St, S>
 where
-    S: log_delete_message_state::State,
-    S::Rev: log_delete_message_state::IsUnset,
+    St: log_delete_message_state::State,
+    St::Rev: log_delete_message_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogDeleteMessageBuilder<'a, log_delete_message_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogDeleteMessageBuilder<log_delete_message_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogDeleteMessageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogDeleteMessageBuilder<'a, S>
+impl<St, S: BosStr> LogDeleteMessageBuilder<St, S>
 where
-    S: log_delete_message_state::State,
-    S::Message: log_delete_message_state::IsSet,
-    S::ConvoId: log_delete_message_state::IsSet,
-    S::Rev: log_delete_message_state::IsSet,
+    St: log_delete_message_state::State,
+    St::ConvoId: log_delete_message_state::IsSet,
+    St::Message: log_delete_message_state::IsSet,
+    St::Rev: log_delete_message_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogDeleteMessage<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogDeleteMessage<S> {
         LogDeleteMessage {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -6690,14 +6754,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogDeleteMessage<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogDeleteMessage<S> {
         LogDeleteMessage {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -6717,149 +6778,172 @@ pub mod log_disable_join_link_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
         type ConvoId;
         type Message;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
         type ConvoId = Unset;
         type Message = Unset;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Message = S::Message;
+        type Message = St::Message;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `message` field
         pub struct message(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogDisableJoinLinkBuilder<'a, S: log_disable_join_link_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogDisableJoinLinkBuilder<
+    St: log_disable_join_link_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<convo::SystemMessageView<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogDisableJoinLink<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogDisableJoinLinkBuilder<'a, log_disable_join_link_state::Empty> {
+impl LogDisableJoinLink<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogDisableJoinLinkBuilder<
+        log_disable_join_link_state::Empty,
+        DefaultStr,
+    > {
         LogDisableJoinLinkBuilder::new()
     }
 }
 
-impl<'a> LogDisableJoinLinkBuilder<'a, log_disable_join_link_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogDisableJoinLink<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogDisableJoinLinkBuilder<
+        log_disable_join_link_state::Empty,
+        S,
+    > {
+        LogDisableJoinLinkBuilder::builder()
+    }
+}
+
+impl LogDisableJoinLinkBuilder<log_disable_join_link_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogDisableJoinLinkBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogDisableJoinLinkBuilder<'a, S>
+impl<S: BosStr> LogDisableJoinLinkBuilder<log_disable_join_link_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogDisableJoinLinkBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogDisableJoinLinkBuilder<St, S>
 where
-    S: log_disable_join_link_state::State,
-    S::ConvoId: log_disable_join_link_state::IsUnset,
+    St: log_disable_join_link_state::State,
+    St::ConvoId: log_disable_join_link_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogDisableJoinLinkBuilder<'a, log_disable_join_link_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogDisableJoinLinkBuilder<log_disable_join_link_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogDisableJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogDisableJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogDisableJoinLinkBuilder<St, S>
 where
-    S: log_disable_join_link_state::State,
-    S::Message: log_disable_join_link_state::IsUnset,
+    St: log_disable_join_link_state::State,
+    St::Message: log_disable_join_link_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogDisableJoinLinkBuilder<'a, log_disable_join_link_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogDisableJoinLinkBuilder<log_disable_join_link_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogDisableJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogDisableJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogDisableJoinLinkBuilder<St, S>
 where
-    S: log_disable_join_link_state::State,
-    S::Rev: log_disable_join_link_state::IsUnset,
+    St: log_disable_join_link_state::State,
+    St::Rev: log_disable_join_link_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogDisableJoinLinkBuilder<'a, log_disable_join_link_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogDisableJoinLinkBuilder<log_disable_join_link_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogDisableJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogDisableJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogDisableJoinLinkBuilder<St, S>
 where
-    S: log_disable_join_link_state::State,
-    S::Rev: log_disable_join_link_state::IsSet,
-    S::ConvoId: log_disable_join_link_state::IsSet,
-    S::Message: log_disable_join_link_state::IsSet,
+    St: log_disable_join_link_state::State,
+    St::ConvoId: log_disable_join_link_state::IsSet,
+    St::Message: log_disable_join_link_state::IsSet,
+    St::Rev: log_disable_join_link_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogDisableJoinLink<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogDisableJoinLink<S> {
         LogDisableJoinLink {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -6867,14 +6951,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogDisableJoinLink<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogDisableJoinLink<S> {
         LogDisableJoinLink {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -6894,149 +6975,163 @@ pub mod log_edit_group_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
-        type Message;
         type ConvoId;
+        type Message;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
-        type Message = Unset;
         type ConvoId = Unset;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type Message = S::Message;
-        type ConvoId = S::ConvoId;
-    }
-    ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type Rev = S::Rev;
-        type Message = Set<members::message>;
-        type ConvoId = S::ConvoId;
+        type Message = Unset;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Rev = S::Rev;
-        type Message = S::Message;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
+        type Message = St::Message;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `message` field to Set
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
+        type Message = Set<members::message>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
-        ///Marker type for the `message` field
-        pub struct message(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
+        ///Marker type for the `message` field
+        pub struct message(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogEditGroupBuilder<'a, S: log_edit_group_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogEditGroupBuilder<St: log_edit_group_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<convo::SystemMessageView<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogEditGroup<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogEditGroupBuilder<'a, log_edit_group_state::Empty> {
+impl LogEditGroup<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogEditGroupBuilder<log_edit_group_state::Empty, DefaultStr> {
         LogEditGroupBuilder::new()
     }
 }
 
-impl<'a> LogEditGroupBuilder<'a, log_edit_group_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogEditGroup<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogEditGroupBuilder<log_edit_group_state::Empty, S> {
+        LogEditGroupBuilder::builder()
+    }
+}
+
+impl LogEditGroupBuilder<log_edit_group_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogEditGroupBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEditGroupBuilder<'a, S>
+impl<S: BosStr> LogEditGroupBuilder<log_edit_group_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogEditGroupBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogEditGroupBuilder<St, S>
 where
-    S: log_edit_group_state::State,
-    S::ConvoId: log_edit_group_state::IsUnset,
+    St: log_edit_group_state::State,
+    St::ConvoId: log_edit_group_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogEditGroupBuilder<'a, log_edit_group_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogEditGroupBuilder<log_edit_group_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogEditGroupBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEditGroupBuilder<'a, S>
+impl<St, S: BosStr> LogEditGroupBuilder<St, S>
 where
-    S: log_edit_group_state::State,
-    S::Message: log_edit_group_state::IsUnset,
+    St: log_edit_group_state::State,
+    St::Message: log_edit_group_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogEditGroupBuilder<'a, log_edit_group_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogEditGroupBuilder<log_edit_group_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogEditGroupBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEditGroupBuilder<'a, S>
+impl<St, S: BosStr> LogEditGroupBuilder<St, S>
 where
-    S: log_edit_group_state::State,
-    S::Rev: log_edit_group_state::IsUnset,
+    St: log_edit_group_state::State,
+    St::Rev: log_edit_group_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogEditGroupBuilder<'a, log_edit_group_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogEditGroupBuilder<log_edit_group_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogEditGroupBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEditGroupBuilder<'a, S>
+impl<St, S: BosStr> LogEditGroupBuilder<St, S>
 where
-    S: log_edit_group_state::State,
-    S::Rev: log_edit_group_state::IsSet,
-    S::Message: log_edit_group_state::IsSet,
-    S::ConvoId: log_edit_group_state::IsSet,
+    St: log_edit_group_state::State,
+    St::ConvoId: log_edit_group_state::IsSet,
+    St::Message: log_edit_group_state::IsSet,
+    St::Rev: log_edit_group_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogEditGroup<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogEditGroup<S> {
         LogEditGroup {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -7044,14 +7139,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogEditGroup<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogEditGroup<S> {
         LogEditGroup {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -7071,149 +7163,166 @@ pub mod log_edit_join_link_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
         type ConvoId;
         type Message;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
         type ConvoId = Unset;
         type Message = Unset;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Message = S::Message;
+        type Message = St::Message;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `message` field
         pub struct message(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogEditJoinLinkBuilder<'a, S: log_edit_join_link_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogEditJoinLinkBuilder<
+    St: log_edit_join_link_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<convo::SystemMessageView<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogEditJoinLink<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogEditJoinLinkBuilder<'a, log_edit_join_link_state::Empty> {
+impl LogEditJoinLink<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogEditJoinLinkBuilder<log_edit_join_link_state::Empty, DefaultStr> {
         LogEditJoinLinkBuilder::new()
     }
 }
 
-impl<'a> LogEditJoinLinkBuilder<'a, log_edit_join_link_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogEditJoinLink<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogEditJoinLinkBuilder<log_edit_join_link_state::Empty, S> {
+        LogEditJoinLinkBuilder::builder()
+    }
+}
+
+impl LogEditJoinLinkBuilder<log_edit_join_link_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogEditJoinLinkBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEditJoinLinkBuilder<'a, S>
+impl<S: BosStr> LogEditJoinLinkBuilder<log_edit_join_link_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogEditJoinLinkBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogEditJoinLinkBuilder<St, S>
 where
-    S: log_edit_join_link_state::State,
-    S::ConvoId: log_edit_join_link_state::IsUnset,
+    St: log_edit_join_link_state::State,
+    St::ConvoId: log_edit_join_link_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogEditJoinLinkBuilder<'a, log_edit_join_link_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogEditJoinLinkBuilder<log_edit_join_link_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogEditJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEditJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogEditJoinLinkBuilder<St, S>
 where
-    S: log_edit_join_link_state::State,
-    S::Message: log_edit_join_link_state::IsUnset,
+    St: log_edit_join_link_state::State,
+    St::Message: log_edit_join_link_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogEditJoinLinkBuilder<'a, log_edit_join_link_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogEditJoinLinkBuilder<log_edit_join_link_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogEditJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEditJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogEditJoinLinkBuilder<St, S>
 where
-    S: log_edit_join_link_state::State,
-    S::Rev: log_edit_join_link_state::IsUnset,
+    St: log_edit_join_link_state::State,
+    St::Rev: log_edit_join_link_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogEditJoinLinkBuilder<'a, log_edit_join_link_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogEditJoinLinkBuilder<log_edit_join_link_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogEditJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEditJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogEditJoinLinkBuilder<St, S>
 where
-    S: log_edit_join_link_state::State,
-    S::Rev: log_edit_join_link_state::IsSet,
-    S::ConvoId: log_edit_join_link_state::IsSet,
-    S::Message: log_edit_join_link_state::IsSet,
+    St: log_edit_join_link_state::State,
+    St::ConvoId: log_edit_join_link_state::IsSet,
+    St::Message: log_edit_join_link_state::IsSet,
+    St::Rev: log_edit_join_link_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogEditJoinLink<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogEditJoinLink<S> {
         LogEditJoinLink {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -7221,14 +7330,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogEditJoinLink<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogEditJoinLink<S> {
         LogEditJoinLink {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -7248,149 +7354,169 @@ pub mod log_enable_join_link_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
         type ConvoId;
         type Message;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
         type ConvoId = Unset;
         type Message = Unset;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Message = S::Message;
+        type Message = St::Message;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `message` field
         pub struct message(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogEnableJoinLinkBuilder<'a, S: log_enable_join_link_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogEnableJoinLinkBuilder<
+    St: log_enable_join_link_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<convo::SystemMessageView<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogEnableJoinLink<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogEnableJoinLinkBuilder<'a, log_enable_join_link_state::Empty> {
+impl LogEnableJoinLink<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogEnableJoinLinkBuilder<
+        log_enable_join_link_state::Empty,
+        DefaultStr,
+    > {
         LogEnableJoinLinkBuilder::new()
     }
 }
 
-impl<'a> LogEnableJoinLinkBuilder<'a, log_enable_join_link_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogEnableJoinLink<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogEnableJoinLinkBuilder<log_enable_join_link_state::Empty, S> {
+        LogEnableJoinLinkBuilder::builder()
+    }
+}
+
+impl LogEnableJoinLinkBuilder<log_enable_join_link_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogEnableJoinLinkBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEnableJoinLinkBuilder<'a, S>
+impl<S: BosStr> LogEnableJoinLinkBuilder<log_enable_join_link_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogEnableJoinLinkBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogEnableJoinLinkBuilder<St, S>
 where
-    S: log_enable_join_link_state::State,
-    S::ConvoId: log_enable_join_link_state::IsUnset,
+    St: log_enable_join_link_state::State,
+    St::ConvoId: log_enable_join_link_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogEnableJoinLinkBuilder<'a, log_enable_join_link_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogEnableJoinLinkBuilder<log_enable_join_link_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogEnableJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEnableJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogEnableJoinLinkBuilder<St, S>
 where
-    S: log_enable_join_link_state::State,
-    S::Message: log_enable_join_link_state::IsUnset,
+    St: log_enable_join_link_state::State,
+    St::Message: log_enable_join_link_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogEnableJoinLinkBuilder<'a, log_enable_join_link_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogEnableJoinLinkBuilder<log_enable_join_link_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogEnableJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEnableJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogEnableJoinLinkBuilder<St, S>
 where
-    S: log_enable_join_link_state::State,
-    S::Rev: log_enable_join_link_state::IsUnset,
+    St: log_enable_join_link_state::State,
+    St::Rev: log_enable_join_link_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogEnableJoinLinkBuilder<'a, log_enable_join_link_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogEnableJoinLinkBuilder<log_enable_join_link_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogEnableJoinLinkBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogEnableJoinLinkBuilder<'a, S>
+impl<St, S: BosStr> LogEnableJoinLinkBuilder<St, S>
 where
-    S: log_enable_join_link_state::State,
-    S::Rev: log_enable_join_link_state::IsSet,
-    S::ConvoId: log_enable_join_link_state::IsSet,
-    S::Message: log_enable_join_link_state::IsSet,
+    St: log_enable_join_link_state::State,
+    St::ConvoId: log_enable_join_link_state::IsSet,
+    St::Message: log_enable_join_link_state::IsSet,
+    St::Rev: log_enable_join_link_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogEnableJoinLink<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogEnableJoinLink<S> {
         LogEnableJoinLink {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -7398,14 +7524,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogEnableJoinLink<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogEnableJoinLink<S> {
         LogEnableJoinLink {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -7425,154 +7548,180 @@ pub mod log_incoming_join_request_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
         type ConvoId;
         type Member;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
         type ConvoId = Unset;
         type Member = Unset;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
-        type Member = S::Member;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Member = S::Member;
+        type Member = St::Member;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `member` field to Set
-    pub struct SetMember<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMember<S> {}
-    impl<S: State> State for SetMember<S> {
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
+    pub struct SetMember<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMember<St> {}
+    impl<St: State> State for SetMember<St> {
+        type ConvoId = St::ConvoId;
         type Member = Set<members::member>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Member = St::Member;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `member` field
         pub struct member(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogIncomingJoinRequestBuilder<'a, S: log_incoming_join_request_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<ProfileViewBasic<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogIncomingJoinRequestBuilder<
+    St: log_incoming_join_request_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<ProfileViewBasic<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogIncomingJoinRequest<'a> {
-    /// Create a new builder for this type
+impl LogIncomingJoinRequest<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> LogIncomingJoinRequestBuilder<
-        'a,
         log_incoming_join_request_state::Empty,
+        DefaultStr,
     > {
         LogIncomingJoinRequestBuilder::new()
     }
 }
 
-impl<'a> LogIncomingJoinRequestBuilder<'a, log_incoming_join_request_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogIncomingJoinRequest<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogIncomingJoinRequestBuilder<
+        log_incoming_join_request_state::Empty,
+        S,
+    > {
+        LogIncomingJoinRequestBuilder::builder()
+    }
+}
+
+impl LogIncomingJoinRequestBuilder<log_incoming_join_request_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogIncomingJoinRequestBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogIncomingJoinRequestBuilder<'a, S>
+impl<
+    S: BosStr,
+> LogIncomingJoinRequestBuilder<log_incoming_join_request_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogIncomingJoinRequestBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogIncomingJoinRequestBuilder<St, S>
 where
-    S: log_incoming_join_request_state::State,
-    S::ConvoId: log_incoming_join_request_state::IsUnset,
+    St: log_incoming_join_request_state::State,
+    St::ConvoId: log_incoming_join_request_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
+        value: impl Into<S>,
     ) -> LogIncomingJoinRequestBuilder<
-        'a,
-        log_incoming_join_request_state::SetConvoId<S>,
+        log_incoming_join_request_state::SetConvoId<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         LogIncomingJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogIncomingJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogIncomingJoinRequestBuilder<St, S>
 where
-    S: log_incoming_join_request_state::State,
-    S::Member: log_incoming_join_request_state::IsUnset,
+    St: log_incoming_join_request_state::State,
+    St::Member: log_incoming_join_request_state::IsUnset,
 {
     /// Set the `member` field (required)
     pub fn member(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
+        value: impl Into<ProfileViewBasic<S>>,
     ) -> LogIncomingJoinRequestBuilder<
-        'a,
-        log_incoming_join_request_state::SetMember<S>,
+        log_incoming_join_request_state::SetMember<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         LogIncomingJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogIncomingJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogIncomingJoinRequestBuilder<St, S>
 where
-    S: log_incoming_join_request_state::State,
-    S::Rev: log_incoming_join_request_state::IsUnset,
+    St: log_incoming_join_request_state::State,
+    St::Rev: log_incoming_join_request_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogIncomingJoinRequestBuilder<'a, log_incoming_join_request_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogIncomingJoinRequestBuilder<log_incoming_join_request_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogIncomingJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogIncomingJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogIncomingJoinRequestBuilder<St, S>
 where
-    S: log_incoming_join_request_state::State,
-    S::Rev: log_incoming_join_request_state::IsSet,
-    S::ConvoId: log_incoming_join_request_state::IsSet,
-    S::Member: log_incoming_join_request_state::IsSet,
+    St: log_incoming_join_request_state::State,
+    St::ConvoId: log_incoming_join_request_state::IsSet,
+    St::Member: log_incoming_join_request_state::IsSet,
+    St::Rev: log_incoming_join_request_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogIncomingJoinRequest<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogIncomingJoinRequest<S> {
         LogIncomingJoinRequest {
             convo_id: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -7580,14 +7729,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogIncomingJoinRequest<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogIncomingJoinRequest<S> {
         LogIncomingJoinRequest {
             convo_id: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -7607,186 +7753,204 @@ pub mod log_lock_convo_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type ConvoId;
         type Message;
         type RelatedProfiles;
-        type ConvoId;
         type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type ConvoId = Unset;
         type Message = Unset;
         type RelatedProfiles = Unset;
-        type ConvoId = Unset;
         type Rev = Unset;
     }
+    ///State transition - sets the `convo_id` field to Set
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
+        type ConvoId = Set<members::convo_id>;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
+    }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
-        type RelatedProfiles = S::RelatedProfiles;
-        type ConvoId = S::ConvoId;
-        type Rev = S::Rev;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `related_profiles` field to Set
-    pub struct SetRelatedProfiles<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRelatedProfiles<S> {}
-    impl<S: State> State for SetRelatedProfiles<S> {
-        type Message = S::Message;
+    pub struct SetRelatedProfiles<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRelatedProfiles<St> {}
+    impl<St: State> State for SetRelatedProfiles<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
         type RelatedProfiles = Set<members::related_profiles>;
-        type ConvoId = S::ConvoId;
-        type Rev = S::Rev;
-    }
-    ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Message = S::Message;
-        type RelatedProfiles = S::RelatedProfiles;
-        type ConvoId = Set<members::convo_id>;
-        type Rev = S::Rev;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Message = S::Message;
-        type RelatedProfiles = S::RelatedProfiles;
-        type ConvoId = S::ConvoId;
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
         type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `convo_id` field
+        pub struct convo_id(());
         ///Marker type for the `message` field
         pub struct message(());
         ///Marker type for the `related_profiles` field
         pub struct related_profiles(());
-        ///Marker type for the `convo_id` field
-        pub struct convo_id(());
         ///Marker type for the `rev` field
         pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogLockConvoBuilder<'a, S: log_lock_convo_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct LogLockConvoBuilder<St: log_lock_convo_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<convo::SystemMessageView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogLockConvo<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogLockConvoBuilder<'a, log_lock_convo_state::Empty> {
+impl LogLockConvo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogLockConvoBuilder<log_lock_convo_state::Empty, DefaultStr> {
         LogLockConvoBuilder::new()
     }
 }
 
-impl<'a> LogLockConvoBuilder<'a, log_lock_convo_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogLockConvo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogLockConvoBuilder<log_lock_convo_state::Empty, S> {
+        LogLockConvoBuilder::builder()
+    }
+}
+
+impl LogLockConvoBuilder<log_lock_convo_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogLockConvoBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoBuilder<'a, S>
+impl<S: BosStr> LogLockConvoBuilder<log_lock_convo_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogLockConvoBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogLockConvoBuilder<St, S>
 where
-    S: log_lock_convo_state::State,
-    S::ConvoId: log_lock_convo_state::IsUnset,
+    St: log_lock_convo_state::State,
+    St::ConvoId: log_lock_convo_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogLockConvoBuilder<'a, log_lock_convo_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogLockConvoBuilder<log_lock_convo_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogLockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoBuilder<'a, S>
+impl<St, S: BosStr> LogLockConvoBuilder<St, S>
 where
-    S: log_lock_convo_state::State,
-    S::Message: log_lock_convo_state::IsUnset,
+    St: log_lock_convo_state::State,
+    St::Message: log_lock_convo_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogLockConvoBuilder<'a, log_lock_convo_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogLockConvoBuilder<log_lock_convo_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogLockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoBuilder<'a, S>
+impl<St, S: BosStr> LogLockConvoBuilder<St, S>
 where
-    S: log_lock_convo_state::State,
-    S::RelatedProfiles: log_lock_convo_state::IsUnset,
+    St: log_lock_convo_state::State,
+    St::RelatedProfiles: log_lock_convo_state::IsUnset,
 {
     /// Set the `relatedProfiles` field (required)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
-    ) -> LogLockConvoBuilder<'a, log_lock_convo_state::SetRelatedProfiles<S>> {
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
+    ) -> LogLockConvoBuilder<log_lock_convo_state::SetRelatedProfiles<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogLockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoBuilder<'a, S>
+impl<St, S: BosStr> LogLockConvoBuilder<St, S>
 where
-    S: log_lock_convo_state::State,
-    S::Rev: log_lock_convo_state::IsUnset,
+    St: log_lock_convo_state::State,
+    St::Rev: log_lock_convo_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogLockConvoBuilder<'a, log_lock_convo_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogLockConvoBuilder<log_lock_convo_state::SetRev<St>, S> {
         self._fields.3 = Option::Some(value.into());
         LogLockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoBuilder<'a, S>
+impl<St, S: BosStr> LogLockConvoBuilder<St, S>
 where
-    S: log_lock_convo_state::State,
-    S::Message: log_lock_convo_state::IsSet,
-    S::RelatedProfiles: log_lock_convo_state::IsSet,
-    S::ConvoId: log_lock_convo_state::IsSet,
-    S::Rev: log_lock_convo_state::IsSet,
+    St: log_lock_convo_state::State,
+    St::ConvoId: log_lock_convo_state::IsSet,
+    St::Message: log_lock_convo_state::IsSet,
+    St::RelatedProfiles: log_lock_convo_state::IsSet,
+    St::Rev: log_lock_convo_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogLockConvo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogLockConvo<S> {
         LogLockConvo {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -7795,14 +7959,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogLockConvo<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogLockConvo<S> {
         LogLockConvo {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -7823,204 +7984,230 @@ pub mod log_lock_convo_permanently_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type RelatedProfiles;
         type ConvoId;
         type Message;
+        type RelatedProfiles;
         type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type RelatedProfiles = Unset;
         type ConvoId = Unset;
         type Message = Unset;
+        type RelatedProfiles = Unset;
         type Rev = Unset;
     }
-    ///State transition - sets the `related_profiles` field to Set
-    pub struct SetRelatedProfiles<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRelatedProfiles<S> {}
-    impl<S: State> State for SetRelatedProfiles<S> {
-        type RelatedProfiles = Set<members::related_profiles>;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
-        type Rev = S::Rev;
-    }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type RelatedProfiles = S::RelatedProfiles;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Message = S::Message;
-        type Rev = S::Rev;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type RelatedProfiles = S::RelatedProfiles;
-        type ConvoId = S::ConvoId;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
-        type Rev = S::Rev;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `related_profiles` field to Set
+    pub struct SetRelatedProfiles<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRelatedProfiles<St> {}
+    impl<St: State> State for SetRelatedProfiles<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = Set<members::related_profiles>;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type RelatedProfiles = S::RelatedProfiles;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
         type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `related_profiles` field
-        pub struct related_profiles(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `message` field
         pub struct message(());
+        ///Marker type for the `related_profiles` field
+        pub struct related_profiles(());
         ///Marker type for the `rev` field
         pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct LogLockConvoPermanentlyBuilder<
-    'a,
-    S: log_lock_convo_permanently_state::State,
+    St: log_lock_convo_permanently_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<convo::SystemMessageView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogLockConvoPermanently<'a> {
-    /// Create a new builder for this type
+impl LogLockConvoPermanently<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> LogLockConvoPermanentlyBuilder<
-        'a,
         log_lock_convo_permanently_state::Empty,
+        DefaultStr,
     > {
         LogLockConvoPermanentlyBuilder::new()
     }
 }
 
-impl<'a> LogLockConvoPermanentlyBuilder<'a, log_lock_convo_permanently_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogLockConvoPermanently<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogLockConvoPermanentlyBuilder<
+        log_lock_convo_permanently_state::Empty,
+        S,
+    > {
+        LogLockConvoPermanentlyBuilder::builder()
+    }
+}
+
+impl LogLockConvoPermanentlyBuilder<
+    log_lock_convo_permanently_state::Empty,
+    DefaultStr,
+> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogLockConvoPermanentlyBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoPermanentlyBuilder<'a, S>
+impl<
+    S: BosStr,
+> LogLockConvoPermanentlyBuilder<log_lock_convo_permanently_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogLockConvoPermanentlyBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogLockConvoPermanentlyBuilder<St, S>
 where
-    S: log_lock_convo_permanently_state::State,
-    S::ConvoId: log_lock_convo_permanently_state::IsUnset,
+    St: log_lock_convo_permanently_state::State,
+    St::ConvoId: log_lock_convo_permanently_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
+        value: impl Into<S>,
     ) -> LogLockConvoPermanentlyBuilder<
-        'a,
-        log_lock_convo_permanently_state::SetConvoId<S>,
+        log_lock_convo_permanently_state::SetConvoId<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         LogLockConvoPermanentlyBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoPermanentlyBuilder<'a, S>
+impl<St, S: BosStr> LogLockConvoPermanentlyBuilder<St, S>
 where
-    S: log_lock_convo_permanently_state::State,
-    S::Message: log_lock_convo_permanently_state::IsUnset,
+    St: log_lock_convo_permanently_state::State,
+    St::Message: log_lock_convo_permanently_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
+        value: impl Into<convo::SystemMessageView<S>>,
     ) -> LogLockConvoPermanentlyBuilder<
-        'a,
-        log_lock_convo_permanently_state::SetMessage<S>,
+        log_lock_convo_permanently_state::SetMessage<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         LogLockConvoPermanentlyBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoPermanentlyBuilder<'a, S>
+impl<St, S: BosStr> LogLockConvoPermanentlyBuilder<St, S>
 where
-    S: log_lock_convo_permanently_state::State,
-    S::RelatedProfiles: log_lock_convo_permanently_state::IsUnset,
+    St: log_lock_convo_permanently_state::State,
+    St::RelatedProfiles: log_lock_convo_permanently_state::IsUnset,
 {
     /// Set the `relatedProfiles` field (required)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
     ) -> LogLockConvoPermanentlyBuilder<
-        'a,
-        log_lock_convo_permanently_state::SetRelatedProfiles<S>,
+        log_lock_convo_permanently_state::SetRelatedProfiles<St>,
+        S,
     > {
         self._fields.2 = Option::Some(value.into());
         LogLockConvoPermanentlyBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoPermanentlyBuilder<'a, S>
+impl<St, S: BosStr> LogLockConvoPermanentlyBuilder<St, S>
 where
-    S: log_lock_convo_permanently_state::State,
-    S::Rev: log_lock_convo_permanently_state::IsUnset,
+    St: log_lock_convo_permanently_state::State,
+    St::Rev: log_lock_convo_permanently_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
+        value: impl Into<S>,
     ) -> LogLockConvoPermanentlyBuilder<
-        'a,
-        log_lock_convo_permanently_state::SetRev<S>,
+        log_lock_convo_permanently_state::SetRev<St>,
+        S,
     > {
         self._fields.3 = Option::Some(value.into());
         LogLockConvoPermanentlyBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogLockConvoPermanentlyBuilder<'a, S>
+impl<St, S: BosStr> LogLockConvoPermanentlyBuilder<St, S>
 where
-    S: log_lock_convo_permanently_state::State,
-    S::RelatedProfiles: log_lock_convo_permanently_state::IsSet,
-    S::ConvoId: log_lock_convo_permanently_state::IsSet,
-    S::Message: log_lock_convo_permanently_state::IsSet,
-    S::Rev: log_lock_convo_permanently_state::IsSet,
+    St: log_lock_convo_permanently_state::State,
+    St::ConvoId: log_lock_convo_permanently_state::IsSet,
+    St::Message: log_lock_convo_permanently_state::IsSet,
+    St::RelatedProfiles: log_lock_convo_permanently_state::IsSet,
+    St::Rev: log_lock_convo_permanently_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogLockConvoPermanently<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogLockConvoPermanently<S> {
         LogLockConvoPermanently {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8029,14 +8216,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogLockConvoPermanently<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogLockConvoPermanently<S> {
         LogLockConvoPermanently {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8057,186 +8241,207 @@ pub mod log_member_join_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
         type ConvoId;
         type Message;
         type RelatedProfiles;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
         type ConvoId = Unset;
         type Message = Unset;
         type RelatedProfiles = Unset;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
-        type RelatedProfiles = S::RelatedProfiles;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Message = S::Message;
-        type RelatedProfiles = S::RelatedProfiles;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
-        type RelatedProfiles = S::RelatedProfiles;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `related_profiles` field to Set
-    pub struct SetRelatedProfiles<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRelatedProfiles<S> {}
-    impl<S: State> State for SetRelatedProfiles<S> {
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
+    pub struct SetRelatedProfiles<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRelatedProfiles<St> {}
+    impl<St: State> State for SetRelatedProfiles<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
         type RelatedProfiles = Set<members::related_profiles>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `message` field
         pub struct message(());
         ///Marker type for the `related_profiles` field
         pub struct related_profiles(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogMemberJoinBuilder<'a, S: log_member_join_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct LogMemberJoinBuilder<
+    St: log_member_join_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<convo::SystemMessageView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogMemberJoin<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogMemberJoinBuilder<'a, log_member_join_state::Empty> {
+impl LogMemberJoin<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogMemberJoinBuilder<log_member_join_state::Empty, DefaultStr> {
         LogMemberJoinBuilder::new()
     }
 }
 
-impl<'a> LogMemberJoinBuilder<'a, log_member_join_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogMemberJoin<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogMemberJoinBuilder<log_member_join_state::Empty, S> {
+        LogMemberJoinBuilder::builder()
+    }
+}
+
+impl LogMemberJoinBuilder<log_member_join_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogMemberJoinBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberJoinBuilder<'a, S>
+impl<S: BosStr> LogMemberJoinBuilder<log_member_join_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogMemberJoinBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogMemberJoinBuilder<St, S>
 where
-    S: log_member_join_state::State,
-    S::ConvoId: log_member_join_state::IsUnset,
+    St: log_member_join_state::State,
+    St::ConvoId: log_member_join_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogMemberJoinBuilder<'a, log_member_join_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogMemberJoinBuilder<log_member_join_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogMemberJoinBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberJoinBuilder<'a, S>
+impl<St, S: BosStr> LogMemberJoinBuilder<St, S>
 where
-    S: log_member_join_state::State,
-    S::Message: log_member_join_state::IsUnset,
+    St: log_member_join_state::State,
+    St::Message: log_member_join_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogMemberJoinBuilder<'a, log_member_join_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogMemberJoinBuilder<log_member_join_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogMemberJoinBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberJoinBuilder<'a, S>
+impl<St, S: BosStr> LogMemberJoinBuilder<St, S>
 where
-    S: log_member_join_state::State,
-    S::RelatedProfiles: log_member_join_state::IsUnset,
+    St: log_member_join_state::State,
+    St::RelatedProfiles: log_member_join_state::IsUnset,
 {
     /// Set the `relatedProfiles` field (required)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
-    ) -> LogMemberJoinBuilder<'a, log_member_join_state::SetRelatedProfiles<S>> {
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
+    ) -> LogMemberJoinBuilder<log_member_join_state::SetRelatedProfiles<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogMemberJoinBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberJoinBuilder<'a, S>
+impl<St, S: BosStr> LogMemberJoinBuilder<St, S>
 where
-    S: log_member_join_state::State,
-    S::Rev: log_member_join_state::IsUnset,
+    St: log_member_join_state::State,
+    St::Rev: log_member_join_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogMemberJoinBuilder<'a, log_member_join_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogMemberJoinBuilder<log_member_join_state::SetRev<St>, S> {
         self._fields.3 = Option::Some(value.into());
         LogMemberJoinBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberJoinBuilder<'a, S>
+impl<St, S: BosStr> LogMemberJoinBuilder<St, S>
 where
-    S: log_member_join_state::State,
-    S::Rev: log_member_join_state::IsSet,
-    S::ConvoId: log_member_join_state::IsSet,
-    S::Message: log_member_join_state::IsSet,
-    S::RelatedProfiles: log_member_join_state::IsSet,
+    St: log_member_join_state::State,
+    St::ConvoId: log_member_join_state::IsSet,
+    St::Message: log_member_join_state::IsSet,
+    St::RelatedProfiles: log_member_join_state::IsSet,
+    St::Rev: log_member_join_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogMemberJoin<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogMemberJoin<S> {
         LogMemberJoin {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8245,14 +8450,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogMemberJoin<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogMemberJoin<S> {
         LogMemberJoin {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8273,186 +8475,207 @@ pub mod log_member_leave_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type RelatedProfiles;
-        type Message;
-        type Rev;
         type ConvoId;
+        type Message;
+        type RelatedProfiles;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type RelatedProfiles = Unset;
-        type Message = Unset;
-        type Rev = Unset;
         type ConvoId = Unset;
-    }
-    ///State transition - sets the `related_profiles` field to Set
-    pub struct SetRelatedProfiles<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRelatedProfiles<S> {}
-    impl<S: State> State for SetRelatedProfiles<S> {
-        type RelatedProfiles = Set<members::related_profiles>;
-        type Message = S::Message;
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
-    }
-    ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type RelatedProfiles = S::RelatedProfiles;
-        type Message = Set<members::message>;
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type RelatedProfiles = S::RelatedProfiles;
-        type Message = S::Message;
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
+        type Message = Unset;
+        type RelatedProfiles = Unset;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type RelatedProfiles = S::RelatedProfiles;
-        type Message = S::Message;
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `message` field to Set
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
+        type Message = Set<members::message>;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `related_profiles` field to Set
+    pub struct SetRelatedProfiles<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRelatedProfiles<St> {}
+    impl<St: State> State for SetRelatedProfiles<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = Set<members::related_profiles>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `related_profiles` field
-        pub struct related_profiles(());
-        ///Marker type for the `message` field
-        pub struct message(());
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
+        ///Marker type for the `message` field
+        pub struct message(());
+        ///Marker type for the `related_profiles` field
+        pub struct related_profiles(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogMemberLeaveBuilder<'a, S: log_member_leave_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct LogMemberLeaveBuilder<
+    St: log_member_leave_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<convo::SystemMessageView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogMemberLeave<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogMemberLeaveBuilder<'a, log_member_leave_state::Empty> {
+impl LogMemberLeave<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogMemberLeaveBuilder<log_member_leave_state::Empty, DefaultStr> {
         LogMemberLeaveBuilder::new()
     }
 }
 
-impl<'a> LogMemberLeaveBuilder<'a, log_member_leave_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogMemberLeave<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogMemberLeaveBuilder<log_member_leave_state::Empty, S> {
+        LogMemberLeaveBuilder::builder()
+    }
+}
+
+impl LogMemberLeaveBuilder<log_member_leave_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogMemberLeaveBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberLeaveBuilder<'a, S>
+impl<S: BosStr> LogMemberLeaveBuilder<log_member_leave_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogMemberLeaveBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogMemberLeaveBuilder<St, S>
 where
-    S: log_member_leave_state::State,
-    S::ConvoId: log_member_leave_state::IsUnset,
+    St: log_member_leave_state::State,
+    St::ConvoId: log_member_leave_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogMemberLeaveBuilder<'a, log_member_leave_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogMemberLeaveBuilder<log_member_leave_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogMemberLeaveBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberLeaveBuilder<'a, S>
+impl<St, S: BosStr> LogMemberLeaveBuilder<St, S>
 where
-    S: log_member_leave_state::State,
-    S::Message: log_member_leave_state::IsUnset,
+    St: log_member_leave_state::State,
+    St::Message: log_member_leave_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogMemberLeaveBuilder<'a, log_member_leave_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogMemberLeaveBuilder<log_member_leave_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogMemberLeaveBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberLeaveBuilder<'a, S>
+impl<St, S: BosStr> LogMemberLeaveBuilder<St, S>
 where
-    S: log_member_leave_state::State,
-    S::RelatedProfiles: log_member_leave_state::IsUnset,
+    St: log_member_leave_state::State,
+    St::RelatedProfiles: log_member_leave_state::IsUnset,
 {
     /// Set the `relatedProfiles` field (required)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
-    ) -> LogMemberLeaveBuilder<'a, log_member_leave_state::SetRelatedProfiles<S>> {
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
+    ) -> LogMemberLeaveBuilder<log_member_leave_state::SetRelatedProfiles<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogMemberLeaveBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberLeaveBuilder<'a, S>
+impl<St, S: BosStr> LogMemberLeaveBuilder<St, S>
 where
-    S: log_member_leave_state::State,
-    S::Rev: log_member_leave_state::IsUnset,
+    St: log_member_leave_state::State,
+    St::Rev: log_member_leave_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogMemberLeaveBuilder<'a, log_member_leave_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogMemberLeaveBuilder<log_member_leave_state::SetRev<St>, S> {
         self._fields.3 = Option::Some(value.into());
         LogMemberLeaveBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogMemberLeaveBuilder<'a, S>
+impl<St, S: BosStr> LogMemberLeaveBuilder<St, S>
 where
-    S: log_member_leave_state::State,
-    S::RelatedProfiles: log_member_leave_state::IsSet,
-    S::Message: log_member_leave_state::IsSet,
-    S::Rev: log_member_leave_state::IsSet,
-    S::ConvoId: log_member_leave_state::IsSet,
+    St: log_member_leave_state::State,
+    St::ConvoId: log_member_leave_state::IsSet,
+    St::Message: log_member_leave_state::IsSet,
+    St::RelatedProfiles: log_member_leave_state::IsSet,
+    St::Rev: log_member_leave_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogMemberLeave<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogMemberLeave<S> {
         LogMemberLeave {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8461,14 +8684,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogMemberLeave<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogMemberLeave<S> {
         LogMemberLeave {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8502,27 +8722,27 @@ pub mod log_read_convo_state {
         type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Message = S::Message;
-        type Rev = S::Rev;
+        type Message = St::Message;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type ConvoId = S::ConvoId;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
-        type Rev = S::Rev;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
         type Rev = Set<members::rev>;
     }
     /// Marker types for field names
@@ -8537,97 +8757,115 @@ pub mod log_read_convo_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogReadConvoBuilder<'a, S: log_read_convo_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<LogReadConvoMessage<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogReadConvoBuilder<St: log_read_convo_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<LogReadConvoMessage<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogReadConvo<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogReadConvoBuilder<'a, log_read_convo_state::Empty> {
+impl LogReadConvo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogReadConvoBuilder<log_read_convo_state::Empty, DefaultStr> {
         LogReadConvoBuilder::new()
     }
 }
 
-impl<'a> LogReadConvoBuilder<'a, log_read_convo_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogReadConvo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogReadConvoBuilder<log_read_convo_state::Empty, S> {
+        LogReadConvoBuilder::builder()
+    }
+}
+
+impl LogReadConvoBuilder<log_read_convo_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogReadConvoBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogReadConvoBuilder<'a, S>
+impl<S: BosStr> LogReadConvoBuilder<log_read_convo_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogReadConvoBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogReadConvoBuilder<St, S>
 where
-    S: log_read_convo_state::State,
-    S::ConvoId: log_read_convo_state::IsUnset,
+    St: log_read_convo_state::State,
+    St::ConvoId: log_read_convo_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogReadConvoBuilder<'a, log_read_convo_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogReadConvoBuilder<log_read_convo_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogReadConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogReadConvoBuilder<'a, S>
+impl<St, S: BosStr> LogReadConvoBuilder<St, S>
 where
-    S: log_read_convo_state::State,
-    S::Message: log_read_convo_state::IsUnset,
+    St: log_read_convo_state::State,
+    St::Message: log_read_convo_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<LogReadConvoMessage<'a>>,
-    ) -> LogReadConvoBuilder<'a, log_read_convo_state::SetMessage<S>> {
+        value: impl Into<LogReadConvoMessage<S>>,
+    ) -> LogReadConvoBuilder<log_read_convo_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogReadConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogReadConvoBuilder<'a, S>
+impl<St, S: BosStr> LogReadConvoBuilder<St, S>
 where
-    S: log_read_convo_state::State,
-    S::Rev: log_read_convo_state::IsUnset,
+    St: log_read_convo_state::State,
+    St::Rev: log_read_convo_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogReadConvoBuilder<'a, log_read_convo_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogReadConvoBuilder<log_read_convo_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogReadConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogReadConvoBuilder<'a, S>
+impl<St, S: BosStr> LogReadConvoBuilder<St, S>
 where
-    S: log_read_convo_state::State,
-    S::ConvoId: log_read_convo_state::IsSet,
-    S::Message: log_read_convo_state::IsSet,
-    S::Rev: log_read_convo_state::IsSet,
+    St: log_read_convo_state::State,
+    St::ConvoId: log_read_convo_state::IsSet,
+    St::Message: log_read_convo_state::IsSet,
+    St::Rev: log_read_convo_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogReadConvo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogReadConvo<S> {
         LogReadConvo {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8635,14 +8873,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogReadConvo<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogReadConvo<S> {
         LogReadConvo {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8675,27 +8910,27 @@ pub mod log_read_message_state {
         type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Message = S::Message;
-        type Rev = S::Rev;
+        type Message = St::Message;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type ConvoId = S::ConvoId;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
-        type Rev = S::Rev;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
         type Rev = Set<members::rev>;
     }
     /// Marker types for field names
@@ -8710,97 +8945,118 @@ pub mod log_read_message_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogReadMessageBuilder<'a, S: log_read_message_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<LogReadMessageMessage<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogReadMessageBuilder<
+    St: log_read_message_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<LogReadMessageMessage<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogReadMessage<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogReadMessageBuilder<'a, log_read_message_state::Empty> {
+impl LogReadMessage<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogReadMessageBuilder<log_read_message_state::Empty, DefaultStr> {
         LogReadMessageBuilder::new()
     }
 }
 
-impl<'a> LogReadMessageBuilder<'a, log_read_message_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogReadMessage<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogReadMessageBuilder<log_read_message_state::Empty, S> {
+        LogReadMessageBuilder::builder()
+    }
+}
+
+impl LogReadMessageBuilder<log_read_message_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogReadMessageBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogReadMessageBuilder<'a, S>
+impl<S: BosStr> LogReadMessageBuilder<log_read_message_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogReadMessageBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogReadMessageBuilder<St, S>
 where
-    S: log_read_message_state::State,
-    S::ConvoId: log_read_message_state::IsUnset,
+    St: log_read_message_state::State,
+    St::ConvoId: log_read_message_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogReadMessageBuilder<'a, log_read_message_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogReadMessageBuilder<log_read_message_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogReadMessageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogReadMessageBuilder<'a, S>
+impl<St, S: BosStr> LogReadMessageBuilder<St, S>
 where
-    S: log_read_message_state::State,
-    S::Message: log_read_message_state::IsUnset,
+    St: log_read_message_state::State,
+    St::Message: log_read_message_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<LogReadMessageMessage<'a>>,
-    ) -> LogReadMessageBuilder<'a, log_read_message_state::SetMessage<S>> {
+        value: impl Into<LogReadMessageMessage<S>>,
+    ) -> LogReadMessageBuilder<log_read_message_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogReadMessageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogReadMessageBuilder<'a, S>
+impl<St, S: BosStr> LogReadMessageBuilder<St, S>
 where
-    S: log_read_message_state::State,
-    S::Rev: log_read_message_state::IsUnset,
+    St: log_read_message_state::State,
+    St::Rev: log_read_message_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogReadMessageBuilder<'a, log_read_message_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogReadMessageBuilder<log_read_message_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogReadMessageBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogReadMessageBuilder<'a, S>
+impl<St, S: BosStr> LogReadMessageBuilder<St, S>
 where
-    S: log_read_message_state::State,
-    S::ConvoId: log_read_message_state::IsSet,
-    S::Message: log_read_message_state::IsSet,
-    S::Rev: log_read_message_state::IsSet,
+    St: log_read_message_state::State,
+    St::ConvoId: log_read_message_state::IsSet,
+    St::Message: log_read_message_state::IsSet,
+    St::Rev: log_read_message_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogReadMessage<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogReadMessage<S> {
         LogReadMessage {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8808,14 +9064,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogReadMessage<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogReadMessage<S> {
         LogReadMessage {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -8835,148 +9088,172 @@ pub mod log_reject_join_request_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type ConvoId;
         type Member;
         type Rev;
-        type ConvoId;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type ConvoId = Unset;
         type Member = Unset;
         type Rev = Unset;
-        type ConvoId = Unset;
-    }
-    ///State transition - sets the `member` field to Set
-    pub struct SetMember<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMember<S> {}
-    impl<S: State> State for SetMember<S> {
-        type Member = Set<members::member>;
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Member = S::Member;
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Member = S::Member;
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
+        type Member = St::Member;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `member` field to Set
+    pub struct SetMember<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMember<St> {}
+    impl<St: State> State for SetMember<St> {
+        type ConvoId = St::ConvoId;
+        type Member = Set<members::member>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Member = St::Member;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `convo_id` field
+        pub struct convo_id(());
         ///Marker type for the `member` field
         pub struct member(());
         ///Marker type for the `rev` field
         pub struct rev(());
-        ///Marker type for the `convo_id` field
-        pub struct convo_id(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogRejectJoinRequestBuilder<'a, S: log_reject_join_request_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<ProfileViewBasic<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct LogRejectJoinRequestBuilder<
+    St: log_reject_join_request_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<ProfileViewBasic<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogRejectJoinRequest<'a> {
-    /// Create a new builder for this type
+impl LogRejectJoinRequest<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> LogRejectJoinRequestBuilder<
-        'a,
         log_reject_join_request_state::Empty,
+        DefaultStr,
     > {
         LogRejectJoinRequestBuilder::new()
     }
 }
 
-impl<'a> LogRejectJoinRequestBuilder<'a, log_reject_join_request_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogRejectJoinRequest<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogRejectJoinRequestBuilder<
+        log_reject_join_request_state::Empty,
+        S,
+    > {
+        LogRejectJoinRequestBuilder::builder()
+    }
+}
+
+impl LogRejectJoinRequestBuilder<log_reject_join_request_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogRejectJoinRequestBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRejectJoinRequestBuilder<'a, S>
+impl<S: BosStr> LogRejectJoinRequestBuilder<log_reject_join_request_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogRejectJoinRequestBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogRejectJoinRequestBuilder<St, S>
 where
-    S: log_reject_join_request_state::State,
-    S::ConvoId: log_reject_join_request_state::IsUnset,
+    St: log_reject_join_request_state::State,
+    St::ConvoId: log_reject_join_request_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogRejectJoinRequestBuilder<'a, log_reject_join_request_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogRejectJoinRequestBuilder<log_reject_join_request_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogRejectJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRejectJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogRejectJoinRequestBuilder<St, S>
 where
-    S: log_reject_join_request_state::State,
-    S::Member: log_reject_join_request_state::IsUnset,
+    St: log_reject_join_request_state::State,
+    St::Member: log_reject_join_request_state::IsUnset,
 {
     /// Set the `member` field (required)
     pub fn member(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
-    ) -> LogRejectJoinRequestBuilder<'a, log_reject_join_request_state::SetMember<S>> {
+        value: impl Into<ProfileViewBasic<S>>,
+    ) -> LogRejectJoinRequestBuilder<log_reject_join_request_state::SetMember<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogRejectJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRejectJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogRejectJoinRequestBuilder<St, S>
 where
-    S: log_reject_join_request_state::State,
-    S::Rev: log_reject_join_request_state::IsUnset,
+    St: log_reject_join_request_state::State,
+    St::Rev: log_reject_join_request_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogRejectJoinRequestBuilder<'a, log_reject_join_request_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogRejectJoinRequestBuilder<log_reject_join_request_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogRejectJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRejectJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogRejectJoinRequestBuilder<St, S>
 where
-    S: log_reject_join_request_state::State,
-    S::Member: log_reject_join_request_state::IsSet,
-    S::Rev: log_reject_join_request_state::IsSet,
-    S::ConvoId: log_reject_join_request_state::IsSet,
+    St: log_reject_join_request_state::State,
+    St::ConvoId: log_reject_join_request_state::IsSet,
+    St::Member: log_reject_join_request_state::IsSet,
+    St::Rev: log_reject_join_request_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogRejectJoinRequest<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogRejectJoinRequest<S> {
         LogRejectJoinRequest {
             convo_id: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -8984,14 +9261,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogRejectJoinRequest<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogRejectJoinRequest<S> {
         LogRejectJoinRequest {
             convo_id: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -9012,185 +9286,206 @@ pub mod log_remove_member_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type ConvoId;
+        type Message;
         type RelatedProfiles;
         type Rev;
-        type Message;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type ConvoId = Unset;
+        type Message = Unset;
         type RelatedProfiles = Unset;
         type Rev = Unset;
-        type Message = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type RelatedProfiles = S::RelatedProfiles;
-        type Rev = S::Rev;
-        type Message = S::Message;
-    }
-    ///State transition - sets the `related_profiles` field to Set
-    pub struct SetRelatedProfiles<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRelatedProfiles<S> {}
-    impl<S: State> State for SetRelatedProfiles<S> {
-        type ConvoId = S::ConvoId;
-        type RelatedProfiles = Set<members::related_profiles>;
-        type Rev = S::Rev;
-        type Message = S::Message;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type ConvoId = S::ConvoId;
-        type RelatedProfiles = S::RelatedProfiles;
-        type Rev = Set<members::rev>;
-        type Message = S::Message;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type ConvoId = S::ConvoId;
-        type RelatedProfiles = S::RelatedProfiles;
-        type Rev = S::Rev;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `related_profiles` field to Set
+    pub struct SetRelatedProfiles<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRelatedProfiles<St> {}
+    impl<St: State> State for SetRelatedProfiles<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = Set<members::related_profiles>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
+        ///Marker type for the `message` field
+        pub struct message(());
         ///Marker type for the `related_profiles` field
         pub struct related_profiles(());
         ///Marker type for the `rev` field
         pub struct rev(());
-        ///Marker type for the `message` field
-        pub struct message(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogRemoveMemberBuilder<'a, S: log_remove_member_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct LogRemoveMemberBuilder<
+    St: log_remove_member_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<convo::SystemMessageView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogRemoveMember<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogRemoveMemberBuilder<'a, log_remove_member_state::Empty> {
+impl LogRemoveMember<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogRemoveMemberBuilder<log_remove_member_state::Empty, DefaultStr> {
         LogRemoveMemberBuilder::new()
     }
 }
 
-impl<'a> LogRemoveMemberBuilder<'a, log_remove_member_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogRemoveMember<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogRemoveMemberBuilder<log_remove_member_state::Empty, S> {
+        LogRemoveMemberBuilder::builder()
+    }
+}
+
+impl LogRemoveMemberBuilder<log_remove_member_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogRemoveMemberBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRemoveMemberBuilder<'a, S>
+impl<S: BosStr> LogRemoveMemberBuilder<log_remove_member_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogRemoveMemberBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogRemoveMemberBuilder<St, S>
 where
-    S: log_remove_member_state::State,
-    S::ConvoId: log_remove_member_state::IsUnset,
+    St: log_remove_member_state::State,
+    St::ConvoId: log_remove_member_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogRemoveMemberBuilder<'a, log_remove_member_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogRemoveMemberBuilder<log_remove_member_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogRemoveMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRemoveMemberBuilder<'a, S>
+impl<St, S: BosStr> LogRemoveMemberBuilder<St, S>
 where
-    S: log_remove_member_state::State,
-    S::Message: log_remove_member_state::IsUnset,
+    St: log_remove_member_state::State,
+    St::Message: log_remove_member_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogRemoveMemberBuilder<'a, log_remove_member_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogRemoveMemberBuilder<log_remove_member_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogRemoveMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRemoveMemberBuilder<'a, S>
+impl<St, S: BosStr> LogRemoveMemberBuilder<St, S>
 where
-    S: log_remove_member_state::State,
-    S::RelatedProfiles: log_remove_member_state::IsUnset,
+    St: log_remove_member_state::State,
+    St::RelatedProfiles: log_remove_member_state::IsUnset,
 {
     /// Set the `relatedProfiles` field (required)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
-    ) -> LogRemoveMemberBuilder<'a, log_remove_member_state::SetRelatedProfiles<S>> {
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
+    ) -> LogRemoveMemberBuilder<log_remove_member_state::SetRelatedProfiles<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogRemoveMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRemoveMemberBuilder<'a, S>
+impl<St, S: BosStr> LogRemoveMemberBuilder<St, S>
 where
-    S: log_remove_member_state::State,
-    S::Rev: log_remove_member_state::IsUnset,
+    St: log_remove_member_state::State,
+    St::Rev: log_remove_member_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogRemoveMemberBuilder<'a, log_remove_member_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogRemoveMemberBuilder<log_remove_member_state::SetRev<St>, S> {
         self._fields.3 = Option::Some(value.into());
         LogRemoveMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRemoveMemberBuilder<'a, S>
+impl<St, S: BosStr> LogRemoveMemberBuilder<St, S>
 where
-    S: log_remove_member_state::State,
-    S::ConvoId: log_remove_member_state::IsSet,
-    S::RelatedProfiles: log_remove_member_state::IsSet,
-    S::Rev: log_remove_member_state::IsSet,
-    S::Message: log_remove_member_state::IsSet,
+    St: log_remove_member_state::State,
+    St::ConvoId: log_remove_member_state::IsSet,
+    St::Message: log_remove_member_state::IsSet,
+    St::RelatedProfiles: log_remove_member_state::IsSet,
+    St::Rev: log_remove_member_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogRemoveMember<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogRemoveMember<S> {
         LogRemoveMember {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -9199,14 +9494,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogRemoveMember<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogRemoveMember<S> {
         LogRemoveMember {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -9227,163 +9519,187 @@ pub mod log_remove_reaction_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Rev;
         type ConvoId;
         type Message;
         type Reaction;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Rev = Unset;
         type ConvoId = Unset;
         type Message = Unset;
         type Reaction = Unset;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
-        type Reaction = S::Reaction;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Message = S::Message;
-        type Reaction = S::Reaction;
+        type Message = St::Message;
+        type Reaction = St::Reaction;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
-        type Reaction = S::Reaction;
+        type Reaction = St::Reaction;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `reaction` field to Set
-    pub struct SetReaction<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReaction<S> {}
-    impl<S: State> State for SetReaction<S> {
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
-        type Message = S::Message;
+    pub struct SetReaction<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReaction<St> {}
+    impl<St: State> State for SetReaction<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
         type Reaction = Set<members::reaction>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type Reaction = St::Reaction;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
         ///Marker type for the `message` field
         pub struct message(());
         ///Marker type for the `reaction` field
         pub struct reaction(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogRemoveReactionBuilder<'a, S: log_remove_reaction_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct LogRemoveReactionBuilder<
+    St: log_remove_reaction_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<LogRemoveReactionMessage<'a>>,
-        Option<convo::ReactionView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<LogRemoveReactionMessage<S>>,
+        Option<convo::ReactionView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogRemoveReaction<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogRemoveReactionBuilder<'a, log_remove_reaction_state::Empty> {
+impl LogRemoveReaction<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogRemoveReactionBuilder<
+        log_remove_reaction_state::Empty,
+        DefaultStr,
+    > {
         LogRemoveReactionBuilder::new()
     }
 }
 
-impl<'a> LogRemoveReactionBuilder<'a, log_remove_reaction_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogRemoveReaction<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogRemoveReactionBuilder<log_remove_reaction_state::Empty, S> {
+        LogRemoveReactionBuilder::builder()
+    }
+}
+
+impl LogRemoveReactionBuilder<log_remove_reaction_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogRemoveReactionBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRemoveReactionBuilder<'a, S>
+impl<S: BosStr> LogRemoveReactionBuilder<log_remove_reaction_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogRemoveReactionBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogRemoveReactionBuilder<St, S>
 where
-    S: log_remove_reaction_state::State,
-    S::ConvoId: log_remove_reaction_state::IsUnset,
+    St: log_remove_reaction_state::State,
+    St::ConvoId: log_remove_reaction_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogRemoveReactionBuilder<'a, log_remove_reaction_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogRemoveReactionBuilder<log_remove_reaction_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogRemoveReactionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRemoveReactionBuilder<'a, S>
+impl<St, S: BosStr> LogRemoveReactionBuilder<St, S>
 where
-    S: log_remove_reaction_state::State,
-    S::Message: log_remove_reaction_state::IsUnset,
+    St: log_remove_reaction_state::State,
+    St::Message: log_remove_reaction_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<LogRemoveReactionMessage<'a>>,
-    ) -> LogRemoveReactionBuilder<'a, log_remove_reaction_state::SetMessage<S>> {
+        value: impl Into<LogRemoveReactionMessage<S>>,
+    ) -> LogRemoveReactionBuilder<log_remove_reaction_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogRemoveReactionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRemoveReactionBuilder<'a, S>
+impl<St, S: BosStr> LogRemoveReactionBuilder<St, S>
 where
-    S: log_remove_reaction_state::State,
-    S::Reaction: log_remove_reaction_state::IsUnset,
+    St: log_remove_reaction_state::State,
+    St::Reaction: log_remove_reaction_state::IsUnset,
 {
     /// Set the `reaction` field (required)
     pub fn reaction(
         mut self,
-        value: impl Into<convo::ReactionView<'a>>,
-    ) -> LogRemoveReactionBuilder<'a, log_remove_reaction_state::SetReaction<S>> {
+        value: impl Into<convo::ReactionView<S>>,
+    ) -> LogRemoveReactionBuilder<log_remove_reaction_state::SetReaction<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogRemoveReactionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: log_remove_reaction_state::State> LogRemoveReactionBuilder<'a, S> {
+impl<St: log_remove_reaction_state::State, S: BosStr> LogRemoveReactionBuilder<St, S> {
     /// Set the `relatedProfiles` field (optional)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Option<Vec<ProfileViewBasic<'a>>>>,
+        value: impl Into<Option<Vec<ProfileViewBasic<S>>>>,
     ) -> Self {
         self._fields.3 = value.into();
         self
@@ -9391,42 +9707,42 @@ impl<'a, S: log_remove_reaction_state::State> LogRemoveReactionBuilder<'a, S> {
     /// Set the `relatedProfiles` field to an Option value (optional)
     pub fn maybe_related_profiles(
         mut self,
-        value: Option<Vec<ProfileViewBasic<'a>>>,
+        value: Option<Vec<ProfileViewBasic<S>>>,
     ) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> LogRemoveReactionBuilder<'a, S>
+impl<St, S: BosStr> LogRemoveReactionBuilder<St, S>
 where
-    S: log_remove_reaction_state::State,
-    S::Rev: log_remove_reaction_state::IsUnset,
+    St: log_remove_reaction_state::State,
+    St::Rev: log_remove_reaction_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogRemoveReactionBuilder<'a, log_remove_reaction_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogRemoveReactionBuilder<log_remove_reaction_state::SetRev<St>, S> {
         self._fields.4 = Option::Some(value.into());
         LogRemoveReactionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogRemoveReactionBuilder<'a, S>
+impl<St, S: BosStr> LogRemoveReactionBuilder<St, S>
 where
-    S: log_remove_reaction_state::State,
-    S::Rev: log_remove_reaction_state::IsSet,
-    S::ConvoId: log_remove_reaction_state::IsSet,
-    S::Message: log_remove_reaction_state::IsSet,
-    S::Reaction: log_remove_reaction_state::IsSet,
+    St: log_remove_reaction_state::State,
+    St::ConvoId: log_remove_reaction_state::IsSet,
+    St::Message: log_remove_reaction_state::IsSet,
+    St::Reaction: log_remove_reaction_state::IsSet,
+    St::Rev: log_remove_reaction_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogRemoveReaction<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogRemoveReaction<S> {
         LogRemoveReaction {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -9436,14 +9752,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogRemoveReaction<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogRemoveReaction<S> {
         LogRemoveReaction {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -9466,185 +9779,206 @@ pub mod log_unlock_convo_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type ConvoId;
-        type Rev;
-        type RelatedProfiles;
         type Message;
+        type RelatedProfiles;
+        type Rev;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type ConvoId = Unset;
-        type Rev = Unset;
-        type RelatedProfiles = Unset;
         type Message = Unset;
+        type RelatedProfiles = Unset;
+        type Rev = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type Rev = S::Rev;
-        type RelatedProfiles = S::RelatedProfiles;
-        type Message = S::Message;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type ConvoId = S::ConvoId;
-        type Rev = Set<members::rev>;
-        type RelatedProfiles = S::RelatedProfiles;
-        type Message = S::Message;
-    }
-    ///State transition - sets the `related_profiles` field to Set
-    pub struct SetRelatedProfiles<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRelatedProfiles<S> {}
-    impl<S: State> State for SetRelatedProfiles<S> {
-        type ConvoId = S::ConvoId;
-        type Rev = S::Rev;
-        type RelatedProfiles = Set<members::related_profiles>;
-        type Message = S::Message;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
-        type ConvoId = S::ConvoId;
-        type Rev = S::Rev;
-        type RelatedProfiles = S::RelatedProfiles;
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
+        type ConvoId = St::ConvoId;
         type Message = Set<members::message>;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `related_profiles` field to Set
+    pub struct SetRelatedProfiles<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRelatedProfiles<St> {}
+    impl<St: State> State for SetRelatedProfiles<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = Set<members::related_profiles>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Message = St::Message;
+        type RelatedProfiles = St::RelatedProfiles;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
-        ///Marker type for the `rev` field
-        pub struct rev(());
-        ///Marker type for the `related_profiles` field
-        pub struct related_profiles(());
         ///Marker type for the `message` field
         pub struct message(());
+        ///Marker type for the `related_profiles` field
+        pub struct related_profiles(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct LogUnlockConvoBuilder<'a, S: log_unlock_convo_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct LogUnlockConvoBuilder<
+    St: log_unlock_convo_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<convo::SystemMessageView<'a>>,
-        Option<Vec<ProfileViewBasic<'a>>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<convo::SystemMessageView<S>>,
+        Option<Vec<ProfileViewBasic<S>>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogUnlockConvo<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> LogUnlockConvoBuilder<'a, log_unlock_convo_state::Empty> {
+impl LogUnlockConvo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> LogUnlockConvoBuilder<log_unlock_convo_state::Empty, DefaultStr> {
         LogUnlockConvoBuilder::new()
     }
 }
 
-impl<'a> LogUnlockConvoBuilder<'a, log_unlock_convo_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> LogUnlockConvo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogUnlockConvoBuilder<log_unlock_convo_state::Empty, S> {
+        LogUnlockConvoBuilder::builder()
+    }
+}
+
+impl LogUnlockConvoBuilder<log_unlock_convo_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogUnlockConvoBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogUnlockConvoBuilder<'a, S>
+impl<S: BosStr> LogUnlockConvoBuilder<log_unlock_convo_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogUnlockConvoBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogUnlockConvoBuilder<St, S>
 where
-    S: log_unlock_convo_state::State,
-    S::ConvoId: log_unlock_convo_state::IsUnset,
+    St: log_unlock_convo_state::State,
+    St::ConvoId: log_unlock_convo_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogUnlockConvoBuilder<'a, log_unlock_convo_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> LogUnlockConvoBuilder<log_unlock_convo_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         LogUnlockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogUnlockConvoBuilder<'a, S>
+impl<St, S: BosStr> LogUnlockConvoBuilder<St, S>
 where
-    S: log_unlock_convo_state::State,
-    S::Message: log_unlock_convo_state::IsUnset,
+    St: log_unlock_convo_state::State,
+    St::Message: log_unlock_convo_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::SystemMessageView<'a>>,
-    ) -> LogUnlockConvoBuilder<'a, log_unlock_convo_state::SetMessage<S>> {
+        value: impl Into<convo::SystemMessageView<S>>,
+    ) -> LogUnlockConvoBuilder<log_unlock_convo_state::SetMessage<St>, S> {
         self._fields.1 = Option::Some(value.into());
         LogUnlockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogUnlockConvoBuilder<'a, S>
+impl<St, S: BosStr> LogUnlockConvoBuilder<St, S>
 where
-    S: log_unlock_convo_state::State,
-    S::RelatedProfiles: log_unlock_convo_state::IsUnset,
+    St: log_unlock_convo_state::State,
+    St::RelatedProfiles: log_unlock_convo_state::IsUnset,
 {
     /// Set the `relatedProfiles` field (required)
     pub fn related_profiles(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
-    ) -> LogUnlockConvoBuilder<'a, log_unlock_convo_state::SetRelatedProfiles<S>> {
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
+    ) -> LogUnlockConvoBuilder<log_unlock_convo_state::SetRelatedProfiles<St>, S> {
         self._fields.2 = Option::Some(value.into());
         LogUnlockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogUnlockConvoBuilder<'a, S>
+impl<St, S: BosStr> LogUnlockConvoBuilder<St, S>
 where
-    S: log_unlock_convo_state::State,
-    S::Rev: log_unlock_convo_state::IsUnset,
+    St: log_unlock_convo_state::State,
+    St::Rev: log_unlock_convo_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> LogUnlockConvoBuilder<'a, log_unlock_convo_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> LogUnlockConvoBuilder<log_unlock_convo_state::SetRev<St>, S> {
         self._fields.3 = Option::Some(value.into());
         LogUnlockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogUnlockConvoBuilder<'a, S>
+impl<St, S: BosStr> LogUnlockConvoBuilder<St, S>
 where
-    S: log_unlock_convo_state::State,
-    S::ConvoId: log_unlock_convo_state::IsSet,
-    S::Rev: log_unlock_convo_state::IsSet,
-    S::RelatedProfiles: log_unlock_convo_state::IsSet,
-    S::Message: log_unlock_convo_state::IsSet,
+    St: log_unlock_convo_state::State,
+    St::ConvoId: log_unlock_convo_state::IsSet,
+    St::Message: log_unlock_convo_state::IsSet,
+    St::RelatedProfiles: log_unlock_convo_state::IsSet,
+    St::Rev: log_unlock_convo_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogUnlockConvo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogUnlockConvo<S> {
         LogUnlockConvo {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -9653,14 +9987,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogUnlockConvo<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogUnlockConvo<S> {
         LogUnlockConvo {
             convo_id: self._fields.0.unwrap(),
             message: self._fields.1.unwrap(),
@@ -9681,165 +10012,189 @@ pub mod log_withdraw_incoming_join_request_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type ConvoId;
         type Member;
         type Rev;
-        type ConvoId;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type ConvoId = Unset;
         type Member = Unset;
         type Rev = Unset;
-        type ConvoId = Unset;
-    }
-    ///State transition - sets the `member` field to Set
-    pub struct SetMember<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMember<S> {}
-    impl<S: State> State for SetMember<S> {
-        type Member = Set<members::member>;
-        type Rev = S::Rev;
-        type ConvoId = S::ConvoId;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Member = S::Member;
-        type Rev = Set<members::rev>;
-        type ConvoId = S::ConvoId;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
-        type Member = S::Member;
-        type Rev = S::Rev;
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
+        type Member = St::Member;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `member` field to Set
+    pub struct SetMember<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMember<St> {}
+    impl<St: State> State for SetMember<St> {
+        type ConvoId = St::ConvoId;
+        type Member = Set<members::member>;
+        type Rev = St::Rev;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type ConvoId = St::ConvoId;
+        type Member = St::Member;
+        type Rev = Set<members::rev>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `convo_id` field
+        pub struct convo_id(());
         ///Marker type for the `member` field
         pub struct member(());
         ///Marker type for the `rev` field
         pub struct rev(());
-        ///Marker type for the `convo_id` field
-        pub struct convo_id(());
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct LogWithdrawIncomingJoinRequestBuilder<
-    'a,
-    S: log_withdraw_incoming_join_request_state::State,
+    St: log_withdraw_incoming_join_request_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<ProfileViewBasic<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<ProfileViewBasic<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> LogWithdrawIncomingJoinRequest<'a> {
-    /// Create a new builder for this type
+impl LogWithdrawIncomingJoinRequest<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> LogWithdrawIncomingJoinRequestBuilder<
-        'a,
         log_withdraw_incoming_join_request_state::Empty,
+        DefaultStr,
     > {
         LogWithdrawIncomingJoinRequestBuilder::new()
     }
 }
 
-impl<
-    'a,
-> LogWithdrawIncomingJoinRequestBuilder<
-    'a,
+impl<S: BosStr> LogWithdrawIncomingJoinRequest<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> LogWithdrawIncomingJoinRequestBuilder<
+        log_withdraw_incoming_join_request_state::Empty,
+        S,
+    > {
+        LogWithdrawIncomingJoinRequestBuilder::builder()
+    }
+}
+
+impl LogWithdrawIncomingJoinRequestBuilder<
     log_withdraw_incoming_join_request_state::Empty,
+    DefaultStr,
 > {
-    /// Create a new builder with all fields unset
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         LogWithdrawIncomingJoinRequestBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogWithdrawIncomingJoinRequestBuilder<'a, S>
+impl<
+    S: BosStr,
+> LogWithdrawIncomingJoinRequestBuilder<
+    log_withdraw_incoming_join_request_state::Empty,
+    S,
+> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        LogWithdrawIncomingJoinRequestBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> LogWithdrawIncomingJoinRequestBuilder<St, S>
 where
-    S: log_withdraw_incoming_join_request_state::State,
-    S::ConvoId: log_withdraw_incoming_join_request_state::IsUnset,
+    St: log_withdraw_incoming_join_request_state::State,
+    St::ConvoId: log_withdraw_incoming_join_request_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
+        value: impl Into<S>,
     ) -> LogWithdrawIncomingJoinRequestBuilder<
-        'a,
-        log_withdraw_incoming_join_request_state::SetConvoId<S>,
+        log_withdraw_incoming_join_request_state::SetConvoId<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         LogWithdrawIncomingJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogWithdrawIncomingJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogWithdrawIncomingJoinRequestBuilder<St, S>
 where
-    S: log_withdraw_incoming_join_request_state::State,
-    S::Member: log_withdraw_incoming_join_request_state::IsUnset,
+    St: log_withdraw_incoming_join_request_state::State,
+    St::Member: log_withdraw_incoming_join_request_state::IsUnset,
 {
     /// Set the `member` field (required)
     pub fn member(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
+        value: impl Into<ProfileViewBasic<S>>,
     ) -> LogWithdrawIncomingJoinRequestBuilder<
-        'a,
-        log_withdraw_incoming_join_request_state::SetMember<S>,
+        log_withdraw_incoming_join_request_state::SetMember<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         LogWithdrawIncomingJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogWithdrawIncomingJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogWithdrawIncomingJoinRequestBuilder<St, S>
 where
-    S: log_withdraw_incoming_join_request_state::State,
-    S::Rev: log_withdraw_incoming_join_request_state::IsUnset,
+    St: log_withdraw_incoming_join_request_state::State,
+    St::Rev: log_withdraw_incoming_join_request_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
+        value: impl Into<S>,
     ) -> LogWithdrawIncomingJoinRequestBuilder<
-        'a,
-        log_withdraw_incoming_join_request_state::SetRev<S>,
+        log_withdraw_incoming_join_request_state::SetRev<St>,
+        S,
     > {
         self._fields.2 = Option::Some(value.into());
         LogWithdrawIncomingJoinRequestBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> LogWithdrawIncomingJoinRequestBuilder<'a, S>
+impl<St, S: BosStr> LogWithdrawIncomingJoinRequestBuilder<St, S>
 where
-    S: log_withdraw_incoming_join_request_state::State,
-    S::Member: log_withdraw_incoming_join_request_state::IsSet,
-    S::Rev: log_withdraw_incoming_join_request_state::IsSet,
-    S::ConvoId: log_withdraw_incoming_join_request_state::IsSet,
+    St: log_withdraw_incoming_join_request_state::State,
+    St::ConvoId: log_withdraw_incoming_join_request_state::IsSet,
+    St::Member: log_withdraw_incoming_join_request_state::IsSet,
+    St::Rev: log_withdraw_incoming_join_request_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> LogWithdrawIncomingJoinRequest<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> LogWithdrawIncomingJoinRequest<S> {
         LogWithdrawIncomingJoinRequest {
             convo_id: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -9847,14 +10202,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> LogWithdrawIncomingJoinRequest<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> LogWithdrawIncomingJoinRequest<S> {
         LogWithdrawIncomingJoinRequest {
             convo_id: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -9885,17 +10237,17 @@ pub mod message_and_reaction_view_state {
         type Reaction = Unset;
     }
     ///State transition - sets the `message` field to Set
-    pub struct SetMessage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessage<S> {}
-    impl<S: State> State for SetMessage<S> {
+    pub struct SetMessage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessage<St> {}
+    impl<St: State> State for SetMessage<St> {
         type Message = Set<members::message>;
-        type Reaction = S::Reaction;
+        type Reaction = St::Reaction;
     }
     ///State transition - sets the `reaction` field to Set
-    pub struct SetReaction<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReaction<S> {}
-    impl<S: State> State for SetReaction<S> {
-        type Message = S::Message;
+    pub struct SetReaction<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReaction<St> {}
+    impl<St: State> State for SetReaction<St> {
+        type Message = St::Message;
         type Reaction = Set<members::reaction>;
     }
     /// Marker types for field names
@@ -9908,100 +10260,123 @@ pub mod message_and_reaction_view_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct MessageAndReactionViewBuilder<'a, S: message_and_reaction_view_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<convo::MessageView<'a>>, Option<convo::ReactionView<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct MessageAndReactionViewBuilder<
+    St: message_and_reaction_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<convo::MessageView<S>>, Option<convo::ReactionView<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> MessageAndReactionView<'a> {
-    /// Create a new builder for this type
+impl MessageAndReactionView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> MessageAndReactionViewBuilder<
-        'a,
         message_and_reaction_view_state::Empty,
+        DefaultStr,
     > {
         MessageAndReactionViewBuilder::new()
     }
 }
 
-impl<'a> MessageAndReactionViewBuilder<'a, message_and_reaction_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> MessageAndReactionView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> MessageAndReactionViewBuilder<
+        message_and_reaction_view_state::Empty,
+        S,
+    > {
+        MessageAndReactionViewBuilder::builder()
+    }
+}
+
+impl MessageAndReactionViewBuilder<message_and_reaction_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         MessageAndReactionViewBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageAndReactionViewBuilder<'a, S>
+impl<
+    S: BosStr,
+> MessageAndReactionViewBuilder<message_and_reaction_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        MessageAndReactionViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> MessageAndReactionViewBuilder<St, S>
 where
-    S: message_and_reaction_view_state::State,
-    S::Message: message_and_reaction_view_state::IsUnset,
+    St: message_and_reaction_view_state::State,
+    St::Message: message_and_reaction_view_state::IsUnset,
 {
     /// Set the `message` field (required)
     pub fn message(
         mut self,
-        value: impl Into<convo::MessageView<'a>>,
+        value: impl Into<convo::MessageView<S>>,
     ) -> MessageAndReactionViewBuilder<
-        'a,
-        message_and_reaction_view_state::SetMessage<S>,
+        message_and_reaction_view_state::SetMessage<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         MessageAndReactionViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageAndReactionViewBuilder<'a, S>
+impl<St, S: BosStr> MessageAndReactionViewBuilder<St, S>
 where
-    S: message_and_reaction_view_state::State,
-    S::Reaction: message_and_reaction_view_state::IsUnset,
+    St: message_and_reaction_view_state::State,
+    St::Reaction: message_and_reaction_view_state::IsUnset,
 {
     /// Set the `reaction` field (required)
     pub fn reaction(
         mut self,
-        value: impl Into<convo::ReactionView<'a>>,
+        value: impl Into<convo::ReactionView<S>>,
     ) -> MessageAndReactionViewBuilder<
-        'a,
-        message_and_reaction_view_state::SetReaction<S>,
+        message_and_reaction_view_state::SetReaction<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         MessageAndReactionViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageAndReactionViewBuilder<'a, S>
+impl<St, S: BosStr> MessageAndReactionViewBuilder<St, S>
 where
-    S: message_and_reaction_view_state::State,
-    S::Message: message_and_reaction_view_state::IsSet,
-    S::Reaction: message_and_reaction_view_state::IsSet,
+    St: message_and_reaction_view_state::State,
+    St::Message: message_and_reaction_view_state::IsSet,
+    St::Reaction: message_and_reaction_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> MessageAndReactionView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> MessageAndReactionView<S> {
         MessageAndReactionView {
             message: self._fields.0.unwrap(),
             reaction: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> MessageAndReactionView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> MessageAndReactionView<S> {
         MessageAndReactionView {
             message: self._fields.0.unwrap(),
             reaction: self._fields.1.unwrap(),
@@ -10021,144 +10396,162 @@ pub mod message_ref_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type ConvoId;
-        type MessageId;
         type Did;
+        type MessageId;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type ConvoId = Unset;
-        type MessageId = Unset;
         type Did = Unset;
+        type MessageId = Unset;
     }
     ///State transition - sets the `convo_id` field to Set
-    pub struct SetConvoId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvoId<S> {}
-    impl<S: State> State for SetConvoId<S> {
+    pub struct SetConvoId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvoId<St> {}
+    impl<St: State> State for SetConvoId<St> {
         type ConvoId = Set<members::convo_id>;
-        type MessageId = S::MessageId;
-        type Did = S::Did;
-    }
-    ///State transition - sets the `message_id` field to Set
-    pub struct SetMessageId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessageId<S> {}
-    impl<S: State> State for SetMessageId<S> {
-        type ConvoId = S::ConvoId;
-        type MessageId = Set<members::message_id>;
-        type Did = S::Did;
+        type Did = St::Did;
+        type MessageId = St::MessageId;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
-        type ConvoId = S::ConvoId;
-        type MessageId = S::MessageId;
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
+        type ConvoId = St::ConvoId;
         type Did = Set<members::did>;
+        type MessageId = St::MessageId;
+    }
+    ///State transition - sets the `message_id` field to Set
+    pub struct SetMessageId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessageId<St> {}
+    impl<St: State> State for SetMessageId<St> {
+        type ConvoId = St::ConvoId;
+        type Did = St::Did;
+        type MessageId = Set<members::message_id>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
         ///Marker type for the `convo_id` field
         pub struct convo_id(());
-        ///Marker type for the `message_id` field
-        pub struct message_id(());
         ///Marker type for the `did` field
         pub struct did(());
+        ///Marker type for the `message_id` field
+        pub struct message_id(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct MessageRefBuilder<'a, S: message_ref_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<Did<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct MessageRefBuilder<St: message_ref_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<Did<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> MessageRef<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> MessageRefBuilder<'a, message_ref_state::Empty> {
+impl MessageRef<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> MessageRefBuilder<message_ref_state::Empty, DefaultStr> {
         MessageRefBuilder::new()
     }
 }
 
-impl<'a> MessageRefBuilder<'a, message_ref_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> MessageRef<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> MessageRefBuilder<message_ref_state::Empty, S> {
+        MessageRefBuilder::builder()
+    }
+}
+
+impl MessageRefBuilder<message_ref_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         MessageRefBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageRefBuilder<'a, S>
+impl<S: BosStr> MessageRefBuilder<message_ref_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        MessageRefBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> MessageRefBuilder<St, S>
 where
-    S: message_ref_state::State,
-    S::ConvoId: message_ref_state::IsUnset,
+    St: message_ref_state::State,
+    St::ConvoId: message_ref_state::IsUnset,
 {
     /// Set the `convoId` field (required)
     pub fn convo_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> MessageRefBuilder<'a, message_ref_state::SetConvoId<S>> {
+        value: impl Into<S>,
+    ) -> MessageRefBuilder<message_ref_state::SetConvoId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         MessageRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageRefBuilder<'a, S>
+impl<St, S: BosStr> MessageRefBuilder<St, S>
 where
-    S: message_ref_state::State,
-    S::Did: message_ref_state::IsUnset,
+    St: message_ref_state::State,
+    St::Did: message_ref_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> MessageRefBuilder<'a, message_ref_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> MessageRefBuilder<message_ref_state::SetDid<St>, S> {
         self._fields.1 = Option::Some(value.into());
         MessageRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageRefBuilder<'a, S>
+impl<St, S: BosStr> MessageRefBuilder<St, S>
 where
-    S: message_ref_state::State,
-    S::MessageId: message_ref_state::IsUnset,
+    St: message_ref_state::State,
+    St::MessageId: message_ref_state::IsUnset,
 {
     /// Set the `messageId` field (required)
     pub fn message_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> MessageRefBuilder<'a, message_ref_state::SetMessageId<S>> {
+        value: impl Into<S>,
+    ) -> MessageRefBuilder<message_ref_state::SetMessageId<St>, S> {
         self._fields.2 = Option::Some(value.into());
         MessageRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageRefBuilder<'a, S>
+impl<St, S: BosStr> MessageRefBuilder<St, S>
 where
-    S: message_ref_state::State,
-    S::ConvoId: message_ref_state::IsSet,
-    S::MessageId: message_ref_state::IsSet,
-    S::Did: message_ref_state::IsSet,
+    St: message_ref_state::State,
+    St::ConvoId: message_ref_state::IsSet,
+    St::Did: message_ref_state::IsSet,
+    St::MessageId: message_ref_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> MessageRef<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> MessageRef<S> {
         MessageRef {
             convo_id: self._fields.0.unwrap(),
             did: self._fields.1.unwrap(),
@@ -10166,14 +10559,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> MessageRef<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> MessageRef<S> {
         MessageRef {
             convo_id: self._fields.0.unwrap(),
             did: self._fields.1.unwrap(),
@@ -10193,173 +10583,191 @@ pub mod message_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type SentAt;
         type Id;
-        type Text;
         type Rev;
         type Sender;
+        type SentAt;
+        type Text;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type SentAt = Unset;
         type Id = Unset;
-        type Text = Unset;
         type Rev = Unset;
         type Sender = Unset;
-    }
-    ///State transition - sets the `sent_at` field to Set
-    pub struct SetSentAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSentAt<S> {}
-    impl<S: State> State for SetSentAt<S> {
-        type SentAt = Set<members::sent_at>;
-        type Id = S::Id;
-        type Text = S::Text;
-        type Rev = S::Rev;
-        type Sender = S::Sender;
+        type SentAt = Unset;
+        type Text = Unset;
     }
     ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type SentAt = S::SentAt;
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
         type Id = Set<members::id>;
-        type Text = S::Text;
-        type Rev = S::Rev;
-        type Sender = S::Sender;
-    }
-    ///State transition - sets the `text` field to Set
-    pub struct SetText<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetText<S> {}
-    impl<S: State> State for SetText<S> {
-        type SentAt = S::SentAt;
-        type Id = S::Id;
-        type Text = Set<members::text>;
-        type Rev = S::Rev;
-        type Sender = S::Sender;
+        type Rev = St::Rev;
+        type Sender = St::Sender;
+        type SentAt = St::SentAt;
+        type Text = St::Text;
     }
     ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type SentAt = S::SentAt;
-        type Id = S::Id;
-        type Text = S::Text;
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type Id = St::Id;
         type Rev = Set<members::rev>;
-        type Sender = S::Sender;
+        type Sender = St::Sender;
+        type SentAt = St::SentAt;
+        type Text = St::Text;
     }
     ///State transition - sets the `sender` field to Set
-    pub struct SetSender<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSender<S> {}
-    impl<S: State> State for SetSender<S> {
-        type SentAt = S::SentAt;
-        type Id = S::Id;
-        type Text = S::Text;
-        type Rev = S::Rev;
+    pub struct SetSender<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSender<St> {}
+    impl<St: State> State for SetSender<St> {
+        type Id = St::Id;
+        type Rev = St::Rev;
         type Sender = Set<members::sender>;
+        type SentAt = St::SentAt;
+        type Text = St::Text;
+    }
+    ///State transition - sets the `sent_at` field to Set
+    pub struct SetSentAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSentAt<St> {}
+    impl<St: State> State for SetSentAt<St> {
+        type Id = St::Id;
+        type Rev = St::Rev;
+        type Sender = St::Sender;
+        type SentAt = Set<members::sent_at>;
+        type Text = St::Text;
+    }
+    ///State transition - sets the `text` field to Set
+    pub struct SetText<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetText<St> {}
+    impl<St: State> State for SetText<St> {
+        type Id = St::Id;
+        type Rev = St::Rev;
+        type Sender = St::Sender;
+        type SentAt = St::SentAt;
+        type Text = Set<members::text>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `sent_at` field
-        pub struct sent_at(());
         ///Marker type for the `id` field
         pub struct id(());
-        ///Marker type for the `text` field
-        pub struct text(());
         ///Marker type for the `rev` field
         pub struct rev(());
         ///Marker type for the `sender` field
         pub struct sender(());
+        ///Marker type for the `sent_at` field
+        pub struct sent_at(());
+        ///Marker type for the `text` field
+        pub struct text(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct MessageViewBuilder<'a, S: message_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct MessageViewBuilder<St: message_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<MessageViewEmbed<'a>>,
-        Option<Vec<Facet<'a>>>,
-        Option<CowStr<'a>>,
-        Option<Vec<convo::ReactionView<'a>>>,
-        Option<MessageViewReplyTo<'a>>,
-        Option<CowStr<'a>>,
-        Option<convo::MessageViewSender<'a>>,
+        Option<MessageViewEmbed<S>>,
+        Option<Vec<Facet<S>>>,
+        Option<S>,
+        Option<Vec<convo::ReactionView<S>>>,
+        Option<MessageViewReplyTo<S>>,
+        Option<S>,
+        Option<convo::MessageViewSender<S>>,
         Option<Datetime>,
-        Option<CowStr<'a>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> MessageView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> MessageViewBuilder<'a, message_view_state::Empty> {
+impl MessageView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> MessageViewBuilder<message_view_state::Empty, DefaultStr> {
         MessageViewBuilder::new()
     }
 }
 
-impl<'a> MessageViewBuilder<'a, message_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> MessageView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> MessageViewBuilder<message_view_state::Empty, S> {
+        MessageViewBuilder::builder()
+    }
+}
+
+impl MessageViewBuilder<message_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         MessageViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: message_view_state::State> MessageViewBuilder<'a, S> {
+impl<S: BosStr> MessageViewBuilder<message_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        MessageViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: message_view_state::State, S: BosStr> MessageViewBuilder<St, S> {
     /// Set the `embed` field (optional)
-    pub fn embed(mut self, value: impl Into<Option<MessageViewEmbed<'a>>>) -> Self {
+    pub fn embed(mut self, value: impl Into<Option<MessageViewEmbed<S>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `embed` field to an Option value (optional)
-    pub fn maybe_embed(mut self, value: Option<MessageViewEmbed<'a>>) -> Self {
+    pub fn maybe_embed(mut self, value: Option<MessageViewEmbed<S>>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: message_view_state::State> MessageViewBuilder<'a, S> {
+impl<St: message_view_state::State, S: BosStr> MessageViewBuilder<St, S> {
     /// Set the `facets` field (optional)
-    pub fn facets(mut self, value: impl Into<Option<Vec<Facet<'a>>>>) -> Self {
+    pub fn facets(mut self, value: impl Into<Option<Vec<Facet<S>>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `facets` field to an Option value (optional)
-    pub fn maybe_facets(mut self, value: Option<Vec<Facet<'a>>>) -> Self {
+    pub fn maybe_facets(mut self, value: Option<Vec<Facet<S>>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> MessageViewBuilder<'a, S>
+impl<St, S: BosStr> MessageViewBuilder<St, S>
 where
-    S: message_view_state::State,
-    S::Id: message_view_state::IsUnset,
+    St: message_view_state::State,
+    St::Id: message_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> MessageViewBuilder<'a, message_view_state::SetId<S>> {
+        value: impl Into<S>,
+    ) -> MessageViewBuilder<message_view_state::SetId<St>, S> {
         self._fields.2 = Option::Some(value.into());
         MessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: message_view_state::State> MessageViewBuilder<'a, S> {
+impl<St: message_view_state::State, S: BosStr> MessageViewBuilder<St, S> {
     /// Set the `reactions` field (optional)
     pub fn reactions(
         mut self,
-        value: impl Into<Option<Vec<convo::ReactionView<'a>>>>,
+        value: impl Into<Option<Vec<convo::ReactionView<S>>>>,
     ) -> Self {
         self._fields.3 = value.into();
         self
@@ -10367,113 +10775,113 @@ impl<'a, S: message_view_state::State> MessageViewBuilder<'a, S> {
     /// Set the `reactions` field to an Option value (optional)
     pub fn maybe_reactions(
         mut self,
-        value: Option<Vec<convo::ReactionView<'a>>>,
+        value: Option<Vec<convo::ReactionView<S>>>,
     ) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: message_view_state::State> MessageViewBuilder<'a, S> {
+impl<St: message_view_state::State, S: BosStr> MessageViewBuilder<St, S> {
     /// Set the `replyTo` field (optional)
-    pub fn reply_to(mut self, value: impl Into<Option<MessageViewReplyTo<'a>>>) -> Self {
+    pub fn reply_to(mut self, value: impl Into<Option<MessageViewReplyTo<S>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `replyTo` field to an Option value (optional)
-    pub fn maybe_reply_to(mut self, value: Option<MessageViewReplyTo<'a>>) -> Self {
+    pub fn maybe_reply_to(mut self, value: Option<MessageViewReplyTo<S>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> MessageViewBuilder<'a, S>
+impl<St, S: BosStr> MessageViewBuilder<St, S>
 where
-    S: message_view_state::State,
-    S::Rev: message_view_state::IsUnset,
+    St: message_view_state::State,
+    St::Rev: message_view_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> MessageViewBuilder<'a, message_view_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> MessageViewBuilder<message_view_state::SetRev<St>, S> {
         self._fields.5 = Option::Some(value.into());
         MessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageViewBuilder<'a, S>
+impl<St, S: BosStr> MessageViewBuilder<St, S>
 where
-    S: message_view_state::State,
-    S::Sender: message_view_state::IsUnset,
+    St: message_view_state::State,
+    St::Sender: message_view_state::IsUnset,
 {
     /// Set the `sender` field (required)
     pub fn sender(
         mut self,
-        value: impl Into<convo::MessageViewSender<'a>>,
-    ) -> MessageViewBuilder<'a, message_view_state::SetSender<S>> {
+        value: impl Into<convo::MessageViewSender<S>>,
+    ) -> MessageViewBuilder<message_view_state::SetSender<St>, S> {
         self._fields.6 = Option::Some(value.into());
         MessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageViewBuilder<'a, S>
+impl<St, S: BosStr> MessageViewBuilder<St, S>
 where
-    S: message_view_state::State,
-    S::SentAt: message_view_state::IsUnset,
+    St: message_view_state::State,
+    St::SentAt: message_view_state::IsUnset,
 {
     /// Set the `sentAt` field (required)
     pub fn sent_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> MessageViewBuilder<'a, message_view_state::SetSentAt<S>> {
+    ) -> MessageViewBuilder<message_view_state::SetSentAt<St>, S> {
         self._fields.7 = Option::Some(value.into());
         MessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageViewBuilder<'a, S>
+impl<St, S: BosStr> MessageViewBuilder<St, S>
 where
-    S: message_view_state::State,
-    S::Text: message_view_state::IsUnset,
+    St: message_view_state::State,
+    St::Text: message_view_state::IsUnset,
 {
     /// Set the `text` field (required)
     pub fn text(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> MessageViewBuilder<'a, message_view_state::SetText<S>> {
+        value: impl Into<S>,
+    ) -> MessageViewBuilder<message_view_state::SetText<St>, S> {
         self._fields.8 = Option::Some(value.into());
         MessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageViewBuilder<'a, S>
+impl<St, S: BosStr> MessageViewBuilder<St, S>
 where
-    S: message_view_state::State,
-    S::SentAt: message_view_state::IsSet,
-    S::Id: message_view_state::IsSet,
-    S::Text: message_view_state::IsSet,
-    S::Rev: message_view_state::IsSet,
-    S::Sender: message_view_state::IsSet,
+    St: message_view_state::State,
+    St::Id: message_view_state::IsSet,
+    St::Rev: message_view_state::IsSet,
+    St::Sender: message_view_state::IsSet,
+    St::SentAt: message_view_state::IsSet,
+    St::Text: message_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> MessageView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> MessageView<S> {
         MessageView {
             embed: self._fields.0,
             facets: self._fields.1,
@@ -10487,14 +10895,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> MessageView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> MessageView<S> {
         MessageView {
             embed: self._fields.0,
             facets: self._fields.1,
@@ -10529,9 +10934,9 @@ pub mod message_view_sender_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -10542,70 +10947,91 @@ pub mod message_view_sender_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct MessageViewSenderBuilder<'a, S: message_view_sender_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct MessageViewSenderBuilder<
+    St: message_view_sender_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> MessageViewSender<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> MessageViewSenderBuilder<'a, message_view_sender_state::Empty> {
+impl MessageViewSender<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> MessageViewSenderBuilder<
+        message_view_sender_state::Empty,
+        DefaultStr,
+    > {
         MessageViewSenderBuilder::new()
     }
 }
 
-impl<'a> MessageViewSenderBuilder<'a, message_view_sender_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> MessageViewSender<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> MessageViewSenderBuilder<message_view_sender_state::Empty, S> {
+        MessageViewSenderBuilder::builder()
+    }
+}
+
+impl MessageViewSenderBuilder<message_view_sender_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         MessageViewSenderBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageViewSenderBuilder<'a, S>
+impl<S: BosStr> MessageViewSenderBuilder<message_view_sender_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        MessageViewSenderBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> MessageViewSenderBuilder<St, S>
 where
-    S: message_view_sender_state::State,
-    S::Did: message_view_sender_state::IsUnset,
+    St: message_view_sender_state::State,
+    St::Did: message_view_sender_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> MessageViewSenderBuilder<'a, message_view_sender_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> MessageViewSenderBuilder<message_view_sender_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         MessageViewSenderBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MessageViewSenderBuilder<'a, S>
+impl<St, S: BosStr> MessageViewSenderBuilder<St, S>
 where
-    S: message_view_sender_state::State,
-    S::Did: message_view_sender_state::IsSet,
+    St: message_view_sender_state::State,
+    St::Did: message_view_sender_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> MessageViewSender<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> MessageViewSender<S> {
         MessageViewSender {
             did: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> MessageViewSender<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> MessageViewSender<S> {
         MessageViewSender {
             did: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -10636,27 +11062,27 @@ pub mod reaction_view_state {
         type Value = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
-        type Sender = S::Sender;
-        type Value = S::Value;
+        type Sender = St::Sender;
+        type Value = St::Value;
     }
     ///State transition - sets the `sender` field to Set
-    pub struct SetSender<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSender<S> {}
-    impl<S: State> State for SetSender<S> {
-        type CreatedAt = S::CreatedAt;
+    pub struct SetSender<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSender<St> {}
+    impl<St: State> State for SetSender<St> {
+        type CreatedAt = St::CreatedAt;
         type Sender = Set<members::sender>;
-        type Value = S::Value;
+        type Value = St::Value;
     }
     ///State transition - sets the `value` field to Set
-    pub struct SetValue<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetValue<S> {}
-    impl<S: State> State for SetValue<S> {
-        type CreatedAt = S::CreatedAt;
-        type Sender = S::Sender;
+    pub struct SetValue<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetValue<St> {}
+    impl<St: State> State for SetValue<St> {
+        type CreatedAt = St::CreatedAt;
+        type Sender = St::Sender;
         type Value = Set<members::value>;
     }
     /// Marker types for field names
@@ -10671,101 +11097,115 @@ pub mod reaction_view_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReactionViewBuilder<'a, S: reaction_view_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<Datetime>,
-        Option<convo::ReactionViewSender<'a>>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ReactionViewBuilder<St: reaction_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Datetime>, Option<convo::ReactionViewSender<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ReactionView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReactionViewBuilder<'a, reaction_view_state::Empty> {
+impl ReactionView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReactionViewBuilder<reaction_view_state::Empty, DefaultStr> {
         ReactionViewBuilder::new()
     }
 }
 
-impl<'a> ReactionViewBuilder<'a, reaction_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ReactionView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReactionViewBuilder<reaction_view_state::Empty, S> {
+        ReactionViewBuilder::builder()
+    }
+}
+
+impl ReactionViewBuilder<reaction_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReactionViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReactionViewBuilder<'a, S>
+impl<S: BosStr> ReactionViewBuilder<reaction_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReactionViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ReactionViewBuilder<St, S>
 where
-    S: reaction_view_state::State,
-    S::CreatedAt: reaction_view_state::IsUnset,
+    St: reaction_view_state::State,
+    St::CreatedAt: reaction_view_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> ReactionViewBuilder<'a, reaction_view_state::SetCreatedAt<S>> {
+    ) -> ReactionViewBuilder<reaction_view_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ReactionViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReactionViewBuilder<'a, S>
+impl<St, S: BosStr> ReactionViewBuilder<St, S>
 where
-    S: reaction_view_state::State,
-    S::Sender: reaction_view_state::IsUnset,
+    St: reaction_view_state::State,
+    St::Sender: reaction_view_state::IsUnset,
 {
     /// Set the `sender` field (required)
     pub fn sender(
         mut self,
-        value: impl Into<convo::ReactionViewSender<'a>>,
-    ) -> ReactionViewBuilder<'a, reaction_view_state::SetSender<S>> {
+        value: impl Into<convo::ReactionViewSender<S>>,
+    ) -> ReactionViewBuilder<reaction_view_state::SetSender<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ReactionViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReactionViewBuilder<'a, S>
+impl<St, S: BosStr> ReactionViewBuilder<St, S>
 where
-    S: reaction_view_state::State,
-    S::Value: reaction_view_state::IsUnset,
+    St: reaction_view_state::State,
+    St::Value: reaction_view_state::IsUnset,
 {
     /// Set the `value` field (required)
     pub fn value(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> ReactionViewBuilder<'a, reaction_view_state::SetValue<S>> {
+        value: impl Into<S>,
+    ) -> ReactionViewBuilder<reaction_view_state::SetValue<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ReactionViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReactionViewBuilder<'a, S>
+impl<St, S: BosStr> ReactionViewBuilder<St, S>
 where
-    S: reaction_view_state::State,
-    S::CreatedAt: reaction_view_state::IsSet,
-    S::Sender: reaction_view_state::IsSet,
-    S::Value: reaction_view_state::IsSet,
+    St: reaction_view_state::State,
+    St::CreatedAt: reaction_view_state::IsSet,
+    St::Sender: reaction_view_state::IsSet,
+    St::Value: reaction_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ReactionView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ReactionView<S> {
         ReactionView {
             created_at: self._fields.0.unwrap(),
             sender: self._fields.1.unwrap(),
@@ -10773,14 +11213,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ReactionView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ReactionView<S> {
         ReactionView {
             created_at: self._fields.0.unwrap(),
             sender: self._fields.1.unwrap(),
@@ -10809,9 +11246,9 @@ pub mod reaction_view_sender_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -10822,70 +11259,91 @@ pub mod reaction_view_sender_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReactionViewSenderBuilder<'a, S: reaction_view_sender_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ReactionViewSenderBuilder<
+    St: reaction_view_sender_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ReactionViewSender<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReactionViewSenderBuilder<'a, reaction_view_sender_state::Empty> {
+impl ReactionViewSender<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReactionViewSenderBuilder<
+        reaction_view_sender_state::Empty,
+        DefaultStr,
+    > {
         ReactionViewSenderBuilder::new()
     }
 }
 
-impl<'a> ReactionViewSenderBuilder<'a, reaction_view_sender_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ReactionViewSender<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReactionViewSenderBuilder<reaction_view_sender_state::Empty, S> {
+        ReactionViewSenderBuilder::builder()
+    }
+}
+
+impl ReactionViewSenderBuilder<reaction_view_sender_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReactionViewSenderBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReactionViewSenderBuilder<'a, S>
+impl<S: BosStr> ReactionViewSenderBuilder<reaction_view_sender_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReactionViewSenderBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ReactionViewSenderBuilder<St, S>
 where
-    S: reaction_view_sender_state::State,
-    S::Did: reaction_view_sender_state::IsUnset,
+    St: reaction_view_sender_state::State,
+    St::Did: reaction_view_sender_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> ReactionViewSenderBuilder<'a, reaction_view_sender_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> ReactionViewSenderBuilder<reaction_view_sender_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ReactionViewSenderBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReactionViewSenderBuilder<'a, S>
+impl<St, S: BosStr> ReactionViewSenderBuilder<St, S>
 where
-    S: reaction_view_sender_state::State,
-    S::Did: reaction_view_sender_state::IsSet,
+    St: reaction_view_sender_state::State,
+    St::Did: reaction_view_sender_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ReactionViewSender<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ReactionViewSender<S> {
         ReactionViewSender {
             did: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ReactionViewSender<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ReactionViewSender<S> {
         ReactionViewSender {
             did: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -10903,166 +11361,190 @@ pub mod system_message_data_add_member_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Member;
         type AddedBy;
+        type Member;
         type Role;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Member = Unset;
         type AddedBy = Unset;
+        type Member = Unset;
         type Role = Unset;
     }
-    ///State transition - sets the `member` field to Set
-    pub struct SetMember<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMember<S> {}
-    impl<S: State> State for SetMember<S> {
-        type Member = Set<members::member>;
-        type AddedBy = S::AddedBy;
-        type Role = S::Role;
-    }
     ///State transition - sets the `added_by` field to Set
-    pub struct SetAddedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAddedBy<S> {}
-    impl<S: State> State for SetAddedBy<S> {
-        type Member = S::Member;
+    pub struct SetAddedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAddedBy<St> {}
+    impl<St: State> State for SetAddedBy<St> {
         type AddedBy = Set<members::added_by>;
-        type Role = S::Role;
+        type Member = St::Member;
+        type Role = St::Role;
+    }
+    ///State transition - sets the `member` field to Set
+    pub struct SetMember<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMember<St> {}
+    impl<St: State> State for SetMember<St> {
+        type AddedBy = St::AddedBy;
+        type Member = Set<members::member>;
+        type Role = St::Role;
     }
     ///State transition - sets the `role` field to Set
-    pub struct SetRole<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRole<S> {}
-    impl<S: State> State for SetRole<S> {
-        type Member = S::Member;
-        type AddedBy = S::AddedBy;
+    pub struct SetRole<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRole<St> {}
+    impl<St: State> State for SetRole<St> {
+        type AddedBy = St::AddedBy;
+        type Member = St::Member;
         type Role = Set<members::role>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `member` field
-        pub struct member(());
         ///Marker type for the `added_by` field
         pub struct added_by(());
+        ///Marker type for the `member` field
+        pub struct member(());
         ///Marker type for the `role` field
         pub struct role(());
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SystemMessageDataAddMemberBuilder<
-    'a,
-    S: system_message_data_add_member_state::State,
+    St: system_message_data_add_member_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<convo::SystemMessageReferredUser<'a>>,
-        Option<convo::SystemMessageReferredUser<'a>>,
-        Option<MemberRole<'a>>,
+        Option<convo::SystemMessageReferredUser<S>>,
+        Option<convo::SystemMessageReferredUser<S>>,
+        Option<MemberRole<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SystemMessageDataAddMember<'a> {
-    /// Create a new builder for this type
+impl SystemMessageDataAddMember<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SystemMessageDataAddMemberBuilder<
-        'a,
         system_message_data_add_member_state::Empty,
+        DefaultStr,
     > {
         SystemMessageDataAddMemberBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SystemMessageDataAddMemberBuilder<'a, system_message_data_add_member_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SystemMessageDataAddMember<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SystemMessageDataAddMemberBuilder<
+        system_message_data_add_member_state::Empty,
+        S,
+    > {
+        SystemMessageDataAddMemberBuilder::builder()
+    }
+}
+
+impl SystemMessageDataAddMemberBuilder<
+    system_message_data_add_member_state::Empty,
+    DefaultStr,
+> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SystemMessageDataAddMemberBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataAddMemberBuilder<'a, S>
+impl<
+    S: BosStr,
+> SystemMessageDataAddMemberBuilder<system_message_data_add_member_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SystemMessageDataAddMemberBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SystemMessageDataAddMemberBuilder<St, S>
 where
-    S: system_message_data_add_member_state::State,
-    S::AddedBy: system_message_data_add_member_state::IsUnset,
+    St: system_message_data_add_member_state::State,
+    St::AddedBy: system_message_data_add_member_state::IsUnset,
 {
     /// Set the `addedBy` field (required)
     pub fn added_by(
         mut self,
-        value: impl Into<convo::SystemMessageReferredUser<'a>>,
+        value: impl Into<convo::SystemMessageReferredUser<S>>,
     ) -> SystemMessageDataAddMemberBuilder<
-        'a,
-        system_message_data_add_member_state::SetAddedBy<S>,
+        system_message_data_add_member_state::SetAddedBy<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         SystemMessageDataAddMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataAddMemberBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataAddMemberBuilder<St, S>
 where
-    S: system_message_data_add_member_state::State,
-    S::Member: system_message_data_add_member_state::IsUnset,
+    St: system_message_data_add_member_state::State,
+    St::Member: system_message_data_add_member_state::IsUnset,
 {
     /// Set the `member` field (required)
     pub fn member(
         mut self,
-        value: impl Into<convo::SystemMessageReferredUser<'a>>,
+        value: impl Into<convo::SystemMessageReferredUser<S>>,
     ) -> SystemMessageDataAddMemberBuilder<
-        'a,
-        system_message_data_add_member_state::SetMember<S>,
+        system_message_data_add_member_state::SetMember<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         SystemMessageDataAddMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataAddMemberBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataAddMemberBuilder<St, S>
 where
-    S: system_message_data_add_member_state::State,
-    S::Role: system_message_data_add_member_state::IsUnset,
+    St: system_message_data_add_member_state::State,
+    St::Role: system_message_data_add_member_state::IsUnset,
 {
     /// Set the `role` field (required)
     pub fn role(
         mut self,
-        value: impl Into<MemberRole<'a>>,
+        value: impl Into<MemberRole<S>>,
     ) -> SystemMessageDataAddMemberBuilder<
-        'a,
-        system_message_data_add_member_state::SetRole<S>,
+        system_message_data_add_member_state::SetRole<St>,
+        S,
     > {
         self._fields.2 = Option::Some(value.into());
         SystemMessageDataAddMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataAddMemberBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataAddMemberBuilder<St, S>
 where
-    S: system_message_data_add_member_state::State,
-    S::Member: system_message_data_add_member_state::IsSet,
-    S::AddedBy: system_message_data_add_member_state::IsSet,
-    S::Role: system_message_data_add_member_state::IsSet,
+    St: system_message_data_add_member_state::State,
+    St::AddedBy: system_message_data_add_member_state::IsSet,
+    St::Member: system_message_data_add_member_state::IsSet,
+    St::Role: system_message_data_add_member_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SystemMessageDataAddMember<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SystemMessageDataAddMember<S> {
         SystemMessageDataAddMember {
             added_by: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -11070,14 +11552,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SystemMessageDataAddMember<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SystemMessageDataAddMember<S> {
         SystemMessageDataAddMember {
             added_by: self._fields.0.unwrap(),
             member: self._fields.1.unwrap(),
@@ -11106,9 +11585,9 @@ pub mod system_message_data_lock_convo_state {
         type LockedBy = Unset;
     }
     ///State transition - sets the `locked_by` field to Set
-    pub struct SetLockedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLockedBy<S> {}
-    impl<S: State> State for SetLockedBy<S> {
+    pub struct SetLockedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLockedBy<St> {}
+    impl<St: State> State for SetLockedBy<St> {
         type LockedBy = Set<members::locked_by>;
     }
     /// Marker types for field names
@@ -11119,81 +11598,102 @@ pub mod system_message_data_lock_convo_state {
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SystemMessageDataLockConvoBuilder<
-    'a,
-    S: system_message_data_lock_convo_state::State,
+    St: system_message_data_lock_convo_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<convo::SystemMessageReferredUser<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<convo::SystemMessageReferredUser<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SystemMessageDataLockConvo<'a> {
-    /// Create a new builder for this type
+impl SystemMessageDataLockConvo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SystemMessageDataLockConvoBuilder<
-        'a,
         system_message_data_lock_convo_state::Empty,
+        DefaultStr,
     > {
         SystemMessageDataLockConvoBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SystemMessageDataLockConvoBuilder<'a, system_message_data_lock_convo_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SystemMessageDataLockConvo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SystemMessageDataLockConvoBuilder<
+        system_message_data_lock_convo_state::Empty,
+        S,
+    > {
+        SystemMessageDataLockConvoBuilder::builder()
+    }
+}
+
+impl SystemMessageDataLockConvoBuilder<
+    system_message_data_lock_convo_state::Empty,
+    DefaultStr,
+> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SystemMessageDataLockConvoBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataLockConvoBuilder<'a, S>
+impl<
+    S: BosStr,
+> SystemMessageDataLockConvoBuilder<system_message_data_lock_convo_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SystemMessageDataLockConvoBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SystemMessageDataLockConvoBuilder<St, S>
 where
-    S: system_message_data_lock_convo_state::State,
-    S::LockedBy: system_message_data_lock_convo_state::IsUnset,
+    St: system_message_data_lock_convo_state::State,
+    St::LockedBy: system_message_data_lock_convo_state::IsUnset,
 {
     /// Set the `lockedBy` field (required)
     pub fn locked_by(
         mut self,
-        value: impl Into<convo::SystemMessageReferredUser<'a>>,
+        value: impl Into<convo::SystemMessageReferredUser<S>>,
     ) -> SystemMessageDataLockConvoBuilder<
-        'a,
-        system_message_data_lock_convo_state::SetLockedBy<S>,
+        system_message_data_lock_convo_state::SetLockedBy<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         SystemMessageDataLockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataLockConvoBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataLockConvoBuilder<St, S>
 where
-    S: system_message_data_lock_convo_state::State,
-    S::LockedBy: system_message_data_lock_convo_state::IsSet,
+    St: system_message_data_lock_convo_state::State,
+    St::LockedBy: system_message_data_lock_convo_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SystemMessageDataLockConvo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SystemMessageDataLockConvo<S> {
         SystemMessageDataLockConvo {
             locked_by: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SystemMessageDataLockConvo<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SystemMessageDataLockConvo<S> {
         SystemMessageDataLockConvo {
             locked_by: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -11220,9 +11720,9 @@ pub mod system_message_data_lock_convo_permanently_state {
         type LockedBy = Unset;
     }
     ///State transition - sets the `locked_by` field to Set
-    pub struct SetLockedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLockedBy<S> {}
-    impl<S: State> State for SetLockedBy<S> {
+    pub struct SetLockedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetLockedBy<St> {}
+    impl<St: State> State for SetLockedBy<St> {
         type LockedBy = Set<members::locked_by>;
     }
     /// Marker types for field names
@@ -11233,84 +11733,105 @@ pub mod system_message_data_lock_convo_permanently_state {
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SystemMessageDataLockConvoPermanentlyBuilder<
-    'a,
-    S: system_message_data_lock_convo_permanently_state::State,
+    St: system_message_data_lock_convo_permanently_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<convo::SystemMessageReferredUser<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<convo::SystemMessageReferredUser<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SystemMessageDataLockConvoPermanently<'a> {
-    /// Create a new builder for this type
+impl SystemMessageDataLockConvoPermanently<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SystemMessageDataLockConvoPermanentlyBuilder<
-        'a,
         system_message_data_lock_convo_permanently_state::Empty,
+        DefaultStr,
     > {
         SystemMessageDataLockConvoPermanentlyBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SystemMessageDataLockConvoPermanentlyBuilder<
-    'a,
+impl<S: BosStr> SystemMessageDataLockConvoPermanently<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SystemMessageDataLockConvoPermanentlyBuilder<
+        system_message_data_lock_convo_permanently_state::Empty,
+        S,
+    > {
+        SystemMessageDataLockConvoPermanentlyBuilder::builder()
+    }
+}
+
+impl SystemMessageDataLockConvoPermanentlyBuilder<
     system_message_data_lock_convo_permanently_state::Empty,
+    DefaultStr,
 > {
-    /// Create a new builder with all fields unset
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SystemMessageDataLockConvoPermanentlyBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataLockConvoPermanentlyBuilder<'a, S>
+impl<
+    S: BosStr,
+> SystemMessageDataLockConvoPermanentlyBuilder<
+    system_message_data_lock_convo_permanently_state::Empty,
+    S,
+> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SystemMessageDataLockConvoPermanentlyBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SystemMessageDataLockConvoPermanentlyBuilder<St, S>
 where
-    S: system_message_data_lock_convo_permanently_state::State,
-    S::LockedBy: system_message_data_lock_convo_permanently_state::IsUnset,
+    St: system_message_data_lock_convo_permanently_state::State,
+    St::LockedBy: system_message_data_lock_convo_permanently_state::IsUnset,
 {
     /// Set the `lockedBy` field (required)
     pub fn locked_by(
         mut self,
-        value: impl Into<convo::SystemMessageReferredUser<'a>>,
+        value: impl Into<convo::SystemMessageReferredUser<S>>,
     ) -> SystemMessageDataLockConvoPermanentlyBuilder<
-        'a,
-        system_message_data_lock_convo_permanently_state::SetLockedBy<S>,
+        system_message_data_lock_convo_permanently_state::SetLockedBy<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         SystemMessageDataLockConvoPermanentlyBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataLockConvoPermanentlyBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataLockConvoPermanentlyBuilder<St, S>
 where
-    S: system_message_data_lock_convo_permanently_state::State,
-    S::LockedBy: system_message_data_lock_convo_permanently_state::IsSet,
+    St: system_message_data_lock_convo_permanently_state::State,
+    St::LockedBy: system_message_data_lock_convo_permanently_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SystemMessageDataLockConvoPermanently<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SystemMessageDataLockConvoPermanently<S> {
         SystemMessageDataLockConvoPermanently {
             locked_by: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SystemMessageDataLockConvoPermanently<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SystemMessageDataLockConvoPermanently<S> {
         SystemMessageDataLockConvoPermanently {
             locked_by: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -11328,85 +11849,109 @@ pub mod system_message_data_member_join_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Role;
         type Member;
+        type Role;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Role = Unset;
         type Member = Unset;
-    }
-    ///State transition - sets the `role` field to Set
-    pub struct SetRole<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRole<S> {}
-    impl<S: State> State for SetRole<S> {
-        type Role = Set<members::role>;
-        type Member = S::Member;
+        type Role = Unset;
     }
     ///State transition - sets the `member` field to Set
-    pub struct SetMember<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMember<S> {}
-    impl<S: State> State for SetMember<S> {
-        type Role = S::Role;
+    pub struct SetMember<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMember<St> {}
+    impl<St: State> State for SetMember<St> {
         type Member = Set<members::member>;
+        type Role = St::Role;
+    }
+    ///State transition - sets the `role` field to Set
+    pub struct SetRole<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRole<St> {}
+    impl<St: State> State for SetRole<St> {
+        type Member = St::Member;
+        type Role = Set<members::role>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `role` field
-        pub struct role(());
         ///Marker type for the `member` field
         pub struct member(());
+        ///Marker type for the `role` field
+        pub struct role(());
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SystemMessageDataMemberJoinBuilder<
-    'a,
-    S: system_message_data_member_join_state::State,
+    St: system_message_data_member_join_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<convo::SystemMessageReferredUser<'a>>,
-        Option<convo::SystemMessageReferredUser<'a>>,
-        Option<MemberRole<'a>>,
+        Option<convo::SystemMessageReferredUser<S>>,
+        Option<convo::SystemMessageReferredUser<S>>,
+        Option<MemberRole<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SystemMessageDataMemberJoin<'a> {
-    /// Create a new builder for this type
+impl SystemMessageDataMemberJoin<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SystemMessageDataMemberJoinBuilder<
-        'a,
         system_message_data_member_join_state::Empty,
+        DefaultStr,
     > {
         SystemMessageDataMemberJoinBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SystemMessageDataMemberJoinBuilder<'a, system_message_data_member_join_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SystemMessageDataMemberJoin<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SystemMessageDataMemberJoinBuilder<
+        system_message_data_member_join_state::Empty,
+        S,
+    > {
+        SystemMessageDataMemberJoinBuilder::builder()
+    }
+}
+
+impl SystemMessageDataMemberJoinBuilder<
+    system_message_data_member_join_state::Empty,
+    DefaultStr,
+> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SystemMessageDataMemberJoinBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
 impl<
-    'a,
-    S: system_message_data_member_join_state::State,
-> SystemMessageDataMemberJoinBuilder<'a, S> {
+    S: BosStr,
+> SystemMessageDataMemberJoinBuilder<system_message_data_member_join_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SystemMessageDataMemberJoinBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: system_message_data_member_join_state::State,
+    S: BosStr,
+> SystemMessageDataMemberJoinBuilder<St, S> {
     /// Set the `approvedBy` field (optional)
     pub fn approved_by(
         mut self,
-        value: impl Into<Option<convo::SystemMessageReferredUser<'a>>>,
+        value: impl Into<Option<convo::SystemMessageReferredUser<S>>>,
     ) -> Self {
         self._fields.0 = value.into();
         self
@@ -11414,65 +11959,65 @@ impl<
     /// Set the `approvedBy` field to an Option value (optional)
     pub fn maybe_approved_by(
         mut self,
-        value: Option<convo::SystemMessageReferredUser<'a>>,
+        value: Option<convo::SystemMessageReferredUser<S>>,
     ) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> SystemMessageDataMemberJoinBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataMemberJoinBuilder<St, S>
 where
-    S: system_message_data_member_join_state::State,
-    S::Member: system_message_data_member_join_state::IsUnset,
+    St: system_message_data_member_join_state::State,
+    St::Member: system_message_data_member_join_state::IsUnset,
 {
     /// Set the `member` field (required)
     pub fn member(
         mut self,
-        value: impl Into<convo::SystemMessageReferredUser<'a>>,
+        value: impl Into<convo::SystemMessageReferredUser<S>>,
     ) -> SystemMessageDataMemberJoinBuilder<
-        'a,
-        system_message_data_member_join_state::SetMember<S>,
+        system_message_data_member_join_state::SetMember<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         SystemMessageDataMemberJoinBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataMemberJoinBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataMemberJoinBuilder<St, S>
 where
-    S: system_message_data_member_join_state::State,
-    S::Role: system_message_data_member_join_state::IsUnset,
+    St: system_message_data_member_join_state::State,
+    St::Role: system_message_data_member_join_state::IsUnset,
 {
     /// Set the `role` field (required)
     pub fn role(
         mut self,
-        value: impl Into<MemberRole<'a>>,
+        value: impl Into<MemberRole<S>>,
     ) -> SystemMessageDataMemberJoinBuilder<
-        'a,
-        system_message_data_member_join_state::SetRole<S>,
+        system_message_data_member_join_state::SetRole<St>,
+        S,
     > {
         self._fields.2 = Option::Some(value.into());
         SystemMessageDataMemberJoinBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataMemberJoinBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataMemberJoinBuilder<St, S>
 where
-    S: system_message_data_member_join_state::State,
-    S::Role: system_message_data_member_join_state::IsSet,
-    S::Member: system_message_data_member_join_state::IsSet,
+    St: system_message_data_member_join_state::State,
+    St::Member: system_message_data_member_join_state::IsSet,
+    St::Role: system_message_data_member_join_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SystemMessageDataMemberJoin<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SystemMessageDataMemberJoin<S> {
         SystemMessageDataMemberJoin {
             approved_by: self._fields.0,
             member: self._fields.1.unwrap(),
@@ -11480,14 +12025,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SystemMessageDataMemberJoin<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SystemMessageDataMemberJoin<S> {
         SystemMessageDataMemberJoin {
             approved_by: self._fields.0,
             member: self._fields.1.unwrap(),
@@ -11516,9 +12058,9 @@ pub mod system_message_data_member_leave_state {
         type Member = Unset;
     }
     ///State transition - sets the `member` field to Set
-    pub struct SetMember<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMember<S> {}
-    impl<S: State> State for SetMember<S> {
+    pub struct SetMember<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMember<St> {}
+    impl<St: State> State for SetMember<St> {
         type Member = Set<members::member>;
     }
     /// Marker types for field names
@@ -11529,84 +12071,102 @@ pub mod system_message_data_member_leave_state {
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SystemMessageDataMemberLeaveBuilder<
-    'a,
-    S: system_message_data_member_leave_state::State,
+    St: system_message_data_member_leave_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<convo::SystemMessageReferredUser<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<convo::SystemMessageReferredUser<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SystemMessageDataMemberLeave<'a> {
-    /// Create a new builder for this type
+impl SystemMessageDataMemberLeave<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SystemMessageDataMemberLeaveBuilder<
-        'a,
         system_message_data_member_leave_state::Empty,
+        DefaultStr,
     > {
         SystemMessageDataMemberLeaveBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SystemMessageDataMemberLeaveBuilder<
-    'a,
+impl<S: BosStr> SystemMessageDataMemberLeave<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SystemMessageDataMemberLeaveBuilder<
+        system_message_data_member_leave_state::Empty,
+        S,
+    > {
+        SystemMessageDataMemberLeaveBuilder::builder()
+    }
+}
+
+impl SystemMessageDataMemberLeaveBuilder<
     system_message_data_member_leave_state::Empty,
+    DefaultStr,
 > {
-    /// Create a new builder with all fields unset
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SystemMessageDataMemberLeaveBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataMemberLeaveBuilder<'a, S>
+impl<
+    S: BosStr,
+> SystemMessageDataMemberLeaveBuilder<system_message_data_member_leave_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SystemMessageDataMemberLeaveBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SystemMessageDataMemberLeaveBuilder<St, S>
 where
-    S: system_message_data_member_leave_state::State,
-    S::Member: system_message_data_member_leave_state::IsUnset,
+    St: system_message_data_member_leave_state::State,
+    St::Member: system_message_data_member_leave_state::IsUnset,
 {
     /// Set the `member` field (required)
     pub fn member(
         mut self,
-        value: impl Into<convo::SystemMessageReferredUser<'a>>,
+        value: impl Into<convo::SystemMessageReferredUser<S>>,
     ) -> SystemMessageDataMemberLeaveBuilder<
-        'a,
-        system_message_data_member_leave_state::SetMember<S>,
+        system_message_data_member_leave_state::SetMember<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         SystemMessageDataMemberLeaveBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataMemberLeaveBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataMemberLeaveBuilder<St, S>
 where
-    S: system_message_data_member_leave_state::State,
-    S::Member: system_message_data_member_leave_state::IsSet,
+    St: system_message_data_member_leave_state::State,
+    St::Member: system_message_data_member_leave_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SystemMessageDataMemberLeave<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SystemMessageDataMemberLeave<S> {
         SystemMessageDataMemberLeave {
             member: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SystemMessageDataMemberLeave<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SystemMessageDataMemberLeave<S> {
         SystemMessageDataMemberLeave {
             member: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -11635,17 +12195,17 @@ pub mod system_message_data_remove_member_state {
         type RemovedBy = Unset;
     }
     ///State transition - sets the `member` field to Set
-    pub struct SetMember<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMember<S> {}
-    impl<S: State> State for SetMember<S> {
+    pub struct SetMember<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMember<St> {}
+    impl<St: State> State for SetMember<St> {
         type Member = Set<members::member>;
-        type RemovedBy = S::RemovedBy;
+        type RemovedBy = St::RemovedBy;
     }
     ///State transition - sets the `removed_by` field to Set
-    pub struct SetRemovedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRemovedBy<S> {}
-    impl<S: State> State for SetRemovedBy<S> {
-        type Member = S::Member;
+    pub struct SetRemovedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRemovedBy<St> {}
+    impl<St: State> State for SetRemovedBy<St> {
+        type Member = St::Member;
         type RemovedBy = Set<members::removed_by>;
     }
     /// Marker types for field names
@@ -11658,111 +12218,132 @@ pub mod system_message_data_remove_member_state {
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SystemMessageDataRemoveMemberBuilder<
-    'a,
-    S: system_message_data_remove_member_state::State,
+    St: system_message_data_remove_member_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<convo::SystemMessageReferredUser<'a>>,
-        Option<convo::SystemMessageReferredUser<'a>>,
+        Option<convo::SystemMessageReferredUser<S>>,
+        Option<convo::SystemMessageReferredUser<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SystemMessageDataRemoveMember<'a> {
-    /// Create a new builder for this type
+impl SystemMessageDataRemoveMember<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SystemMessageDataRemoveMemberBuilder<
-        'a,
         system_message_data_remove_member_state::Empty,
+        DefaultStr,
     > {
         SystemMessageDataRemoveMemberBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SystemMessageDataRemoveMemberBuilder<
-    'a,
+impl<S: BosStr> SystemMessageDataRemoveMember<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SystemMessageDataRemoveMemberBuilder<
+        system_message_data_remove_member_state::Empty,
+        S,
+    > {
+        SystemMessageDataRemoveMemberBuilder::builder()
+    }
+}
+
+impl SystemMessageDataRemoveMemberBuilder<
     system_message_data_remove_member_state::Empty,
+    DefaultStr,
 > {
-    /// Create a new builder with all fields unset
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SystemMessageDataRemoveMemberBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataRemoveMemberBuilder<'a, S>
+impl<
+    S: BosStr,
+> SystemMessageDataRemoveMemberBuilder<
+    system_message_data_remove_member_state::Empty,
+    S,
+> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SystemMessageDataRemoveMemberBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SystemMessageDataRemoveMemberBuilder<St, S>
 where
-    S: system_message_data_remove_member_state::State,
-    S::Member: system_message_data_remove_member_state::IsUnset,
+    St: system_message_data_remove_member_state::State,
+    St::Member: system_message_data_remove_member_state::IsUnset,
 {
     /// Set the `member` field (required)
     pub fn member(
         mut self,
-        value: impl Into<convo::SystemMessageReferredUser<'a>>,
+        value: impl Into<convo::SystemMessageReferredUser<S>>,
     ) -> SystemMessageDataRemoveMemberBuilder<
-        'a,
-        system_message_data_remove_member_state::SetMember<S>,
+        system_message_data_remove_member_state::SetMember<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         SystemMessageDataRemoveMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataRemoveMemberBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataRemoveMemberBuilder<St, S>
 where
-    S: system_message_data_remove_member_state::State,
-    S::RemovedBy: system_message_data_remove_member_state::IsUnset,
+    St: system_message_data_remove_member_state::State,
+    St::RemovedBy: system_message_data_remove_member_state::IsUnset,
 {
     /// Set the `removedBy` field (required)
     pub fn removed_by(
         mut self,
-        value: impl Into<convo::SystemMessageReferredUser<'a>>,
+        value: impl Into<convo::SystemMessageReferredUser<S>>,
     ) -> SystemMessageDataRemoveMemberBuilder<
-        'a,
-        system_message_data_remove_member_state::SetRemovedBy<S>,
+        system_message_data_remove_member_state::SetRemovedBy<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         SystemMessageDataRemoveMemberBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataRemoveMemberBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataRemoveMemberBuilder<St, S>
 where
-    S: system_message_data_remove_member_state::State,
-    S::Member: system_message_data_remove_member_state::IsSet,
-    S::RemovedBy: system_message_data_remove_member_state::IsSet,
+    St: system_message_data_remove_member_state::State,
+    St::Member: system_message_data_remove_member_state::IsSet,
+    St::RemovedBy: system_message_data_remove_member_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SystemMessageDataRemoveMember<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SystemMessageDataRemoveMember<S> {
         SystemMessageDataRemoveMember {
             member: self._fields.0.unwrap(),
             removed_by: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SystemMessageDataRemoveMember<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SystemMessageDataRemoveMember<S> {
         SystemMessageDataRemoveMember {
             member: self._fields.0.unwrap(),
             removed_by: self._fields.1.unwrap(),
@@ -11790,9 +12371,9 @@ pub mod system_message_data_unlock_convo_state {
         type UnlockedBy = Unset;
     }
     ///State transition - sets the `unlocked_by` field to Set
-    pub struct SetUnlockedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUnlockedBy<S> {}
-    impl<S: State> State for SetUnlockedBy<S> {
+    pub struct SetUnlockedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUnlockedBy<St> {}
+    impl<St: State> State for SetUnlockedBy<St> {
         type UnlockedBy = Set<members::unlocked_by>;
     }
     /// Marker types for field names
@@ -11803,84 +12384,102 @@ pub mod system_message_data_unlock_convo_state {
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SystemMessageDataUnlockConvoBuilder<
-    'a,
-    S: system_message_data_unlock_convo_state::State,
+    St: system_message_data_unlock_convo_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<convo::SystemMessageReferredUser<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<convo::SystemMessageReferredUser<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SystemMessageDataUnlockConvo<'a> {
-    /// Create a new builder for this type
+impl SystemMessageDataUnlockConvo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SystemMessageDataUnlockConvoBuilder<
-        'a,
         system_message_data_unlock_convo_state::Empty,
+        DefaultStr,
     > {
         SystemMessageDataUnlockConvoBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SystemMessageDataUnlockConvoBuilder<
-    'a,
+impl<S: BosStr> SystemMessageDataUnlockConvo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SystemMessageDataUnlockConvoBuilder<
+        system_message_data_unlock_convo_state::Empty,
+        S,
+    > {
+        SystemMessageDataUnlockConvoBuilder::builder()
+    }
+}
+
+impl SystemMessageDataUnlockConvoBuilder<
     system_message_data_unlock_convo_state::Empty,
+    DefaultStr,
 > {
-    /// Create a new builder with all fields unset
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SystemMessageDataUnlockConvoBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataUnlockConvoBuilder<'a, S>
+impl<
+    S: BosStr,
+> SystemMessageDataUnlockConvoBuilder<system_message_data_unlock_convo_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SystemMessageDataUnlockConvoBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SystemMessageDataUnlockConvoBuilder<St, S>
 where
-    S: system_message_data_unlock_convo_state::State,
-    S::UnlockedBy: system_message_data_unlock_convo_state::IsUnset,
+    St: system_message_data_unlock_convo_state::State,
+    St::UnlockedBy: system_message_data_unlock_convo_state::IsUnset,
 {
     /// Set the `unlockedBy` field (required)
     pub fn unlocked_by(
         mut self,
-        value: impl Into<convo::SystemMessageReferredUser<'a>>,
+        value: impl Into<convo::SystemMessageReferredUser<S>>,
     ) -> SystemMessageDataUnlockConvoBuilder<
-        'a,
-        system_message_data_unlock_convo_state::SetUnlockedBy<S>,
+        system_message_data_unlock_convo_state::SetUnlockedBy<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         SystemMessageDataUnlockConvoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageDataUnlockConvoBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageDataUnlockConvoBuilder<St, S>
 where
-    S: system_message_data_unlock_convo_state::State,
-    S::UnlockedBy: system_message_data_unlock_convo_state::IsSet,
+    St: system_message_data_unlock_convo_state::State,
+    St::UnlockedBy: system_message_data_unlock_convo_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SystemMessageDataUnlockConvo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SystemMessageDataUnlockConvo<S> {
         SystemMessageDataUnlockConvo {
             unlocked_by: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SystemMessageDataUnlockConvo<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SystemMessageDataUnlockConvo<S> {
         SystemMessageDataUnlockConvo {
             unlocked_by: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -11907,9 +12506,9 @@ pub mod system_message_referred_user_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -11920,81 +12519,102 @@ pub mod system_message_referred_user_state {
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SystemMessageReferredUserBuilder<
-    'a,
-    S: system_message_referred_user_state::State,
+    St: system_message_referred_user_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SystemMessageReferredUser<'a> {
-    /// Create a new builder for this type
+impl SystemMessageReferredUser<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SystemMessageReferredUserBuilder<
-        'a,
         system_message_referred_user_state::Empty,
+        DefaultStr,
     > {
         SystemMessageReferredUserBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SystemMessageReferredUserBuilder<'a, system_message_referred_user_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SystemMessageReferredUser<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SystemMessageReferredUserBuilder<
+        system_message_referred_user_state::Empty,
+        S,
+    > {
+        SystemMessageReferredUserBuilder::builder()
+    }
+}
+
+impl SystemMessageReferredUserBuilder<
+    system_message_referred_user_state::Empty,
+    DefaultStr,
+> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SystemMessageReferredUserBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageReferredUserBuilder<'a, S>
+impl<
+    S: BosStr,
+> SystemMessageReferredUserBuilder<system_message_referred_user_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SystemMessageReferredUserBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SystemMessageReferredUserBuilder<St, S>
 where
-    S: system_message_referred_user_state::State,
-    S::Did: system_message_referred_user_state::IsUnset,
+    St: system_message_referred_user_state::State,
+    St::Did: system_message_referred_user_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
+        value: impl Into<Did<S>>,
     ) -> SystemMessageReferredUserBuilder<
-        'a,
-        system_message_referred_user_state::SetDid<S>,
+        system_message_referred_user_state::SetDid<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         SystemMessageReferredUserBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageReferredUserBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageReferredUserBuilder<St, S>
 where
-    S: system_message_referred_user_state::State,
-    S::Did: system_message_referred_user_state::IsSet,
+    St: system_message_referred_user_state::State,
+    St::Did: system_message_referred_user_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SystemMessageReferredUser<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SystemMessageReferredUser<S> {
         SystemMessageReferredUser {
             did: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SystemMessageReferredUser<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SystemMessageReferredUser<S> {
         SystemMessageReferredUser {
             did: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -12012,186 +12632,205 @@ pub mod system_message_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type Data;
         type Id;
         type Rev;
-        type Data;
         type SentAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type Data = Unset;
         type Id = Unset;
         type Rev = Unset;
-        type Data = Unset;
         type SentAt = Unset;
     }
+    ///State transition - sets the `data` field to Set
+    pub struct SetData<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetData<St> {}
+    impl<St: State> State for SetData<St> {
+        type Data = Set<members::data>;
+        type Id = St::Id;
+        type Rev = St::Rev;
+        type SentAt = St::SentAt;
+    }
     ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type Data = St::Data;
         type Id = Set<members::id>;
-        type Rev = S::Rev;
-        type Data = S::Data;
-        type SentAt = S::SentAt;
+        type Rev = St::Rev;
+        type SentAt = St::SentAt;
     }
     ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Id = S::Id;
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type Data = St::Data;
+        type Id = St::Id;
         type Rev = Set<members::rev>;
-        type Data = S::Data;
-        type SentAt = S::SentAt;
-    }
-    ///State transition - sets the `data` field to Set
-    pub struct SetData<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetData<S> {}
-    impl<S: State> State for SetData<S> {
-        type Id = S::Id;
-        type Rev = S::Rev;
-        type Data = Set<members::data>;
-        type SentAt = S::SentAt;
+        type SentAt = St::SentAt;
     }
     ///State transition - sets the `sent_at` field to Set
-    pub struct SetSentAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSentAt<S> {}
-    impl<S: State> State for SetSentAt<S> {
-        type Id = S::Id;
-        type Rev = S::Rev;
-        type Data = S::Data;
+    pub struct SetSentAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSentAt<St> {}
+    impl<St: State> State for SetSentAt<St> {
+        type Data = St::Data;
+        type Id = St::Id;
+        type Rev = St::Rev;
         type SentAt = Set<members::sent_at>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `data` field
+        pub struct data(());
         ///Marker type for the `id` field
         pub struct id(());
         ///Marker type for the `rev` field
         pub struct rev(());
-        ///Marker type for the `data` field
-        pub struct data(());
         ///Marker type for the `sent_at` field
         pub struct sent_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SystemMessageViewBuilder<'a, S: system_message_view_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<SystemMessageViewData<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<Datetime>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct SystemMessageViewBuilder<
+    St: system_message_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<SystemMessageViewData<S>>, Option<S>, Option<S>, Option<Datetime>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SystemMessageView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SystemMessageViewBuilder<'a, system_message_view_state::Empty> {
+impl SystemMessageView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SystemMessageViewBuilder<
+        system_message_view_state::Empty,
+        DefaultStr,
+    > {
         SystemMessageViewBuilder::new()
     }
 }
 
-impl<'a> SystemMessageViewBuilder<'a, system_message_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SystemMessageView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SystemMessageViewBuilder<system_message_view_state::Empty, S> {
+        SystemMessageViewBuilder::builder()
+    }
+}
+
+impl SystemMessageViewBuilder<system_message_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SystemMessageViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageViewBuilder<'a, S>
+impl<S: BosStr> SystemMessageViewBuilder<system_message_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SystemMessageViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SystemMessageViewBuilder<St, S>
 where
-    S: system_message_view_state::State,
-    S::Data: system_message_view_state::IsUnset,
+    St: system_message_view_state::State,
+    St::Data: system_message_view_state::IsUnset,
 {
     /// Set the `data` field (required)
     pub fn data(
         mut self,
-        value: impl Into<SystemMessageViewData<'a>>,
-    ) -> SystemMessageViewBuilder<'a, system_message_view_state::SetData<S>> {
+        value: impl Into<SystemMessageViewData<S>>,
+    ) -> SystemMessageViewBuilder<system_message_view_state::SetData<St>, S> {
         self._fields.0 = Option::Some(value.into());
         SystemMessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageViewBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageViewBuilder<St, S>
 where
-    S: system_message_view_state::State,
-    S::Id: system_message_view_state::IsUnset,
+    St: system_message_view_state::State,
+    St::Id: system_message_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> SystemMessageViewBuilder<'a, system_message_view_state::SetId<S>> {
+        value: impl Into<S>,
+    ) -> SystemMessageViewBuilder<system_message_view_state::SetId<St>, S> {
         self._fields.1 = Option::Some(value.into());
         SystemMessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageViewBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageViewBuilder<St, S>
 where
-    S: system_message_view_state::State,
-    S::Rev: system_message_view_state::IsUnset,
+    St: system_message_view_state::State,
+    St::Rev: system_message_view_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> SystemMessageViewBuilder<'a, system_message_view_state::SetRev<S>> {
+        value: impl Into<S>,
+    ) -> SystemMessageViewBuilder<system_message_view_state::SetRev<St>, S> {
         self._fields.2 = Option::Some(value.into());
         SystemMessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageViewBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageViewBuilder<St, S>
 where
-    S: system_message_view_state::State,
-    S::SentAt: system_message_view_state::IsUnset,
+    St: system_message_view_state::State,
+    St::SentAt: system_message_view_state::IsUnset,
 {
     /// Set the `sentAt` field (required)
     pub fn sent_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> SystemMessageViewBuilder<'a, system_message_view_state::SetSentAt<S>> {
+    ) -> SystemMessageViewBuilder<system_message_view_state::SetSentAt<St>, S> {
         self._fields.3 = Option::Some(value.into());
         SystemMessageViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SystemMessageViewBuilder<'a, S>
+impl<St, S: BosStr> SystemMessageViewBuilder<St, S>
 where
-    S: system_message_view_state::State,
-    S::Id: system_message_view_state::IsSet,
-    S::Rev: system_message_view_state::IsSet,
-    S::Data: system_message_view_state::IsSet,
-    S::SentAt: system_message_view_state::IsSet,
+    St: system_message_view_state::State,
+    St::Data: system_message_view_state::IsSet,
+    St::Id: system_message_view_state::IsSet,
+    St::Rev: system_message_view_state::IsSet,
+    St::SentAt: system_message_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SystemMessageView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SystemMessageView<S> {
         SystemMessageView {
             data: self._fields.0.unwrap(),
             id: self._fields.1.unwrap(),
@@ -12200,14 +12839,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SystemMessageView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SystemMessageView<S> {
         SystemMessageView {
             data: self._fields.0.unwrap(),
             id: self._fields.1.unwrap(),

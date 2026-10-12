@@ -10,56 +10,60 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::bookmark::BookmarkView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetBookmarks<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetBookmarks<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetBookmarksOutput<'a> {
-    #[serde(borrow)]
-    pub bookmarks: Vec<BookmarkView<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetBookmarksOutput<S: BosStr = DefaultStr> {
+    pub bookmarks: Vec<BookmarkView<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.bookmark.getBookmarks
+/** Response marker for the `app.bsky.bookmark.getBookmarks` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetBookmarksOutput<S>` for this endpoint.*/
 pub struct GetBookmarksResponse;
 impl jacquard_common::xrpc::XrpcResp for GetBookmarksResponse {
     const NSID: &'static str = "app.bsky.bookmark.getBookmarks";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetBookmarksOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetBookmarksOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetBookmarks<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetBookmarks<S> {
     const NSID: &'static str = "app.bsky.bookmark.getBookmarks";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetBookmarksResponse;
 }
 
-/// Endpoint type for app.bsky.bookmark.getBookmarks
+/** Endpoint marker for the `app.bsky.bookmark.getBookmarks` query.
+
+Path: `/xrpc/app.bsky.bookmark.getBookmarks`. The request payload type is `GetBookmarks<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetBookmarksRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetBookmarksRequest {
     const PATH: &'static str = "/xrpc/app.bsky.bookmark.getBookmarks";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetBookmarks<'de>;
+    type Request<S: BosStr> = GetBookmarks<S>;
     type Response = GetBookmarksResponse;
 }
 
@@ -86,45 +90,63 @@ pub mod get_bookmarks_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetBookmarksBuilder<'a, S: get_bookmarks_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetBookmarksBuilder<St: get_bookmarks_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetBookmarks<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetBookmarksBuilder<'a, get_bookmarks_state::Empty> {
+impl GetBookmarks<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetBookmarksBuilder<get_bookmarks_state::Empty, DefaultStr> {
         GetBookmarksBuilder::new()
     }
 }
 
-impl<'a> GetBookmarksBuilder<'a, get_bookmarks_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetBookmarks<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetBookmarksBuilder<get_bookmarks_state::Empty, S> {
+        GetBookmarksBuilder::builder()
+    }
+}
+
+impl GetBookmarksBuilder<get_bookmarks_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetBookmarksBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_bookmarks_state::State> GetBookmarksBuilder<'a, S> {
+impl<S: BosStr> GetBookmarksBuilder<get_bookmarks_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetBookmarksBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: get_bookmarks_state::State, S: BosStr> GetBookmarksBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: get_bookmarks_state::State> GetBookmarksBuilder<'a, S> {
+impl<St: get_bookmarks_state::State, S: BosStr> GetBookmarksBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -137,12 +159,12 @@ impl<'a, S: get_bookmarks_state::State> GetBookmarksBuilder<'a, S> {
     }
 }
 
-impl<'a, S> GetBookmarksBuilder<'a, S>
+impl<St, S: BosStr> GetBookmarksBuilder<St, S>
 where
-    S: get_bookmarks_state::State,
+    St: get_bookmarks_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetBookmarks<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetBookmarks<S> {
         GetBookmarks {
             cursor: self._fields.0,
             limit: self._fields.1,

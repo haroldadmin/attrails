@@ -1,3 +1,3 @@
 [tools]
-"cargo:jacquard-lexgen" = "latest"
+"cargo:jacquard-lexgen" = "0.12.2"
 "cargo:kdlfmt" = "latest"

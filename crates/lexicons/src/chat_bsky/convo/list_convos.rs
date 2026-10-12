@@ -10,68 +10,68 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::convo::ConvoView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListConvos<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListConvos<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub kind: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub kind: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub lock_status: Option<CowStr<'a>>,
+    pub lock_status: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub read_state: Option<CowStr<'a>>,
+    pub read_state: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub status: Option<CowStr<'a>>,
+    pub status: Option<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListConvosOutput<'a> {
-    #[serde(borrow)]
-    pub convos: Vec<ConvoView<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListConvosOutput<S: BosStr = DefaultStr> {
+    pub convos: Vec<ConvoView<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for chat.bsky.convo.listConvos
+/** Response marker for the `chat.bsky.convo.listConvos` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ListConvosOutput<S>` for this endpoint.*/
 pub struct ListConvosResponse;
 impl jacquard_common::xrpc::XrpcResp for ListConvosResponse {
     const NSID: &'static str = "chat.bsky.convo.listConvos";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ListConvosOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ListConvosOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for ListConvos<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for ListConvos<S> {
     const NSID: &'static str = "chat.bsky.convo.listConvos";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = ListConvosResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.listConvos
+/** Endpoint marker for the `chat.bsky.convo.listConvos` query.
+
+Path: `/xrpc/chat.bsky.convo.listConvos`. The request payload type is `ListConvos<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct ListConvosRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ListConvosRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.listConvos";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = ListConvos<'de>;
+    type Request<S: BosStr> = ListConvos<S>;
     type Response = ListConvosResponse;
 }
 
@@ -98,65 +98,76 @@ pub mod list_convos_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct ListConvosBuilder<'a, S: list_convos_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<i64>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ListConvosBuilder<St: list_convos_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<S>, Option<i64>, Option<S>, Option<S>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ListConvos<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ListConvosBuilder<'a, list_convos_state::Empty> {
+impl ListConvos<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ListConvosBuilder<list_convos_state::Empty, DefaultStr> {
         ListConvosBuilder::new()
     }
 }
 
-impl<'a> ListConvosBuilder<'a, list_convos_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ListConvos<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ListConvosBuilder<list_convos_state::Empty, S> {
+        ListConvosBuilder::builder()
+    }
+}
+
+impl ListConvosBuilder<list_convos_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ListConvosBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: list_convos_state::State> ListConvosBuilder<'a, S> {
+impl<S: BosStr> ListConvosBuilder<list_convos_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ListConvosBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: list_convos_state::State, S: BosStr> ListConvosBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: list_convos_state::State> ListConvosBuilder<'a, S> {
+impl<St: list_convos_state::State, S: BosStr> ListConvosBuilder<St, S> {
     /// Set the `kind` field (optional)
-    pub fn kind(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn kind(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `kind` field to an Option value (optional)
-    pub fn maybe_kind(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_kind(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: list_convos_state::State> ListConvosBuilder<'a, S> {
+impl<St: list_convos_state::State, S: BosStr> ListConvosBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.2 = value.into();
@@ -169,51 +180,51 @@ impl<'a, S: list_convos_state::State> ListConvosBuilder<'a, S> {
     }
 }
 
-impl<'a, S: list_convos_state::State> ListConvosBuilder<'a, S> {
+impl<St: list_convos_state::State, S: BosStr> ListConvosBuilder<St, S> {
     /// Set the `lockStatus` field (optional)
-    pub fn lock_status(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn lock_status(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `lockStatus` field to an Option value (optional)
-    pub fn maybe_lock_status(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_lock_status(mut self, value: Option<S>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: list_convos_state::State> ListConvosBuilder<'a, S> {
+impl<St: list_convos_state::State, S: BosStr> ListConvosBuilder<St, S> {
     /// Set the `readState` field (optional)
-    pub fn read_state(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn read_state(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `readState` field to an Option value (optional)
-    pub fn maybe_read_state(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_read_state(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S: list_convos_state::State> ListConvosBuilder<'a, S> {
+impl<St: list_convos_state::State, S: BosStr> ListConvosBuilder<St, S> {
     /// Set the `status` field (optional)
-    pub fn status(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn status(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `status` field to an Option value (optional)
-    pub fn maybe_status(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_status(mut self, value: Option<S>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S> ListConvosBuilder<'a, S>
+impl<St, S: BosStr> ListConvosBuilder<St, S>
 where
-    S: list_convos_state::State,
+    St: list_convos_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> ListConvos<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ListConvos<S> {
         ListConvos {
             cursor: self._fields.0,
             kind: self._fields.1,

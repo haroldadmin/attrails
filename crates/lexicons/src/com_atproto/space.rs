@@ -10,12 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
 use jacquard_common::deps::bytes::Bytes;
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Tid;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -24,10 +27,9 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 /// A signed commit over the current state of a permissioned repo.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SignedCommit<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SignedCommit<S: BosStr = DefaultStr> {
     ///sha256 digest of the LtHash state (32 bytes).
     #[serde(with = "jacquard_common::serde_bytes_helper")]
     pub hash: Bytes,
@@ -44,9 +46,11 @@ pub struct SignedCommit<'a> {
     pub sig: Bytes,
     ///Commit format version, currently 1. Corresponds to the version in the ctx protocol tag (atproto-space-v1).
     pub ver: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for SignedCommit<'a> {
+impl<S: BosStr> LexiconSchema for SignedCommit<S> {
     fn nsid() -> &'static str {
         "com.atproto.space.defs"
     }
@@ -72,110 +76,110 @@ pub mod signed_commit_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type Hash;
-        type Sig;
-        type Rev;
         type Ikm;
-        type Ver;
         type Mac;
+        type Rev;
+        type Sig;
+        type Ver;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type Hash = Unset;
-        type Sig = Unset;
-        type Rev = Unset;
         type Ikm = Unset;
-        type Ver = Unset;
         type Mac = Unset;
+        type Rev = Unset;
+        type Sig = Unset;
+        type Ver = Unset;
     }
     ///State transition - sets the `hash` field to Set
-    pub struct SetHash<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHash<S> {}
-    impl<S: State> State for SetHash<S> {
+    pub struct SetHash<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetHash<St> {}
+    impl<St: State> State for SetHash<St> {
         type Hash = Set<members::hash>;
-        type Sig = S::Sig;
-        type Rev = S::Rev;
-        type Ikm = S::Ikm;
-        type Ver = S::Ver;
-        type Mac = S::Mac;
-    }
-    ///State transition - sets the `sig` field to Set
-    pub struct SetSig<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSig<S> {}
-    impl<S: State> State for SetSig<S> {
-        type Hash = S::Hash;
-        type Sig = Set<members::sig>;
-        type Rev = S::Rev;
-        type Ikm = S::Ikm;
-        type Ver = S::Ver;
-        type Mac = S::Mac;
-    }
-    ///State transition - sets the `rev` field to Set
-    pub struct SetRev<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRev<S> {}
-    impl<S: State> State for SetRev<S> {
-        type Hash = S::Hash;
-        type Sig = S::Sig;
-        type Rev = Set<members::rev>;
-        type Ikm = S::Ikm;
-        type Ver = S::Ver;
-        type Mac = S::Mac;
+        type Ikm = St::Ikm;
+        type Mac = St::Mac;
+        type Rev = St::Rev;
+        type Sig = St::Sig;
+        type Ver = St::Ver;
     }
     ///State transition - sets the `ikm` field to Set
-    pub struct SetIkm<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetIkm<S> {}
-    impl<S: State> State for SetIkm<S> {
-        type Hash = S::Hash;
-        type Sig = S::Sig;
-        type Rev = S::Rev;
+    pub struct SetIkm<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetIkm<St> {}
+    impl<St: State> State for SetIkm<St> {
+        type Hash = St::Hash;
         type Ikm = Set<members::ikm>;
-        type Ver = S::Ver;
-        type Mac = S::Mac;
-    }
-    ///State transition - sets the `ver` field to Set
-    pub struct SetVer<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetVer<S> {}
-    impl<S: State> State for SetVer<S> {
-        type Hash = S::Hash;
-        type Sig = S::Sig;
-        type Rev = S::Rev;
-        type Ikm = S::Ikm;
-        type Ver = Set<members::ver>;
-        type Mac = S::Mac;
+        type Mac = St::Mac;
+        type Rev = St::Rev;
+        type Sig = St::Sig;
+        type Ver = St::Ver;
     }
     ///State transition - sets the `mac` field to Set
-    pub struct SetMac<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMac<S> {}
-    impl<S: State> State for SetMac<S> {
-        type Hash = S::Hash;
-        type Sig = S::Sig;
-        type Rev = S::Rev;
-        type Ikm = S::Ikm;
-        type Ver = S::Ver;
+    pub struct SetMac<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMac<St> {}
+    impl<St: State> State for SetMac<St> {
+        type Hash = St::Hash;
+        type Ikm = St::Ikm;
         type Mac = Set<members::mac>;
+        type Rev = St::Rev;
+        type Sig = St::Sig;
+        type Ver = St::Ver;
+    }
+    ///State transition - sets the `rev` field to Set
+    pub struct SetRev<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRev<St> {}
+    impl<St: State> State for SetRev<St> {
+        type Hash = St::Hash;
+        type Ikm = St::Ikm;
+        type Mac = St::Mac;
+        type Rev = Set<members::rev>;
+        type Sig = St::Sig;
+        type Ver = St::Ver;
+    }
+    ///State transition - sets the `sig` field to Set
+    pub struct SetSig<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSig<St> {}
+    impl<St: State> State for SetSig<St> {
+        type Hash = St::Hash;
+        type Ikm = St::Ikm;
+        type Mac = St::Mac;
+        type Rev = St::Rev;
+        type Sig = Set<members::sig>;
+        type Ver = St::Ver;
+    }
+    ///State transition - sets the `ver` field to Set
+    pub struct SetVer<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetVer<St> {}
+    impl<St: State> State for SetVer<St> {
+        type Hash = St::Hash;
+        type Ikm = St::Ikm;
+        type Mac = St::Mac;
+        type Rev = St::Rev;
+        type Sig = St::Sig;
+        type Ver = Set<members::ver>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
         ///Marker type for the `hash` field
         pub struct hash(());
-        ///Marker type for the `sig` field
-        pub struct sig(());
-        ///Marker type for the `rev` field
-        pub struct rev(());
         ///Marker type for the `ikm` field
         pub struct ikm(());
-        ///Marker type for the `ver` field
-        pub struct ver(());
         ///Marker type for the `mac` field
         pub struct mac(());
+        ///Marker type for the `rev` field
+        pub struct rev(());
+        ///Marker type for the `sig` field
+        pub struct sig(());
+        ///Marker type for the `ver` field
+        pub struct ver(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SignedCommitBuilder<'a, S: signed_commit_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct SignedCommitBuilder<St: signed_commit_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<Bytes>,
         Option<Bytes>,
@@ -184,153 +188,171 @@ pub struct SignedCommitBuilder<'a, S: signed_commit_state::State> {
         Option<Bytes>,
         Option<i64>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SignedCommit<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SignedCommitBuilder<'a, signed_commit_state::Empty> {
+impl SignedCommit<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SignedCommitBuilder<signed_commit_state::Empty, DefaultStr> {
         SignedCommitBuilder::new()
     }
 }
 
-impl<'a> SignedCommitBuilder<'a, signed_commit_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SignedCommit<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SignedCommitBuilder<signed_commit_state::Empty, S> {
+        SignedCommitBuilder::builder()
+    }
+}
+
+impl SignedCommitBuilder<signed_commit_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SignedCommitBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SignedCommitBuilder<'a, S>
+impl<S: BosStr> SignedCommitBuilder<signed_commit_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SignedCommitBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SignedCommitBuilder<St, S>
 where
-    S: signed_commit_state::State,
-    S::Hash: signed_commit_state::IsUnset,
+    St: signed_commit_state::State,
+    St::Hash: signed_commit_state::IsUnset,
 {
     /// Set the `hash` field (required)
     pub fn hash(
         mut self,
         value: impl Into<Bytes>,
-    ) -> SignedCommitBuilder<'a, signed_commit_state::SetHash<S>> {
+    ) -> SignedCommitBuilder<signed_commit_state::SetHash<St>, S> {
         self._fields.0 = Option::Some(value.into());
         SignedCommitBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SignedCommitBuilder<'a, S>
+impl<St, S: BosStr> SignedCommitBuilder<St, S>
 where
-    S: signed_commit_state::State,
-    S::Ikm: signed_commit_state::IsUnset,
+    St: signed_commit_state::State,
+    St::Ikm: signed_commit_state::IsUnset,
 {
     /// Set the `ikm` field (required)
     pub fn ikm(
         mut self,
         value: impl Into<Bytes>,
-    ) -> SignedCommitBuilder<'a, signed_commit_state::SetIkm<S>> {
+    ) -> SignedCommitBuilder<signed_commit_state::SetIkm<St>, S> {
         self._fields.1 = Option::Some(value.into());
         SignedCommitBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SignedCommitBuilder<'a, S>
+impl<St, S: BosStr> SignedCommitBuilder<St, S>
 where
-    S: signed_commit_state::State,
-    S::Mac: signed_commit_state::IsUnset,
+    St: signed_commit_state::State,
+    St::Mac: signed_commit_state::IsUnset,
 {
     /// Set the `mac` field (required)
     pub fn mac(
         mut self,
         value: impl Into<Bytes>,
-    ) -> SignedCommitBuilder<'a, signed_commit_state::SetMac<S>> {
+    ) -> SignedCommitBuilder<signed_commit_state::SetMac<St>, S> {
         self._fields.2 = Option::Some(value.into());
         SignedCommitBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SignedCommitBuilder<'a, S>
+impl<St, S: BosStr> SignedCommitBuilder<St, S>
 where
-    S: signed_commit_state::State,
-    S::Rev: signed_commit_state::IsUnset,
+    St: signed_commit_state::State,
+    St::Rev: signed_commit_state::IsUnset,
 {
     /// Set the `rev` field (required)
     pub fn rev(
         mut self,
         value: impl Into<Tid>,
-    ) -> SignedCommitBuilder<'a, signed_commit_state::SetRev<S>> {
+    ) -> SignedCommitBuilder<signed_commit_state::SetRev<St>, S> {
         self._fields.3 = Option::Some(value.into());
         SignedCommitBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SignedCommitBuilder<'a, S>
+impl<St, S: BosStr> SignedCommitBuilder<St, S>
 where
-    S: signed_commit_state::State,
-    S::Sig: signed_commit_state::IsUnset,
+    St: signed_commit_state::State,
+    St::Sig: signed_commit_state::IsUnset,
 {
     /// Set the `sig` field (required)
     pub fn sig(
         mut self,
         value: impl Into<Bytes>,
-    ) -> SignedCommitBuilder<'a, signed_commit_state::SetSig<S>> {
+    ) -> SignedCommitBuilder<signed_commit_state::SetSig<St>, S> {
         self._fields.4 = Option::Some(value.into());
         SignedCommitBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SignedCommitBuilder<'a, S>
+impl<St, S: BosStr> SignedCommitBuilder<St, S>
 where
-    S: signed_commit_state::State,
-    S::Ver: signed_commit_state::IsUnset,
+    St: signed_commit_state::State,
+    St::Ver: signed_commit_state::IsUnset,
 {
     /// Set the `ver` field (required)
     pub fn ver(
         mut self,
         value: impl Into<i64>,
-    ) -> SignedCommitBuilder<'a, signed_commit_state::SetVer<S>> {
+    ) -> SignedCommitBuilder<signed_commit_state::SetVer<St>, S> {
         self._fields.5 = Option::Some(value.into());
         SignedCommitBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SignedCommitBuilder<'a, S>
+impl<St, S: BosStr> SignedCommitBuilder<St, S>
 where
-    S: signed_commit_state::State,
-    S::Hash: signed_commit_state::IsSet,
-    S::Sig: signed_commit_state::IsSet,
-    S::Rev: signed_commit_state::IsSet,
-    S::Ikm: signed_commit_state::IsSet,
-    S::Ver: signed_commit_state::IsSet,
-    S::Mac: signed_commit_state::IsSet,
+    St: signed_commit_state::State,
+    St::Hash: signed_commit_state::IsSet,
+    St::Ikm: signed_commit_state::IsSet,
+    St::Mac: signed_commit_state::IsSet,
+    St::Rev: signed_commit_state::IsSet,
+    St::Sig: signed_commit_state::IsSet,
+    St::Ver: signed_commit_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SignedCommit<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SignedCommit<S> {
         SignedCommit {
             hash: self._fields.0.unwrap(),
             ikm: self._fields.1.unwrap(),
@@ -341,14 +363,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SignedCommit<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SignedCommit<S> {
         SignedCommit {
             hash: self._fields.0.unwrap(),
             ikm: self._fields.1.unwrap(),

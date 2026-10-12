@@ -10,52 +10,44 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::ident::AtIdentifier;
 use jacquard_common::types::string::{AtUri, Language, UriValue};
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::feed::PostView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchPostsV2<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SearchPostsV2<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub all_time: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub authors: Option<Vec<AtIdentifier<'a>>>,
+    pub authors: Option<Vec<AtIdentifier<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub domains: Option<Vec<CowStr<'a>>>,
+    pub domains: Option<Vec<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embedded_at_uris: Option<Vec<AtUri<'a>>>,
+    pub embedded_at_uris: Option<Vec<AtUri<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub exclude_authors: Option<Vec<AtIdentifier<'a>>>,
+    pub exclude_authors: Option<Vec<AtIdentifier<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub exclude_domains: Option<Vec<CowStr<'a>>>,
+    pub exclude_domains: Option<Vec<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub exclude_embedded_at_uris: Option<Vec<AtUri<'a>>>,
+    pub exclude_embedded_at_uris: Option<Vec<AtUri<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub exclude_hashtags: Option<Vec<CowStr<'a>>>,
+    pub exclude_hashtags: Option<Vec<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude_languages: Option<Vec<Language>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub exclude_mentions: Option<Vec<AtIdentifier<'a>>>,
+    pub exclude_mentions: Option<Vec<AtIdentifier<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude_replies: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub exclude_urls: Option<Vec<UriValue<'a>>>,
+    pub exclude_urls: Option<Vec<UriValue<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub following: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -63,68 +55,55 @@ pub struct SearchPostsV2<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub has_video: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub hashtags: Option<Vec<CowStr<'a>>>,
+    pub hashtags: Option<Vec<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub languages: Option<Vec<Language>>,
-    ///Defaults to `25`. Min: 1. Max: 100.
+    /// Defaults to `25`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub mentions: Option<Vec<AtIdentifier<'a>>>,
+    pub mentions: Option<Vec<AtIdentifier<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub query: Option<CowStr<'a>>,
+    pub query: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub query_language: Option<CowStr<'a>>,
+    pub query_language: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub replies_only: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reply_parent_uri: Option<AtUri<'a>>,
+    pub reply_parent_uri: Option<AtUri<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub since: Option<CowStr<'a>>,
+    pub since: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub sort: Option<CowStr<'a>>,
+    pub sort: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub thread_root_uri: Option<AtUri<'a>>,
+    pub thread_root_uri: Option<AtUri<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub until: Option<CowStr<'a>>,
+    pub until: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub urls: Option<Vec<UriValue<'a>>>,
+    pub urls: Option<Vec<UriValue<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchPostsV2Output<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SearchPostsV2Output<S: BosStr = DefaultStr> {
     ///Cursor for the next page of results.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
     ///Query languages detected for CJK, Thai, or Arabic text. Empty or omitted for other scripts.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub detected_query_languages: Option<Vec<CowStr<'a>>>,
+    pub detected_query_languages: Option<Vec<S>>,
     ///Estimated total number of matching hits. May be rounded or truncated.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hits_total: Option<i64>,
     ///Hydrated views of matching posts.
-    #[serde(borrow)]
-    pub posts: Vec<PostView<'a>>,
+    pub posts: Vec<PostView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -133,18 +112,19 @@ pub struct SearchPostsV2Output<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum SearchPostsV2Error<'a> {
+pub enum SearchPostsV2Error {
     #[serde(rename = "BadQueryString")]
-    BadQueryString(Option<CowStr<'a>>),
+    BadQueryString(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for SearchPostsV2Error<'_> {
+impl core::fmt::Display for SearchPostsV2Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::BadQueryString(msg) => {
@@ -154,32 +134,42 @@ impl core::fmt::Display for SearchPostsV2Error<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.feed.searchPostsV2
+/** Response marker for the `app.bsky.feed.searchPostsV2` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `SearchPostsV2Output<S>` for this endpoint.*/
 pub struct SearchPostsV2Response;
 impl jacquard_common::xrpc::XrpcResp for SearchPostsV2Response {
     const NSID: &'static str = "app.bsky.feed.searchPostsV2";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = SearchPostsV2Output<'de>;
-    type Err<'de> = SearchPostsV2Error<'de>;
+    type Output<S: BosStr> = SearchPostsV2Output<S>;
+    type Err = SearchPostsV2Error;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for SearchPostsV2<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for SearchPostsV2<S> {
     const NSID: &'static str = "app.bsky.feed.searchPostsV2";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = SearchPostsV2Response;
 }
 
-/// Endpoint type for app.bsky.feed.searchPostsV2
+/** Endpoint marker for the `app.bsky.feed.searchPostsV2` query.
+
+Path: `/xrpc/app.bsky.feed.searchPostsV2`. The request payload type is `SearchPostsV2<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct SearchPostsV2Request;
 impl jacquard_common::xrpc::XrpcEndpoint for SearchPostsV2Request {
     const PATH: &'static str = "/xrpc/app.bsky.feed.searchPostsV2";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = SearchPostsV2<'de>;
+    type Request<S: BosStr> = SearchPostsV2<S>;
     type Response = SearchPostsV2Response;
 }
 
@@ -206,52 +196,62 @@ pub mod search_posts_v2_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct SearchPostsV2Builder<'a, S: search_posts_v2_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct SearchPostsV2Builder<
+    St: search_posts_v2_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<bool>,
-        Option<Vec<AtIdentifier<'a>>>,
-        Option<CowStr<'a>>,
-        Option<Vec<CowStr<'a>>>,
-        Option<Vec<AtUri<'a>>>,
-        Option<Vec<AtIdentifier<'a>>>,
-        Option<Vec<CowStr<'a>>>,
-        Option<Vec<AtUri<'a>>>,
-        Option<Vec<CowStr<'a>>>,
+        Option<Vec<AtIdentifier<S>>>,
+        Option<S>,
+        Option<Vec<S>>,
+        Option<Vec<AtUri<S>>>,
+        Option<Vec<AtIdentifier<S>>>,
+        Option<Vec<S>>,
+        Option<Vec<AtUri<S>>>,
+        Option<Vec<S>>,
         Option<Vec<Language>>,
-        Option<Vec<AtIdentifier<'a>>>,
+        Option<Vec<AtIdentifier<S>>>,
         Option<bool>,
-        Option<Vec<UriValue<'a>>>,
+        Option<Vec<UriValue<S>>>,
         Option<bool>,
         Option<bool>,
         Option<bool>,
-        Option<Vec<CowStr<'a>>>,
+        Option<Vec<S>>,
         Option<Vec<Language>>,
         Option<i64>,
-        Option<Vec<AtIdentifier<'a>>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
+        Option<Vec<AtIdentifier<S>>>,
+        Option<S>,
+        Option<S>,
         Option<bool>,
-        Option<AtUri<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<AtUri<'a>>,
-        Option<CowStr<'a>>,
-        Option<Vec<UriValue<'a>>>,
+        Option<AtUri<S>>,
+        Option<S>,
+        Option<S>,
+        Option<AtUri<S>>,
+        Option<S>,
+        Option<Vec<UriValue<S>>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SearchPostsV2<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SearchPostsV2Builder<'a, search_posts_v2_state::Empty> {
+impl SearchPostsV2<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SearchPostsV2Builder<search_posts_v2_state::Empty, DefaultStr> {
         SearchPostsV2Builder::new()
     }
 }
 
-impl<'a> SearchPostsV2Builder<'a, search_posts_v2_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SearchPostsV2<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SearchPostsV2Builder<search_posts_v2_state::Empty, S> {
+        SearchPostsV2Builder::builder()
+    }
+}
+
+impl SearchPostsV2Builder<search_posts_v2_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SearchPostsV2Builder {
             _state: PhantomData,
@@ -286,12 +286,53 @@ impl<'a> SearchPostsV2Builder<'a, search_posts_v2_state::Empty> {
                 None,
                 None,
             ),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<S: BosStr> SearchPostsV2Builder<search_posts_v2_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SearchPostsV2Builder {
+            _state: PhantomData,
+            _fields: (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `allTime` field (optional)
     pub fn all_time(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.0 = value.into();
@@ -304,95 +345,92 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `authors` field (optional)
-    pub fn authors(mut self, value: impl Into<Option<Vec<AtIdentifier<'a>>>>) -> Self {
+    pub fn authors(mut self, value: impl Into<Option<Vec<AtIdentifier<S>>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `authors` field to an Option value (optional)
-    pub fn maybe_authors(mut self, value: Option<Vec<AtIdentifier<'a>>>) -> Self {
+    pub fn maybe_authors(mut self, value: Option<Vec<AtIdentifier<S>>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `domains` field (optional)
-    pub fn domains(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn domains(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `domains` field to an Option value (optional)
-    pub fn maybe_domains(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_domains(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `embeddedAtUris` field (optional)
-    pub fn embedded_at_uris(mut self, value: impl Into<Option<Vec<AtUri<'a>>>>) -> Self {
+    pub fn embedded_at_uris(mut self, value: impl Into<Option<Vec<AtUri<S>>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `embeddedAtUris` field to an Option value (optional)
-    pub fn maybe_embedded_at_uris(mut self, value: Option<Vec<AtUri<'a>>>) -> Self {
+    pub fn maybe_embedded_at_uris(mut self, value: Option<Vec<AtUri<S>>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `excludeAuthors` field (optional)
     pub fn exclude_authors(
         mut self,
-        value: impl Into<Option<Vec<AtIdentifier<'a>>>>,
+        value: impl Into<Option<Vec<AtIdentifier<S>>>>,
     ) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `excludeAuthors` field to an Option value (optional)
-    pub fn maybe_exclude_authors(
-        mut self,
-        value: Option<Vec<AtIdentifier<'a>>>,
-    ) -> Self {
+    pub fn maybe_exclude_authors(mut self, value: Option<Vec<AtIdentifier<S>>>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `excludeDomains` field (optional)
-    pub fn exclude_domains(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn exclude_domains(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `excludeDomains` field to an Option value (optional)
-    pub fn maybe_exclude_domains(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_exclude_domains(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `excludeEmbeddedAtUris` field (optional)
     pub fn exclude_embedded_at_uris(
         mut self,
-        value: impl Into<Option<Vec<AtUri<'a>>>>,
+        value: impl Into<Option<Vec<AtUri<S>>>>,
     ) -> Self {
         self._fields.7 = value.into();
         self
@@ -400,30 +438,27 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     /// Set the `excludeEmbeddedAtUris` field to an Option value (optional)
     pub fn maybe_exclude_embedded_at_uris(
         mut self,
-        value: Option<Vec<AtUri<'a>>>,
+        value: Option<Vec<AtUri<S>>>,
     ) -> Self {
         self._fields.7 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `excludeHashtags` field (optional)
-    pub fn exclude_hashtags(
-        mut self,
-        value: impl Into<Option<Vec<CowStr<'a>>>>,
-    ) -> Self {
+    pub fn exclude_hashtags(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.8 = value.into();
         self
     }
     /// Set the `excludeHashtags` field to an Option value (optional)
-    pub fn maybe_exclude_hashtags(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_exclude_hashtags(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.8 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `excludeLanguages` field (optional)
     pub fn exclude_languages(mut self, value: impl Into<Option<Vec<Language>>>) -> Self {
         self._fields.9 = value.into();
@@ -436,11 +471,11 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `excludeMentions` field (optional)
     pub fn exclude_mentions(
         mut self,
-        value: impl Into<Option<Vec<AtIdentifier<'a>>>>,
+        value: impl Into<Option<Vec<AtIdentifier<S>>>>,
     ) -> Self {
         self._fields.10 = value.into();
         self
@@ -448,14 +483,14 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     /// Set the `excludeMentions` field to an Option value (optional)
     pub fn maybe_exclude_mentions(
         mut self,
-        value: Option<Vec<AtIdentifier<'a>>>,
+        value: Option<Vec<AtIdentifier<S>>>,
     ) -> Self {
         self._fields.10 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `excludeReplies` field (optional)
     pub fn exclude_replies(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.11 = value.into();
@@ -468,20 +503,20 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `excludeUrls` field (optional)
-    pub fn exclude_urls(mut self, value: impl Into<Option<Vec<UriValue<'a>>>>) -> Self {
+    pub fn exclude_urls(mut self, value: impl Into<Option<Vec<UriValue<S>>>>) -> Self {
         self._fields.12 = value.into();
         self
     }
     /// Set the `excludeUrls` field to an Option value (optional)
-    pub fn maybe_exclude_urls(mut self, value: Option<Vec<UriValue<'a>>>) -> Self {
+    pub fn maybe_exclude_urls(mut self, value: Option<Vec<UriValue<S>>>) -> Self {
         self._fields.12 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `following` field (optional)
     pub fn following(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.13 = value.into();
@@ -494,7 +529,7 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `hasMedia` field (optional)
     pub fn has_media(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.14 = value.into();
@@ -507,7 +542,7 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `hasVideo` field (optional)
     pub fn has_video(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.15 = value.into();
@@ -520,20 +555,20 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `hashtags` field (optional)
-    pub fn hashtags(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn hashtags(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.16 = value.into();
         self
     }
     /// Set the `hashtags` field to an Option value (optional)
-    pub fn maybe_hashtags(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_hashtags(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.16 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `languages` field (optional)
     pub fn languages(mut self, value: impl Into<Option<Vec<Language>>>) -> Self {
         self._fields.17 = value.into();
@@ -546,7 +581,7 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.18 = value.into();
@@ -559,46 +594,46 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `mentions` field (optional)
-    pub fn mentions(mut self, value: impl Into<Option<Vec<AtIdentifier<'a>>>>) -> Self {
+    pub fn mentions(mut self, value: impl Into<Option<Vec<AtIdentifier<S>>>>) -> Self {
         self._fields.19 = value.into();
         self
     }
     /// Set the `mentions` field to an Option value (optional)
-    pub fn maybe_mentions(mut self, value: Option<Vec<AtIdentifier<'a>>>) -> Self {
+    pub fn maybe_mentions(mut self, value: Option<Vec<AtIdentifier<S>>>) -> Self {
         self._fields.19 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `query` field (optional)
-    pub fn query(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn query(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.20 = value.into();
         self
     }
     /// Set the `query` field to an Option value (optional)
-    pub fn maybe_query(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_query(mut self, value: Option<S>) -> Self {
         self._fields.20 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `queryLanguage` field (optional)
-    pub fn query_language(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn query_language(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.21 = value.into();
         self
     }
     /// Set the `queryLanguage` field to an Option value (optional)
-    pub fn maybe_query_language(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_query_language(mut self, value: Option<S>) -> Self {
         self._fields.21 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `repliesOnly` field (optional)
     pub fn replies_only(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.22 = value.into();
@@ -611,90 +646,90 @@ impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `replyParentUri` field (optional)
-    pub fn reply_parent_uri(mut self, value: impl Into<Option<AtUri<'a>>>) -> Self {
+    pub fn reply_parent_uri(mut self, value: impl Into<Option<AtUri<S>>>) -> Self {
         self._fields.23 = value.into();
         self
     }
     /// Set the `replyParentUri` field to an Option value (optional)
-    pub fn maybe_reply_parent_uri(mut self, value: Option<AtUri<'a>>) -> Self {
+    pub fn maybe_reply_parent_uri(mut self, value: Option<AtUri<S>>) -> Self {
         self._fields.23 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `since` field (optional)
-    pub fn since(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn since(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.24 = value.into();
         self
     }
     /// Set the `since` field to an Option value (optional)
-    pub fn maybe_since(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_since(mut self, value: Option<S>) -> Self {
         self._fields.24 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `sort` field (optional)
-    pub fn sort(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn sort(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.25 = value.into();
         self
     }
     /// Set the `sort` field to an Option value (optional)
-    pub fn maybe_sort(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_sort(mut self, value: Option<S>) -> Self {
         self._fields.25 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `threadRootUri` field (optional)
-    pub fn thread_root_uri(mut self, value: impl Into<Option<AtUri<'a>>>) -> Self {
+    pub fn thread_root_uri(mut self, value: impl Into<Option<AtUri<S>>>) -> Self {
         self._fields.26 = value.into();
         self
     }
     /// Set the `threadRootUri` field to an Option value (optional)
-    pub fn maybe_thread_root_uri(mut self, value: Option<AtUri<'a>>) -> Self {
+    pub fn maybe_thread_root_uri(mut self, value: Option<AtUri<S>>) -> Self {
         self._fields.26 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `until` field (optional)
-    pub fn until(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn until(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.27 = value.into();
         self
     }
     /// Set the `until` field to an Option value (optional)
-    pub fn maybe_until(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_until(mut self, value: Option<S>) -> Self {
         self._fields.27 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_v2_state::State> SearchPostsV2Builder<'a, S> {
+impl<St: search_posts_v2_state::State, S: BosStr> SearchPostsV2Builder<St, S> {
     /// Set the `urls` field (optional)
-    pub fn urls(mut self, value: impl Into<Option<Vec<UriValue<'a>>>>) -> Self {
+    pub fn urls(mut self, value: impl Into<Option<Vec<UriValue<S>>>>) -> Self {
         self._fields.28 = value.into();
         self
     }
     /// Set the `urls` field to an Option value (optional)
-    pub fn maybe_urls(mut self, value: Option<Vec<UriValue<'a>>>) -> Self {
+    pub fn maybe_urls(mut self, value: Option<Vec<UriValue<S>>>) -> Self {
         self._fields.28 = value;
         self
     }
 }
 
-impl<'a, S> SearchPostsV2Builder<'a, S>
+impl<St, S: BosStr> SearchPostsV2Builder<St, S>
 where
-    S: search_posts_v2_state::State,
+    St: search_posts_v2_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> SearchPostsV2<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SearchPostsV2<S> {
         SearchPostsV2 {
             all_time: self._fields.0,
             authors: self._fields.1,

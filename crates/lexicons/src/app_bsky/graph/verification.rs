@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{Did, Handle, AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{IntoStatic, lexicon};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -27,42 +29,40 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 /// Record declaring a verification relationship between two accounts. Verifications are only considered valid by an app if issued by an account the app considers trusted.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase", rename = "app.bsky.graph.verification", tag = "$type")]
-pub struct Verification<'a> {
+#[serde(
+    rename_all = "camelCase",
+    rename = "app.bsky.graph.verification",
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct Verification<S: BosStr = DefaultStr> {
     ///Date of when the verification was created.
     pub created_at: Datetime,
     ///Display name of the subject the verification applies to at the moment of verifying, which might not be the same at the time of viewing. The verification is only valid if the current displayName matches the one at the time of verifying.
-    #[serde(borrow)]
-    pub display_name: CowStr<'a>,
+    pub display_name: S,
     ///Handle of the subject the verification applies to at the moment of verifying, which might not be the same at the time of viewing. The verification is only valid if the current handle matches the one at the time of verifying.
-    #[serde(borrow)]
-    pub handle: Handle<'a>,
+    pub handle: Handle<S>,
     ///DID of the subject the verification applies to.
-    #[serde(borrow)]
-    pub subject: Did<'a>,
+    pub subject: Did<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct VerificationGetRecordOutput<'a> {
+pub struct VerificationGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Verification<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Verification<S>,
 }
 
-impl<'a> Verification<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, VerificationRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Verification<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, VerificationRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
@@ -73,18 +73,17 @@ pub struct VerificationRecord;
 impl XrpcResp for VerificationRecord {
     const NSID: &'static str = "app.bsky.graph.verification";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = VerificationGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = VerificationGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<VerificationGetRecordOutput<'_>> for Verification<'_> {
-    fn from(output: VerificationGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<VerificationGetRecordOutput<S>> for Verification<S> {
+    fn from(output: VerificationGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Verification<'_> {
+impl<S: BosStr> Collection for Verification<S> {
     const NSID: &'static str = "app.bsky.graph.verification";
     type Record = VerificationRecord;
 }
@@ -94,7 +93,7 @@ impl Collection for VerificationRecord {
     type Record = VerificationRecord;
 }
 
-impl<'a> LexiconSchema for Verification<'a> {
+impl<S: BosStr> LexiconSchema for Verification<S> {
     fn nsid() -> &'static str {
         "app.bsky.graph.verification"
     }
@@ -119,181 +118,199 @@ pub mod verification_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type CreatedAt;
+        type DisplayName;
         type Handle;
         type Subject;
-        type DisplayName;
-        type CreatedAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type CreatedAt = Unset;
+        type DisplayName = Unset;
         type Handle = Unset;
         type Subject = Unset;
-        type DisplayName = Unset;
-        type CreatedAt = Unset;
-    }
-    ///State transition - sets the `handle` field to Set
-    pub struct SetHandle<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHandle<S> {}
-    impl<S: State> State for SetHandle<S> {
-        type Handle = Set<members::handle>;
-        type Subject = S::Subject;
-        type DisplayName = S::DisplayName;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
-        type Handle = S::Handle;
-        type Subject = Set<members::subject>;
-        type DisplayName = S::DisplayName;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `display_name` field to Set
-    pub struct SetDisplayName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDisplayName<S> {}
-    impl<S: State> State for SetDisplayName<S> {
-        type Handle = S::Handle;
-        type Subject = S::Subject;
-        type DisplayName = Set<members::display_name>;
-        type CreatedAt = S::CreatedAt;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Handle = S::Handle;
-        type Subject = S::Subject;
-        type DisplayName = S::DisplayName;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
+        type DisplayName = St::DisplayName;
+        type Handle = St::Handle;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `display_name` field to Set
+    pub struct SetDisplayName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDisplayName<St> {}
+    impl<St: State> State for SetDisplayName<St> {
+        type CreatedAt = St::CreatedAt;
+        type DisplayName = Set<members::display_name>;
+        type Handle = St::Handle;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `handle` field to Set
+    pub struct SetHandle<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetHandle<St> {}
+    impl<St: State> State for SetHandle<St> {
+        type CreatedAt = St::CreatedAt;
+        type DisplayName = St::DisplayName;
+        type Handle = Set<members::handle>;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `subject` field to Set
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
+        type CreatedAt = St::CreatedAt;
+        type DisplayName = St::DisplayName;
+        type Handle = St::Handle;
+        type Subject = Set<members::subject>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `created_at` field
+        pub struct created_at(());
+        ///Marker type for the `display_name` field
+        pub struct display_name(());
         ///Marker type for the `handle` field
         pub struct handle(());
         ///Marker type for the `subject` field
         pub struct subject(());
-        ///Marker type for the `display_name` field
-        pub struct display_name(());
-        ///Marker type for the `created_at` field
-        pub struct created_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct VerificationBuilder<'a, S: verification_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Datetime>, Option<CowStr<'a>>, Option<Handle<'a>>, Option<Did<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct VerificationBuilder<St: verification_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Datetime>, Option<S>, Option<Handle<S>>, Option<Did<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Verification<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> VerificationBuilder<'a, verification_state::Empty> {
+impl Verification<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> VerificationBuilder<verification_state::Empty, DefaultStr> {
         VerificationBuilder::new()
     }
 }
 
-impl<'a> VerificationBuilder<'a, verification_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Verification<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> VerificationBuilder<verification_state::Empty, S> {
+        VerificationBuilder::builder()
+    }
+}
+
+impl VerificationBuilder<verification_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         VerificationBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> VerificationBuilder<'a, S>
+impl<S: BosStr> VerificationBuilder<verification_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        VerificationBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> VerificationBuilder<St, S>
 where
-    S: verification_state::State,
-    S::CreatedAt: verification_state::IsUnset,
+    St: verification_state::State,
+    St::CreatedAt: verification_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> VerificationBuilder<'a, verification_state::SetCreatedAt<S>> {
+    ) -> VerificationBuilder<verification_state::SetCreatedAt<St>, S> {
         self._fields.0 = Option::Some(value.into());
         VerificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> VerificationBuilder<'a, S>
+impl<St, S: BosStr> VerificationBuilder<St, S>
 where
-    S: verification_state::State,
-    S::DisplayName: verification_state::IsUnset,
+    St: verification_state::State,
+    St::DisplayName: verification_state::IsUnset,
 {
     /// Set the `displayName` field (required)
     pub fn display_name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> VerificationBuilder<'a, verification_state::SetDisplayName<S>> {
+        value: impl Into<S>,
+    ) -> VerificationBuilder<verification_state::SetDisplayName<St>, S> {
         self._fields.1 = Option::Some(value.into());
         VerificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> VerificationBuilder<'a, S>
+impl<St, S: BosStr> VerificationBuilder<St, S>
 where
-    S: verification_state::State,
-    S::Handle: verification_state::IsUnset,
+    St: verification_state::State,
+    St::Handle: verification_state::IsUnset,
 {
     /// Set the `handle` field (required)
     pub fn handle(
         mut self,
-        value: impl Into<Handle<'a>>,
-    ) -> VerificationBuilder<'a, verification_state::SetHandle<S>> {
+        value: impl Into<Handle<S>>,
+    ) -> VerificationBuilder<verification_state::SetHandle<St>, S> {
         self._fields.2 = Option::Some(value.into());
         VerificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> VerificationBuilder<'a, S>
+impl<St, S: BosStr> VerificationBuilder<St, S>
 where
-    S: verification_state::State,
-    S::Subject: verification_state::IsUnset,
+    St: verification_state::State,
+    St::Subject: verification_state::IsUnset,
 {
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> VerificationBuilder<'a, verification_state::SetSubject<S>> {
+        value: impl Into<Did<S>>,
+    ) -> VerificationBuilder<verification_state::SetSubject<St>, S> {
         self._fields.3 = Option::Some(value.into());
         VerificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> VerificationBuilder<'a, S>
+impl<St, S: BosStr> VerificationBuilder<St, S>
 where
-    S: verification_state::State,
-    S::Handle: verification_state::IsSet,
-    S::Subject: verification_state::IsSet,
-    S::DisplayName: verification_state::IsSet,
-    S::CreatedAt: verification_state::IsSet,
+    St: verification_state::State,
+    St::CreatedAt: verification_state::IsSet,
+    St::DisplayName: verification_state::IsSet,
+    St::Handle: verification_state::IsSet,
+    St::Subject: verification_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Verification<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Verification<S> {
         Verification {
             created_at: self._fields.0.unwrap(),
             display_name: self._fields.1.unwrap(),
@@ -302,14 +319,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Verification<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> Verification<S> {
         Verification {
             created_at: self._fields.0.unwrap(),
             display_name: self._fields.1.unwrap(),

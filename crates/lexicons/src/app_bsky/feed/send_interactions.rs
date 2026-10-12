@@ -10,37 +10,44 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::AtUri;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::feed::Interaction;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SendInteractions<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SendInteractions<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub feed: Option<AtUri<'a>>,
-    #[serde(borrow)]
-    pub interactions: Vec<Interaction<'a>>,
+    pub feed: Option<AtUri<S>>,
+    pub interactions: Vec<Interaction<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SendInteractionsOutput<'a> {}
-/// Response type for app.bsky.feed.sendInteractions
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SendInteractionsOutput<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
+/** Response marker for the `app.bsky.feed.sendInteractions` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `SendInteractionsOutput<S>` for this endpoint.*/
 pub struct SendInteractionsResponse;
 impl jacquard_common::xrpc::XrpcResp for SendInteractionsResponse {
     const NSID: &'static str = "app.bsky.feed.sendInteractions";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = SendInteractionsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = SendInteractionsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for SendInteractions<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for SendInteractions<S> {
     const NSID: &'static str = "app.bsky.feed.sendInteractions";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -48,14 +55,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for SendInteractions<'a> {
     type Response = SendInteractionsResponse;
 }
 
-/// Endpoint type for app.bsky.feed.sendInteractions
+/** Endpoint marker for the `app.bsky.feed.sendInteractions` procedure.
+
+Path: `/xrpc/app.bsky.feed.sendInteractions`. The request payload type is `SendInteractions<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct SendInteractionsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for SendInteractionsRequest {
     const PATH: &'static str = "/xrpc/app.bsky.feed.sendInteractions";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = SendInteractions<'de>;
+    type Request<S: BosStr> = SendInteractions<S>;
     type Response = SendInteractionsResponse;
 }
 
@@ -78,9 +87,9 @@ pub mod send_interactions_state {
         type Interactions = Unset;
     }
     ///State transition - sets the `interactions` field to Set
-    pub struct SetInteractions<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetInteractions<S> {}
-    impl<S: State> State for SetInteractions<S> {
+    pub struct SetInteractions<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetInteractions<St> {}
+    impl<St: State> State for SetInteractions<St> {
         type Interactions = Set<members::interactions>;
     }
     /// Marker types for field names
@@ -91,84 +100,102 @@ pub mod send_interactions_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SendInteractionsBuilder<'a, S: send_interactions_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<AtUri<'a>>, Option<Vec<Interaction<'a>>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct SendInteractionsBuilder<
+    St: send_interactions_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtUri<S>>, Option<Vec<Interaction<S>>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SendInteractions<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SendInteractionsBuilder<'a, send_interactions_state::Empty> {
+impl SendInteractions<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SendInteractionsBuilder<send_interactions_state::Empty, DefaultStr> {
         SendInteractionsBuilder::new()
     }
 }
 
-impl<'a> SendInteractionsBuilder<'a, send_interactions_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SendInteractions<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SendInteractionsBuilder<send_interactions_state::Empty, S> {
+        SendInteractionsBuilder::builder()
+    }
+}
+
+impl SendInteractionsBuilder<send_interactions_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SendInteractionsBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: send_interactions_state::State> SendInteractionsBuilder<'a, S> {
+impl<S: BosStr> SendInteractionsBuilder<send_interactions_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SendInteractionsBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: send_interactions_state::State, S: BosStr> SendInteractionsBuilder<St, S> {
     /// Set the `feed` field (optional)
-    pub fn feed(mut self, value: impl Into<Option<AtUri<'a>>>) -> Self {
+    pub fn feed(mut self, value: impl Into<Option<AtUri<S>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `feed` field to an Option value (optional)
-    pub fn maybe_feed(mut self, value: Option<AtUri<'a>>) -> Self {
+    pub fn maybe_feed(mut self, value: Option<AtUri<S>>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> SendInteractionsBuilder<'a, S>
+impl<St, S: BosStr> SendInteractionsBuilder<St, S>
 where
-    S: send_interactions_state::State,
-    S::Interactions: send_interactions_state::IsUnset,
+    St: send_interactions_state::State,
+    St::Interactions: send_interactions_state::IsUnset,
 {
     /// Set the `interactions` field (required)
     pub fn interactions(
         mut self,
-        value: impl Into<Vec<Interaction<'a>>>,
-    ) -> SendInteractionsBuilder<'a, send_interactions_state::SetInteractions<S>> {
+        value: impl Into<Vec<Interaction<S>>>,
+    ) -> SendInteractionsBuilder<send_interactions_state::SetInteractions<St>, S> {
         self._fields.1 = Option::Some(value.into());
         SendInteractionsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SendInteractionsBuilder<'a, S>
+impl<St, S: BosStr> SendInteractionsBuilder<St, S>
 where
-    S: send_interactions_state::State,
-    S::Interactions: send_interactions_state::IsSet,
+    St: send_interactions_state::State,
+    St::Interactions: send_interactions_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SendInteractions<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SendInteractions<S> {
         SendInteractions {
             feed: self._fields.0,
             interactions: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> SendInteractions<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SendInteractions<S> {
         SendInteractions {
             feed: self._fields.0,
             interactions: self._fields.1.unwrap(),

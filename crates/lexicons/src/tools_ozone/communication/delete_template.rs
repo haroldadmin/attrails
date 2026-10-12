@@ -10,28 +10,32 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteTemplate<'a> {
-    #[serde(borrow)]
-    pub id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DeleteTemplate<S: BosStr = DefaultStr> {
+    pub id: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.communication.deleteTemplate
+/** Response marker for the `tools.ozone.communication.deleteTemplate` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `()` for this endpoint.*/
 pub struct DeleteTemplateResponse;
 impl jacquard_common::xrpc::XrpcResp for DeleteTemplateResponse {
     const NSID: &'static str = "tools.ozone.communication.deleteTemplate";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ();
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ();
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for DeleteTemplate<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for DeleteTemplate<S> {
     const NSID: &'static str = "tools.ozone.communication.deleteTemplate";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -39,13 +43,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for DeleteTemplate<'a> {
     type Response = DeleteTemplateResponse;
 }
 
-/// Endpoint type for tools.ozone.communication.deleteTemplate
+/** Endpoint marker for the `tools.ozone.communication.deleteTemplate` procedure.
+
+Path: `/xrpc/tools.ozone.communication.deleteTemplate`. The request payload type is `DeleteTemplate<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct DeleteTemplateRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for DeleteTemplateRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.communication.deleteTemplate";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = DeleteTemplate<'de>;
+    type Request<S: BosStr> = DeleteTemplate<S>;
     type Response = DeleteTemplateResponse;
 }

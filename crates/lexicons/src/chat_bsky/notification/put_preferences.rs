@@ -10,42 +10,46 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::notification::ChatPreference;
 use crate::chat_bsky::notification::Preferences;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PutPreferences<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct PutPreferences<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub chat: Option<ChatPreference<'a>>,
+    pub chat: Option<ChatPreference<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub chat_request: Option<ChatPreference<'a>>,
+    pub chat_request: Option<ChatPreference<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct PutPreferencesOutput<'a> {
-    #[serde(borrow)]
-    pub preferences: Preferences<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct PutPreferencesOutput<S: BosStr = DefaultStr> {
+    pub preferences: Preferences<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for chat.bsky.notification.putPreferences
+/** Response marker for the `chat.bsky.notification.putPreferences` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `PutPreferencesOutput<S>` for this endpoint.*/
 pub struct PutPreferencesResponse;
 impl jacquard_common::xrpc::XrpcResp for PutPreferencesResponse {
     const NSID: &'static str = "chat.bsky.notification.putPreferences";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = PutPreferencesOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = PutPreferencesOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for PutPreferences<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for PutPreferences<S> {
     const NSID: &'static str = "chat.bsky.notification.putPreferences";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -53,13 +57,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for PutPreferences<'a> {
     type Response = PutPreferencesResponse;
 }
 
-/// Endpoint type for chat.bsky.notification.putPreferences
+/** Endpoint marker for the `chat.bsky.notification.putPreferences` procedure.
+
+Path: `/xrpc/chat.bsky.notification.putPreferences`. The request payload type is `PutPreferences<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct PutPreferencesRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for PutPreferencesRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.notification.putPreferences";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = PutPreferences<'de>;
+    type Request<S: BosStr> = PutPreferences<S>;
     type Response = PutPreferencesResponse;
 }

@@ -10,36 +10,37 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::tools_ozone::report::ReportView;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReassignQueue<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReassignQueue<S: BosStr = DefaultStr> {
     ///Optional moderator-only note recorded on the resulting queueActivity as internalNote.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub comment: Option<CowStr<'a>>,
+    pub comment: Option<S>,
     ///Target queue ID. Use -1 to unassign from any queue.
     pub queue_id: i64,
     ///ID of the report to reassign
     pub report_id: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReassignQueueOutput<'a> {
-    #[serde(borrow)]
-    pub report: ReportView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReassignQueueOutput<S: BosStr = DefaultStr> {
+    pub report: ReportView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -48,31 +49,32 @@ pub struct ReassignQueueOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum ReassignQueueError<'a> {
+pub enum ReassignQueueError {
     /// No report exists with the given reportId
     #[serde(rename = "ReportNotFound")]
-    ReportNotFound(Option<CowStr<'a>>),
+    ReportNotFound(Option<SmolStr>),
     /// The report is closed and cannot be reassigned
     #[serde(rename = "ReportClosed")]
-    ReportClosed(Option<CowStr<'a>>),
+    ReportClosed(Option<SmolStr>),
     /// The report is already assigned to the target queue
     #[serde(rename = "AlreadyInTargetQueue")]
-    AlreadyInTargetQueue(Option<CowStr<'a>>),
+    AlreadyInTargetQueue(Option<SmolStr>),
     /// No active queue exists with the given queueId
     #[serde(rename = "QueueNotFound")]
-    QueueNotFound(Option<CowStr<'a>>),
+    QueueNotFound(Option<SmolStr>),
     /// The target queue is disabled and cannot receive new assignments
     #[serde(rename = "QueueDisabled")]
-    QueueDisabled(Option<CowStr<'a>>),
+    QueueDisabled(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for ReassignQueueError<'_> {
+impl core::fmt::Display for ReassignQueueError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::ReportNotFound(msg) => {
@@ -110,21 +112,29 @@ impl core::fmt::Display for ReassignQueueError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for tools.ozone.report.reassignQueue
+/** Response marker for the `tools.ozone.report.reassignQueue` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ReassignQueueOutput<S>` for this endpoint.*/
 pub struct ReassignQueueResponse;
 impl jacquard_common::xrpc::XrpcResp for ReassignQueueResponse {
     const NSID: &'static str = "tools.ozone.report.reassignQueue";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ReassignQueueOutput<'de>;
-    type Err<'de> = ReassignQueueError<'de>;
+    type Output<S: BosStr> = ReassignQueueOutput<S>;
+    type Err = ReassignQueueError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for ReassignQueue<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for ReassignQueue<S> {
     const NSID: &'static str = "tools.ozone.report.reassignQueue";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -132,14 +142,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for ReassignQueue<'a> {
     type Response = ReassignQueueResponse;
 }
 
-/// Endpoint type for tools.ozone.report.reassignQueue
+/** Endpoint marker for the `tools.ozone.report.reassignQueue` procedure.
+
+Path: `/xrpc/tools.ozone.report.reassignQueue`. The request payload type is `ReassignQueue<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct ReassignQueueRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ReassignQueueRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.report.reassignQueue";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = ReassignQueue<'de>;
+    type Request<S: BosStr> = ReassignQueue<S>;
     type Response = ReassignQueueResponse;
 }
 
@@ -164,17 +176,17 @@ pub mod reassign_queue_state {
         type ReportId = Unset;
     }
     ///State transition - sets the `queue_id` field to Set
-    pub struct SetQueueId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetQueueId<S> {}
-    impl<S: State> State for SetQueueId<S> {
+    pub struct SetQueueId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetQueueId<St> {}
+    impl<St: State> State for SetQueueId<St> {
         type QueueId = Set<members::queue_id>;
-        type ReportId = S::ReportId;
+        type ReportId = St::ReportId;
     }
     ///State transition - sets the `report_id` field to Set
-    pub struct SetReportId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReportId<S> {}
-    impl<S: State> State for SetReportId<S> {
-        type QueueId = S::QueueId;
+    pub struct SetReportId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReportId<St> {}
+    impl<St: State> State for SetReportId<St> {
+        type QueueId = St::QueueId;
         type ReportId = Set<members::report_id>;
     }
     /// Marker types for field names
@@ -187,90 +199,111 @@ pub mod reassign_queue_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReassignQueueBuilder<'a, S: reassign_queue_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ReassignQueueBuilder<
+    St: reassign_queue_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ReassignQueue<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReassignQueueBuilder<'a, reassign_queue_state::Empty> {
+impl ReassignQueue<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReassignQueueBuilder<reassign_queue_state::Empty, DefaultStr> {
         ReassignQueueBuilder::new()
     }
 }
 
-impl<'a> ReassignQueueBuilder<'a, reassign_queue_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ReassignQueue<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReassignQueueBuilder<reassign_queue_state::Empty, S> {
+        ReassignQueueBuilder::builder()
+    }
+}
+
+impl ReassignQueueBuilder<reassign_queue_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReassignQueueBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: reassign_queue_state::State> ReassignQueueBuilder<'a, S> {
+impl<S: BosStr> ReassignQueueBuilder<reassign_queue_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReassignQueueBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: reassign_queue_state::State, S: BosStr> ReassignQueueBuilder<St, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn comment(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `comment` field to an Option value (optional)
-    pub fn maybe_comment(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_comment(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> ReassignQueueBuilder<'a, S>
+impl<St, S: BosStr> ReassignQueueBuilder<St, S>
 where
-    S: reassign_queue_state::State,
-    S::QueueId: reassign_queue_state::IsUnset,
+    St: reassign_queue_state::State,
+    St::QueueId: reassign_queue_state::IsUnset,
 {
     /// Set the `queueId` field (required)
     pub fn queue_id(
         mut self,
         value: impl Into<i64>,
-    ) -> ReassignQueueBuilder<'a, reassign_queue_state::SetQueueId<S>> {
+    ) -> ReassignQueueBuilder<reassign_queue_state::SetQueueId<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ReassignQueueBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReassignQueueBuilder<'a, S>
+impl<St, S: BosStr> ReassignQueueBuilder<St, S>
 where
-    S: reassign_queue_state::State,
-    S::ReportId: reassign_queue_state::IsUnset,
+    St: reassign_queue_state::State,
+    St::ReportId: reassign_queue_state::IsUnset,
 {
     /// Set the `reportId` field (required)
     pub fn report_id(
         mut self,
         value: impl Into<i64>,
-    ) -> ReassignQueueBuilder<'a, reassign_queue_state::SetReportId<S>> {
+    ) -> ReassignQueueBuilder<reassign_queue_state::SetReportId<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ReassignQueueBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReassignQueueBuilder<'a, S>
+impl<St, S: BosStr> ReassignQueueBuilder<St, S>
 where
-    S: reassign_queue_state::State,
-    S::QueueId: reassign_queue_state::IsSet,
-    S::ReportId: reassign_queue_state::IsSet,
+    St: reassign_queue_state::State,
+    St::QueueId: reassign_queue_state::IsSet,
+    St::ReportId: reassign_queue_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ReassignQueue<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ReassignQueue<S> {
         ReassignQueue {
             comment: self._fields.0,
             queue_id: self._fields.1.unwrap(),
@@ -278,14 +311,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ReassignQueue<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ReassignQueue<S> {
         ReassignQueue {
             comment: self._fields.0,
             queue_id: self._fields.1.unwrap(),

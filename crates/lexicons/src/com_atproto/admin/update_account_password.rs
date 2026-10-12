@@ -10,31 +10,34 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateAccountPassword<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
-    #[serde(borrow)]
-    pub password: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UpdateAccountPassword<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
+    pub password: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for com.atproto.admin.updateAccountPassword
+/** Response marker for the `com.atproto.admin.updateAccountPassword` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `()` for this endpoint.*/
 pub struct UpdateAccountPasswordResponse;
 impl jacquard_common::xrpc::XrpcResp for UpdateAccountPasswordResponse {
     const NSID: &'static str = "com.atproto.admin.updateAccountPassword";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ();
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ();
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for UpdateAccountPassword<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for UpdateAccountPassword<S> {
     const NSID: &'static str = "com.atproto.admin.updateAccountPassword";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -42,14 +45,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for UpdateAccountPassword<'a> {
     type Response = UpdateAccountPasswordResponse;
 }
 
-/// Endpoint type for com.atproto.admin.updateAccountPassword
+/** Endpoint marker for the `com.atproto.admin.updateAccountPassword` procedure.
+
+Path: `/xrpc/com.atproto.admin.updateAccountPassword`. The request payload type is `UpdateAccountPassword<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct UpdateAccountPasswordRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for UpdateAccountPasswordRequest {
     const PATH: &'static str = "/xrpc/com.atproto.admin.updateAccountPassword";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = UpdateAccountPassword<'de>;
+    type Request<S: BosStr> = UpdateAccountPassword<S>;
     type Response = UpdateAccountPasswordResponse;
 }
 
@@ -74,17 +79,17 @@ pub mod update_account_password_state {
         type Password = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
-        type Password = S::Password;
+        type Password = St::Password;
     }
     ///State transition - sets the `password` field to Set
-    pub struct SetPassword<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPassword<S> {}
-    impl<S: State> State for SetPassword<S> {
-        type Did = S::Did;
+    pub struct SetPassword<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPassword<St> {}
+    impl<St: State> State for SetPassword<St> {
+        type Did = St::Did;
         type Password = Set<members::password>;
     }
     /// Marker types for field names
@@ -97,97 +102,118 @@ pub mod update_account_password_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct UpdateAccountPasswordBuilder<'a, S: update_account_password_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>, Option<CowStr<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct UpdateAccountPasswordBuilder<
+    St: update_account_password_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>, Option<S>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> UpdateAccountPassword<'a> {
-    /// Create a new builder for this type
+impl UpdateAccountPassword<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> UpdateAccountPasswordBuilder<
-        'a,
         update_account_password_state::Empty,
+        DefaultStr,
     > {
         UpdateAccountPasswordBuilder::new()
     }
 }
 
-impl<'a> UpdateAccountPasswordBuilder<'a, update_account_password_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> UpdateAccountPassword<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> UpdateAccountPasswordBuilder<
+        update_account_password_state::Empty,
+        S,
+    > {
+        UpdateAccountPasswordBuilder::builder()
+    }
+}
+
+impl UpdateAccountPasswordBuilder<update_account_password_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         UpdateAccountPasswordBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UpdateAccountPasswordBuilder<'a, S>
+impl<S: BosStr> UpdateAccountPasswordBuilder<update_account_password_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        UpdateAccountPasswordBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> UpdateAccountPasswordBuilder<St, S>
 where
-    S: update_account_password_state::State,
-    S::Did: update_account_password_state::IsUnset,
+    St: update_account_password_state::State,
+    St::Did: update_account_password_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> UpdateAccountPasswordBuilder<'a, update_account_password_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> UpdateAccountPasswordBuilder<update_account_password_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         UpdateAccountPasswordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UpdateAccountPasswordBuilder<'a, S>
+impl<St, S: BosStr> UpdateAccountPasswordBuilder<St, S>
 where
-    S: update_account_password_state::State,
-    S::Password: update_account_password_state::IsUnset,
+    St: update_account_password_state::State,
+    St::Password: update_account_password_state::IsUnset,
 {
     /// Set the `password` field (required)
     pub fn password(
         mut self,
-        value: impl Into<CowStr<'a>>,
+        value: impl Into<S>,
     ) -> UpdateAccountPasswordBuilder<
-        'a,
-        update_account_password_state::SetPassword<S>,
+        update_account_password_state::SetPassword<St>,
+        S,
     > {
         self._fields.1 = Option::Some(value.into());
         UpdateAccountPasswordBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UpdateAccountPasswordBuilder<'a, S>
+impl<St, S: BosStr> UpdateAccountPasswordBuilder<St, S>
 where
-    S: update_account_password_state::State,
-    S::Did: update_account_password_state::IsSet,
-    S::Password: update_account_password_state::IsSet,
+    St: update_account_password_state::State,
+    St::Did: update_account_password_state::IsSet,
+    St::Password: update_account_password_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> UpdateAccountPassword<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> UpdateAccountPassword<S> {
         UpdateAccountPassword {
             did: self._fields.0.unwrap(),
             password: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> UpdateAccountPassword<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> UpdateAccountPassword<S> {
         UpdateAccountPassword {
             did: self._fields.0.unwrap(),
             password: self._fields.1.unwrap(),

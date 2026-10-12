@@ -10,46 +10,43 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::unspecced::SkeletonSearchStarterPack;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchStarterPacksSkeleton<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SearchStarterPacksSkeleton<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `25`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `25`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
-    #[serde(borrow)]
-    pub q: CowStr<'a>,
+    pub q: S,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub viewer: Option<Did<'a>>,
+    pub viewer: Option<Did<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchStarterPacksSkeletonOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SearchStarterPacksSkeletonOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
     ///Count of search hits. Optional, may be rounded/truncated, and may not be possible to paginate through all hits.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hits_total: Option<i64>,
-    #[serde(borrow)]
-    pub starter_packs: Vec<SkeletonSearchStarterPack<'a>>,
+    pub starter_packs: Vec<SkeletonSearchStarterPack<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -58,18 +55,19 @@ pub struct SearchStarterPacksSkeletonOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum SearchStarterPacksSkeletonError<'a> {
+pub enum SearchStarterPacksSkeletonError {
     #[serde(rename = "BadQueryString")]
-    BadQueryString(Option<CowStr<'a>>),
+    BadQueryString(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for SearchStarterPacksSkeletonError<'_> {
+impl core::fmt::Display for SearchStarterPacksSkeletonError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::BadQueryString(msg) => {
@@ -79,32 +77,42 @@ impl core::fmt::Display for SearchStarterPacksSkeletonError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.unspecced.searchStarterPacksSkeleton
+/** Response marker for the `app.bsky.unspecced.searchStarterPacksSkeleton` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `SearchStarterPacksSkeletonOutput<S>` for this endpoint.*/
 pub struct SearchStarterPacksSkeletonResponse;
 impl jacquard_common::xrpc::XrpcResp for SearchStarterPacksSkeletonResponse {
     const NSID: &'static str = "app.bsky.unspecced.searchStarterPacksSkeleton";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = SearchStarterPacksSkeletonOutput<'de>;
-    type Err<'de> = SearchStarterPacksSkeletonError<'de>;
+    type Output<S: BosStr> = SearchStarterPacksSkeletonOutput<S>;
+    type Err = SearchStarterPacksSkeletonError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for SearchStarterPacksSkeleton<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for SearchStarterPacksSkeleton<S> {
     const NSID: &'static str = "app.bsky.unspecced.searchStarterPacksSkeleton";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = SearchStarterPacksSkeletonResponse;
 }
 
-/// Endpoint type for app.bsky.unspecced.searchStarterPacksSkeleton
+/** Endpoint marker for the `app.bsky.unspecced.searchStarterPacksSkeleton` query.
+
+Path: `/xrpc/app.bsky.unspecced.searchStarterPacksSkeleton`. The request payload type is `SearchStarterPacksSkeleton<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct SearchStarterPacksSkeletonRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for SearchStarterPacksSkeletonRequest {
     const PATH: &'static str = "/xrpc/app.bsky.unspecced.searchStarterPacksSkeleton";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = SearchStarterPacksSkeleton<'de>;
+    type Request<S: BosStr> = SearchStarterPacksSkeleton<S>;
     type Response = SearchStarterPacksSkeletonResponse;
 }
 
@@ -131,9 +139,9 @@ pub mod search_starter_packs_skeleton_state {
         type Q = Unset;
     }
     ///State transition - sets the `q` field to Set
-    pub struct SetQ<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetQ<S> {}
-    impl<S: State> State for SetQ<S> {
+    pub struct SetQ<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetQ<St> {}
+    impl<St: State> State for SetQ<St> {
         type Q = Set<members::q>;
     }
     /// Marker types for field names
@@ -144,59 +152,83 @@ pub mod search_starter_packs_skeleton_state {
     }
 }
 
-/// Builder for constructing an instance of this type
+/// Builder for constructing an instance of this type.
 pub struct SearchStarterPacksSkeletonBuilder<
-    'a,
-    S: search_starter_packs_skeleton_state::State,
+    St: search_starter_packs_skeleton_state::State,
+    S: BosStr = DefaultStr,
 > {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>, Option<CowStr<'a>>, Option<Did<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>, Option<S>, Option<Did<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SearchStarterPacksSkeleton<'a> {
-    /// Create a new builder for this type
+impl SearchStarterPacksSkeleton<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SearchStarterPacksSkeletonBuilder<
-        'a,
         search_starter_packs_skeleton_state::Empty,
+        DefaultStr,
     > {
         SearchStarterPacksSkeletonBuilder::new()
     }
 }
 
-impl<
-    'a,
-> SearchStarterPacksSkeletonBuilder<'a, search_starter_packs_skeleton_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SearchStarterPacksSkeleton<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SearchStarterPacksSkeletonBuilder<
+        search_starter_packs_skeleton_state::Empty,
+        S,
+    > {
+        SearchStarterPacksSkeletonBuilder::builder()
+    }
+}
+
+impl SearchStarterPacksSkeletonBuilder<
+    search_starter_packs_skeleton_state::Empty,
+    DefaultStr,
+> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SearchStarterPacksSkeletonBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
 impl<
-    'a,
-    S: search_starter_packs_skeleton_state::State,
-> SearchStarterPacksSkeletonBuilder<'a, S> {
+    S: BosStr,
+> SearchStarterPacksSkeletonBuilder<search_starter_packs_skeleton_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SearchStarterPacksSkeletonBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: search_starter_packs_skeleton_state::State,
+    S: BosStr,
+> SearchStarterPacksSkeletonBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
 impl<
-    'a,
-    S: search_starter_packs_skeleton_state::State,
-> SearchStarterPacksSkeletonBuilder<'a, S> {
+    St: search_starter_packs_skeleton_state::State,
+    S: BosStr,
+> SearchStarterPacksSkeletonBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -209,51 +241,51 @@ impl<
     }
 }
 
-impl<'a, S> SearchStarterPacksSkeletonBuilder<'a, S>
+impl<St, S: BosStr> SearchStarterPacksSkeletonBuilder<St, S>
 where
-    S: search_starter_packs_skeleton_state::State,
-    S::Q: search_starter_packs_skeleton_state::IsUnset,
+    St: search_starter_packs_skeleton_state::State,
+    St::Q: search_starter_packs_skeleton_state::IsUnset,
 {
     /// Set the `q` field (required)
     pub fn q(
         mut self,
-        value: impl Into<CowStr<'a>>,
+        value: impl Into<S>,
     ) -> SearchStarterPacksSkeletonBuilder<
-        'a,
-        search_starter_packs_skeleton_state::SetQ<S>,
+        search_starter_packs_skeleton_state::SetQ<St>,
+        S,
     > {
         self._fields.2 = Option::Some(value.into());
         SearchStarterPacksSkeletonBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
 impl<
-    'a,
-    S: search_starter_packs_skeleton_state::State,
-> SearchStarterPacksSkeletonBuilder<'a, S> {
+    St: search_starter_packs_skeleton_state::State,
+    S: BosStr,
+> SearchStarterPacksSkeletonBuilder<St, S> {
     /// Set the `viewer` field (optional)
-    pub fn viewer(mut self, value: impl Into<Option<Did<'a>>>) -> Self {
+    pub fn viewer(mut self, value: impl Into<Option<Did<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `viewer` field to an Option value (optional)
-    pub fn maybe_viewer(mut self, value: Option<Did<'a>>) -> Self {
+    pub fn maybe_viewer(mut self, value: Option<Did<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> SearchStarterPacksSkeletonBuilder<'a, S>
+impl<St, S: BosStr> SearchStarterPacksSkeletonBuilder<St, S>
 where
-    S: search_starter_packs_skeleton_state::State,
-    S::Q: search_starter_packs_skeleton_state::IsSet,
+    St: search_starter_packs_skeleton_state::State,
+    St::Q: search_starter_packs_skeleton_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SearchStarterPacksSkeleton<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SearchStarterPacksSkeleton<S> {
         SearchStarterPacksSkeleton {
             cursor: self._fields.0,
             limit: self._fields.1,

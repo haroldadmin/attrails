@@ -10,34 +10,33 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::convo::MessageView;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct AddReaction<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub message_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub value: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AddReaction<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub message_id: S,
+    pub value: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct AddReactionOutput<'a> {
-    #[serde(borrow)]
-    pub message: MessageView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AddReactionOutput<S: BosStr = DefaultStr> {
+    pub message: MessageView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -46,30 +45,31 @@ pub struct AddReactionOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum AddReactionError<'a> {
+pub enum AddReactionError {
     #[serde(rename = "InvalidConvo")]
-    InvalidConvo(Option<CowStr<'a>>),
+    InvalidConvo(Option<SmolStr>),
     /// Indicates that reactions are not allowed on this message, e.g. because it is a system message.
     #[serde(rename = "ReactionNotAllowed")]
-    ReactionNotAllowed(Option<CowStr<'a>>),
+    ReactionNotAllowed(Option<SmolStr>),
     /// Indicates that the message has been deleted and reactions can no longer be added/removed.
     #[serde(rename = "ReactionMessageDeleted")]
-    ReactionMessageDeleted(Option<CowStr<'a>>),
+    ReactionMessageDeleted(Option<SmolStr>),
     /// Indicates that the message has the maximum number of reactions allowed for a single user, and the requested reaction wasn't yet present. If it was already present, the request will not fail since it is idempotent.
     #[serde(rename = "ReactionLimitReached")]
-    ReactionLimitReached(Option<CowStr<'a>>),
+    ReactionLimitReached(Option<SmolStr>),
     /// Indicates the value for the reaction is not acceptable. In general, this means it is not an emoji.
     #[serde(rename = "ReactionInvalidValue")]
-    ReactionInvalidValue(Option<CowStr<'a>>),
+    ReactionInvalidValue(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for AddReactionError<'_> {
+impl core::fmt::Display for AddReactionError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidConvo(msg) => {
@@ -107,21 +107,29 @@ impl core::fmt::Display for AddReactionError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for chat.bsky.convo.addReaction
+/** Response marker for the `chat.bsky.convo.addReaction` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `AddReactionOutput<S>` for this endpoint.*/
 pub struct AddReactionResponse;
 impl jacquard_common::xrpc::XrpcResp for AddReactionResponse {
     const NSID: &'static str = "chat.bsky.convo.addReaction";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = AddReactionOutput<'de>;
-    type Err<'de> = AddReactionError<'de>;
+    type Output<S: BosStr> = AddReactionOutput<S>;
+    type Err = AddReactionError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for AddReaction<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for AddReaction<S> {
     const NSID: &'static str = "chat.bsky.convo.addReaction";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -129,13 +137,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for AddReaction<'a> {
     type Response = AddReactionResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.addReaction
+/** Endpoint marker for the `chat.bsky.convo.addReaction` procedure.
+
+Path: `/xrpc/chat.bsky.convo.addReaction`. The request payload type is `AddReaction<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct AddReactionRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for AddReactionRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.addReaction";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = AddReaction<'de>;
+    type Request<S: BosStr> = AddReaction<S>;
     type Response = AddReactionResponse;
 }

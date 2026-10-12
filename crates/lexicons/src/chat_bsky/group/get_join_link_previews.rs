@@ -10,63 +10,68 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::group::DisabledJoinLinkPreviewView;
 use crate::chat_bsky::group::InvalidJoinLinkPreviewView;
 use crate::chat_bsky::group::JoinLinkPreviewView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetJoinLinkPreviews<'a> {
-    #[serde(borrow)]
-    pub codes: Vec<CowStr<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetJoinLinkPreviews<S: BosStr = DefaultStr> {
+    pub codes: Vec<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetJoinLinkPreviewsOutput<'a> {
-    #[serde(borrow)]
-    pub join_link_previews: Vec<GetJoinLinkPreviewsOutputJoinLinkPreviewsItem<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetJoinLinkPreviewsOutput<S: BosStr = DefaultStr> {
+    pub join_link_previews: Vec<GetJoinLinkPreviewsOutputJoinLinkPreviewsItem<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum GetJoinLinkPreviewsOutputJoinLinkPreviewsItem<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum GetJoinLinkPreviewsOutputJoinLinkPreviewsItem<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.group.defs#joinLinkPreviewView")]
-    JoinLinkPreviewView(Box<JoinLinkPreviewView<'a>>),
+    JoinLinkPreviewView(Box<JoinLinkPreviewView<S>>),
     #[serde(rename = "chat.bsky.group.defs#disabledJoinLinkPreviewView")]
-    DisabledJoinLinkPreviewView(Box<DisabledJoinLinkPreviewView<'a>>),
+    DisabledJoinLinkPreviewView(Box<DisabledJoinLinkPreviewView<S>>),
     #[serde(rename = "chat.bsky.group.defs#invalidJoinLinkPreviewView")]
-    InvalidJoinLinkPreviewView(Box<InvalidJoinLinkPreviewView<'a>>),
+    InvalidJoinLinkPreviewView(Box<InvalidJoinLinkPreviewView<S>>),
 }
 
-/// Response type for chat.bsky.group.getJoinLinkPreviews
+/** Response marker for the `chat.bsky.group.getJoinLinkPreviews` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetJoinLinkPreviewsOutput<S>` for this endpoint.*/
 pub struct GetJoinLinkPreviewsResponse;
 impl jacquard_common::xrpc::XrpcResp for GetJoinLinkPreviewsResponse {
     const NSID: &'static str = "chat.bsky.group.getJoinLinkPreviews";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetJoinLinkPreviewsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetJoinLinkPreviewsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetJoinLinkPreviews<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetJoinLinkPreviews<S> {
     const NSID: &'static str = "chat.bsky.group.getJoinLinkPreviews";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetJoinLinkPreviewsResponse;
 }
 
-/// Endpoint type for chat.bsky.group.getJoinLinkPreviews
+/** Endpoint marker for the `chat.bsky.group.getJoinLinkPreviews` query.
+
+Path: `/xrpc/chat.bsky.group.getJoinLinkPreviews`. The request payload type is `GetJoinLinkPreviews<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetJoinLinkPreviewsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetJoinLinkPreviewsRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.group.getJoinLinkPreviews";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetJoinLinkPreviews<'de>;
+    type Request<S: BosStr> = GetJoinLinkPreviews<S>;
     type Response = GetJoinLinkPreviewsResponse;
 }
 
@@ -89,9 +94,9 @@ pub mod get_join_link_previews_state {
         type Codes = Unset;
     }
     ///State transition - sets the `codes` field to Set
-    pub struct SetCodes<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCodes<S> {}
-    impl<S: State> State for SetCodes<S> {
+    pub struct SetCodes<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCodes<St> {}
+    impl<St: State> State for SetCodes<St> {
         type Codes = Set<members::codes>;
     }
     /// Marker types for field names
@@ -102,57 +107,84 @@ pub mod get_join_link_previews_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetJoinLinkPreviewsBuilder<'a, S: get_join_link_previews_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<CowStr<'a>>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetJoinLinkPreviewsBuilder<
+    St: get_join_link_previews_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetJoinLinkPreviews<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetJoinLinkPreviewsBuilder<'a, get_join_link_previews_state::Empty> {
+impl GetJoinLinkPreviews<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetJoinLinkPreviewsBuilder<
+        get_join_link_previews_state::Empty,
+        DefaultStr,
+    > {
         GetJoinLinkPreviewsBuilder::new()
     }
 }
 
-impl<'a> GetJoinLinkPreviewsBuilder<'a, get_join_link_previews_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetJoinLinkPreviews<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetJoinLinkPreviewsBuilder<
+        get_join_link_previews_state::Empty,
+        S,
+    > {
+        GetJoinLinkPreviewsBuilder::builder()
+    }
+}
+
+impl GetJoinLinkPreviewsBuilder<get_join_link_previews_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetJoinLinkPreviewsBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetJoinLinkPreviewsBuilder<'a, S>
+impl<S: BosStr> GetJoinLinkPreviewsBuilder<get_join_link_previews_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetJoinLinkPreviewsBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetJoinLinkPreviewsBuilder<St, S>
 where
-    S: get_join_link_previews_state::State,
-    S::Codes: get_join_link_previews_state::IsUnset,
+    St: get_join_link_previews_state::State,
+    St::Codes: get_join_link_previews_state::IsUnset,
 {
     /// Set the `codes` field (required)
     pub fn codes(
         mut self,
-        value: impl Into<Vec<CowStr<'a>>>,
-    ) -> GetJoinLinkPreviewsBuilder<'a, get_join_link_previews_state::SetCodes<S>> {
+        value: impl Into<Vec<S>>,
+    ) -> GetJoinLinkPreviewsBuilder<get_join_link_previews_state::SetCodes<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetJoinLinkPreviewsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetJoinLinkPreviewsBuilder<'a, S>
+impl<St, S: BosStr> GetJoinLinkPreviewsBuilder<St, S>
 where
-    S: get_join_link_previews_state::State,
-    S::Codes: get_join_link_previews_state::IsSet,
+    St: get_join_link_previews_state::State,
+    St::Codes: get_join_link_previews_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetJoinLinkPreviews<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetJoinLinkPreviews<S> {
         GetJoinLinkPreviews {
             codes: self._fields.0.unwrap(),
         }

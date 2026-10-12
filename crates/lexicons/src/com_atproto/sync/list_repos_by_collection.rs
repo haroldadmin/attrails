@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Nsid};
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -25,65 +27,66 @@ use serde::{Serialize, Deserialize};
 use crate::com_atproto::sync::list_repos_by_collection;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListReposByCollection<'a> {
-    #[serde(borrow)]
-    pub collection: Nsid<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListReposByCollection<S: BosStr = DefaultStr> {
+    pub collection: Nsid<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `500`. Min: 1. Max: 2000.
+    pub cursor: Option<S>,
+    /// Defaults to `500`. Min: 1. Max: 2000.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ListReposByCollectionOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ListReposByCollectionOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub repos: Vec<list_repos_by_collection::Repo<'a>>,
+    pub cursor: Option<S>,
+    pub repos: Vec<list_repos_by_collection::Repo<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Repo<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Repo<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for com.atproto.sync.listReposByCollection
+/** Response marker for the `com.atproto.sync.listReposByCollection` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `ListReposByCollectionOutput<S>` for this endpoint.*/
 pub struct ListReposByCollectionResponse;
 impl jacquard_common::xrpc::XrpcResp for ListReposByCollectionResponse {
     const NSID: &'static str = "com.atproto.sync.listReposByCollection";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ListReposByCollectionOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ListReposByCollectionOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for ListReposByCollection<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for ListReposByCollection<S> {
     const NSID: &'static str = "com.atproto.sync.listReposByCollection";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = ListReposByCollectionResponse;
 }
 
-/// Endpoint type for com.atproto.sync.listReposByCollection
+/** Endpoint marker for the `com.atproto.sync.listReposByCollection` query.
+
+Path: `/xrpc/com.atproto.sync.listReposByCollection`. The request payload type is `ListReposByCollection<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct ListReposByCollectionRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for ListReposByCollectionRequest {
     const PATH: &'static str = "/xrpc/com.atproto.sync.listReposByCollection";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = ListReposByCollection<'de>;
+    type Request<S: BosStr> = ListReposByCollection<S>;
     type Response = ListReposByCollectionResponse;
 }
 
-impl<'a> LexiconSchema for Repo<'a> {
+impl<S: BosStr> LexiconSchema for Repo<S> {
     fn nsid() -> &'static str {
         "com.atproto.sync.listReposByCollection"
     }
@@ -121,9 +124,9 @@ pub mod list_repos_by_collection_state {
         type Collection = Unset;
     }
     ///State transition - sets the `collection` field to Set
-    pub struct SetCollection<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCollection<S> {}
-    impl<S: State> State for SetCollection<S> {
+    pub struct SetCollection<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCollection<St> {}
+    impl<St: State> State for SetCollection<St> {
         type Collection = Set<members::collection>;
     }
     /// Marker types for field names
@@ -134,70 +137,100 @@ pub mod list_repos_by_collection_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ListReposByCollectionBuilder<'a, S: list_repos_by_collection_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Nsid<'a>>, Option<CowStr<'a>>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct ListReposByCollectionBuilder<
+    St: list_repos_by_collection_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Nsid<S>>, Option<S>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ListReposByCollection<'a> {
-    /// Create a new builder for this type
+impl ListReposByCollection<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> ListReposByCollectionBuilder<
-        'a,
         list_repos_by_collection_state::Empty,
+        DefaultStr,
     > {
         ListReposByCollectionBuilder::new()
     }
 }
 
-impl<'a> ListReposByCollectionBuilder<'a, list_repos_by_collection_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ListReposByCollection<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ListReposByCollectionBuilder<
+        list_repos_by_collection_state::Empty,
+        S,
+    > {
+        ListReposByCollectionBuilder::builder()
+    }
+}
+
+impl ListReposByCollectionBuilder<list_repos_by_collection_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ListReposByCollectionBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ListReposByCollectionBuilder<'a, S>
+impl<S: BosStr> ListReposByCollectionBuilder<list_repos_by_collection_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ListReposByCollectionBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ListReposByCollectionBuilder<St, S>
 where
-    S: list_repos_by_collection_state::State,
-    S::Collection: list_repos_by_collection_state::IsUnset,
+    St: list_repos_by_collection_state::State,
+    St::Collection: list_repos_by_collection_state::IsUnset,
 {
     /// Set the `collection` field (required)
     pub fn collection(
         mut self,
-        value: impl Into<Nsid<'a>>,
+        value: impl Into<Nsid<S>>,
     ) -> ListReposByCollectionBuilder<
-        'a,
-        list_repos_by_collection_state::SetCollection<S>,
+        list_repos_by_collection_state::SetCollection<St>,
+        S,
     > {
         self._fields.0 = Option::Some(value.into());
         ListReposByCollectionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: list_repos_by_collection_state::State> ListReposByCollectionBuilder<'a, S> {
+impl<
+    St: list_repos_by_collection_state::State,
+    S: BosStr,
+> ListReposByCollectionBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: list_repos_by_collection_state::State> ListReposByCollectionBuilder<'a, S> {
+impl<
+    St: list_repos_by_collection_state::State,
+    S: BosStr,
+> ListReposByCollectionBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.2 = value.into();
@@ -210,13 +243,13 @@ impl<'a, S: list_repos_by_collection_state::State> ListReposByCollectionBuilder<
     }
 }
 
-impl<'a, S> ListReposByCollectionBuilder<'a, S>
+impl<St, S: BosStr> ListReposByCollectionBuilder<St, S>
 where
-    S: list_repos_by_collection_state::State,
-    S::Collection: list_repos_by_collection_state::IsSet,
+    St: list_repos_by_collection_state::State,
+    St::Collection: list_repos_by_collection_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ListReposByCollection<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ListReposByCollection<S> {
         ListReposByCollection {
             collection: self._fields.0.unwrap(),
             cursor: self._fields.1,
@@ -244,9 +277,9 @@ pub mod repo_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -257,70 +290,82 @@ pub mod repo_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct RepoBuilder<'a, S: repo_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct RepoBuilder<St: repo_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Repo<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> RepoBuilder<'a, repo_state::Empty> {
+impl Repo<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> RepoBuilder<repo_state::Empty, DefaultStr> {
         RepoBuilder::new()
     }
 }
 
-impl<'a> RepoBuilder<'a, repo_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Repo<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> RepoBuilder<repo_state::Empty, S> {
+        RepoBuilder::builder()
+    }
+}
+
+impl RepoBuilder<repo_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         RepoBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RepoBuilder<'a, S>
+impl<S: BosStr> RepoBuilder<repo_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        RepoBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> RepoBuilder<St, S>
 where
-    S: repo_state::State,
-    S::Did: repo_state::IsUnset,
+    St: repo_state::State,
+    St::Did: repo_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> RepoBuilder<'a, repo_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> RepoBuilder<repo_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         RepoBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RepoBuilder<'a, S>
+impl<St, S: BosStr> RepoBuilder<St, S>
 where
-    S: repo_state::State,
-    S::Did: repo_state::IsSet,
+    St: repo_state::State,
+    St::Did: repo_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Repo<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Repo<S> {
         Repo {
             did: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Repo<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Repo<S> {
         Repo {
             did: self._fields.0.unwrap(),
             extra_data: Some(extra_data),

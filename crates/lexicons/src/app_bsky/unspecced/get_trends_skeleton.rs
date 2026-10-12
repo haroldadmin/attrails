@@ -10,58 +10,62 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::unspecced::SkeletonTrend;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetTrendsSkeleton<'a> {
-    ///Defaults to `10`. Min: 1. Max: 25.
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetTrendsSkeleton<S: BosStr = DefaultStr> {
+    /// Defaults to `10`. Min: 1. Max: 25.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub viewer: Option<Did<'a>>,
+    pub viewer: Option<Did<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetTrendsSkeletonOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetTrendsSkeletonOutput<S: BosStr = DefaultStr> {
     ///Snowflake for this recommendation, use when submitting recommendation events.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub rec_id_str: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub trends: Vec<SkeletonTrend<'a>>,
+    pub rec_id_str: Option<S>,
+    pub trends: Vec<SkeletonTrend<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for app.bsky.unspecced.getTrendsSkeleton
+/** Response marker for the `app.bsky.unspecced.getTrendsSkeleton` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetTrendsSkeletonOutput<S>` for this endpoint.*/
 pub struct GetTrendsSkeletonResponse;
 impl jacquard_common::xrpc::XrpcResp for GetTrendsSkeletonResponse {
     const NSID: &'static str = "app.bsky.unspecced.getTrendsSkeleton";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetTrendsSkeletonOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetTrendsSkeletonOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetTrendsSkeleton<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetTrendsSkeleton<S> {
     const NSID: &'static str = "app.bsky.unspecced.getTrendsSkeleton";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetTrendsSkeletonResponse;
 }
 
-/// Endpoint type for app.bsky.unspecced.getTrendsSkeleton
+/** Endpoint marker for the `app.bsky.unspecced.getTrendsSkeleton` query.
+
+Path: `/xrpc/app.bsky.unspecced.getTrendsSkeleton`. The request payload type is `GetTrendsSkeleton<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetTrendsSkeletonRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetTrendsSkeletonRequest {
     const PATH: &'static str = "/xrpc/app.bsky.unspecced.getTrendsSkeleton";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetTrendsSkeleton<'de>;
+    type Request<S: BosStr> = GetTrendsSkeleton<S>;
     type Response = GetTrendsSkeletonResponse;
 }
 
@@ -88,32 +92,56 @@ pub mod get_trends_skeleton_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetTrendsSkeletonBuilder<'a, S: get_trends_skeleton_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<i64>, Option<Did<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetTrendsSkeletonBuilder<
+    St: get_trends_skeleton_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<i64>, Option<Did<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetTrendsSkeleton<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetTrendsSkeletonBuilder<'a, get_trends_skeleton_state::Empty> {
+impl GetTrendsSkeleton<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetTrendsSkeletonBuilder<
+        get_trends_skeleton_state::Empty,
+        DefaultStr,
+    > {
         GetTrendsSkeletonBuilder::new()
     }
 }
 
-impl<'a> GetTrendsSkeletonBuilder<'a, get_trends_skeleton_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetTrendsSkeleton<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetTrendsSkeletonBuilder<get_trends_skeleton_state::Empty, S> {
+        GetTrendsSkeletonBuilder::builder()
+    }
+}
+
+impl GetTrendsSkeletonBuilder<get_trends_skeleton_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetTrendsSkeletonBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_trends_skeleton_state::State> GetTrendsSkeletonBuilder<'a, S> {
+impl<S: BosStr> GetTrendsSkeletonBuilder<get_trends_skeleton_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetTrendsSkeletonBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: get_trends_skeleton_state::State, S: BosStr> GetTrendsSkeletonBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.0 = value.into();
@@ -126,25 +154,25 @@ impl<'a, S: get_trends_skeleton_state::State> GetTrendsSkeletonBuilder<'a, S> {
     }
 }
 
-impl<'a, S: get_trends_skeleton_state::State> GetTrendsSkeletonBuilder<'a, S> {
+impl<St: get_trends_skeleton_state::State, S: BosStr> GetTrendsSkeletonBuilder<St, S> {
     /// Set the `viewer` field (optional)
-    pub fn viewer(mut self, value: impl Into<Option<Did<'a>>>) -> Self {
+    pub fn viewer(mut self, value: impl Into<Option<Did<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `viewer` field to an Option value (optional)
-    pub fn maybe_viewer(mut self, value: Option<Did<'a>>) -> Self {
+    pub fn maybe_viewer(mut self, value: Option<Did<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> GetTrendsSkeletonBuilder<'a, S>
+impl<St, S: BosStr> GetTrendsSkeletonBuilder<St, S>
 where
-    S: get_trends_skeleton_state::State,
+    St: get_trends_skeleton_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetTrendsSkeleton<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetTrendsSkeleton<S> {
         GetTrendsSkeleton {
             limit: self._fields.0,
             viewer: self._fields.1,

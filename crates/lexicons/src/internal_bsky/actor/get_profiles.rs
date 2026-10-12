@@ -10,58 +10,62 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::actor::ProfileViewDetailed;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetProfiles<'a> {
-    #[serde(borrow)]
-    pub dids: Vec<Did<'a>>,
-    /// Defaults to `false`.
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetProfiles<S: BosStr = DefaultStr> {
+    pub dids: Vec<Did<S>>,
+    ///  Defaults to `false`.
     #[serde(default = "_default_include_takedowns")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_takedowns: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub social_proof: Option<Vec<Did<'a>>>,
+    pub social_proof: Option<Vec<Did<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub viewer: Option<Did<'a>>,
+    pub viewer: Option<Did<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetProfilesOutput<'a> {
-    #[serde(borrow)]
-    pub profiles: Vec<ProfileViewDetailed<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetProfilesOutput<S: BosStr = DefaultStr> {
+    pub profiles: Vec<ProfileViewDetailed<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for internal.bsky.actor.getProfiles
+/** Response marker for the `internal.bsky.actor.getProfiles` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetProfilesOutput<S>` for this endpoint.*/
 pub struct GetProfilesResponse;
 impl jacquard_common::xrpc::XrpcResp for GetProfilesResponse {
     const NSID: &'static str = "internal.bsky.actor.getProfiles";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetProfilesOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetProfilesOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetProfiles<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetProfiles<S> {
     const NSID: &'static str = "internal.bsky.actor.getProfiles";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetProfilesResponse;
 }
 
-/// Endpoint type for internal.bsky.actor.getProfiles
+/** Endpoint marker for the `internal.bsky.actor.getProfiles` query.
+
+Path: `/xrpc/internal.bsky.actor.getProfiles`. The request payload type is `GetProfiles<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetProfilesRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetProfilesRequest {
     const PATH: &'static str = "/xrpc/internal.bsky.actor.getProfiles";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetProfiles<'de>;
+    type Request<S: BosStr> = GetProfiles<S>;
     type Response = GetProfilesResponse;
 }
 
@@ -88,9 +92,9 @@ pub mod get_profiles_state {
         type Dids = Unset;
     }
     ///State transition - sets the `dids` field to Set
-    pub struct SetDids<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDids<S> {}
-    impl<S: State> State for SetDids<S> {
+    pub struct SetDids<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDids<St> {}
+    impl<St: State> State for SetDids<St> {
         type Dids = Set<members::dids>;
     }
     /// Marker types for field names
@@ -101,51 +105,69 @@ pub mod get_profiles_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetProfilesBuilder<'a, S: get_profiles_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<Did<'a>>>, Option<bool>, Option<Vec<Did<'a>>>, Option<Did<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetProfilesBuilder<St: get_profiles_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<Did<S>>>, Option<bool>, Option<Vec<Did<S>>>, Option<Did<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetProfiles<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetProfilesBuilder<'a, get_profiles_state::Empty> {
+impl GetProfiles<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetProfilesBuilder<get_profiles_state::Empty, DefaultStr> {
         GetProfilesBuilder::new()
     }
 }
 
-impl<'a> GetProfilesBuilder<'a, get_profiles_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetProfiles<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetProfilesBuilder<get_profiles_state::Empty, S> {
+        GetProfilesBuilder::builder()
+    }
+}
+
+impl GetProfilesBuilder<get_profiles_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetProfilesBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetProfilesBuilder<'a, S>
+impl<S: BosStr> GetProfilesBuilder<get_profiles_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetProfilesBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetProfilesBuilder<St, S>
 where
-    S: get_profiles_state::State,
-    S::Dids: get_profiles_state::IsUnset,
+    St: get_profiles_state::State,
+    St::Dids: get_profiles_state::IsUnset,
 {
     /// Set the `dids` field (required)
     pub fn dids(
         mut self,
-        value: impl Into<Vec<Did<'a>>>,
-    ) -> GetProfilesBuilder<'a, get_profiles_state::SetDids<S>> {
+        value: impl Into<Vec<Did<S>>>,
+    ) -> GetProfilesBuilder<get_profiles_state::SetDids<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetProfilesBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_profiles_state::State> GetProfilesBuilder<'a, S> {
+impl<St: get_profiles_state::State, S: BosStr> GetProfilesBuilder<St, S> {
     /// Set the `includeTakedowns` field (optional)
     pub fn include_takedowns(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.1 = value.into();
@@ -158,39 +180,39 @@ impl<'a, S: get_profiles_state::State> GetProfilesBuilder<'a, S> {
     }
 }
 
-impl<'a, S: get_profiles_state::State> GetProfilesBuilder<'a, S> {
+impl<St: get_profiles_state::State, S: BosStr> GetProfilesBuilder<St, S> {
     /// Set the `socialProof` field (optional)
-    pub fn social_proof(mut self, value: impl Into<Option<Vec<Did<'a>>>>) -> Self {
+    pub fn social_proof(mut self, value: impl Into<Option<Vec<Did<S>>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `socialProof` field to an Option value (optional)
-    pub fn maybe_social_proof(mut self, value: Option<Vec<Did<'a>>>) -> Self {
+    pub fn maybe_social_proof(mut self, value: Option<Vec<Did<S>>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: get_profiles_state::State> GetProfilesBuilder<'a, S> {
+impl<St: get_profiles_state::State, S: BosStr> GetProfilesBuilder<St, S> {
     /// Set the `viewer` field (optional)
-    pub fn viewer(mut self, value: impl Into<Option<Did<'a>>>) -> Self {
+    pub fn viewer(mut self, value: impl Into<Option<Did<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `viewer` field to an Option value (optional)
-    pub fn maybe_viewer(mut self, value: Option<Did<'a>>) -> Self {
+    pub fn maybe_viewer(mut self, value: Option<Did<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> GetProfilesBuilder<'a, S>
+impl<St, S: BosStr> GetProfilesBuilder<St, S>
 where
-    S: get_profiles_state::State,
-    S::Dids: get_profiles_state::IsSet,
+    St: get_profiles_state::State,
+    St::Dids: get_profiles_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetProfiles<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetProfiles<S> {
         GetProfiles {
             dids: self._fields.0.unwrap(),
             include_takedowns: self._fields.1,

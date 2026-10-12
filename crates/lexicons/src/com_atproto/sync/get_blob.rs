@@ -6,20 +6,23 @@
 // Any manual changes will be overwritten on the next regeneration.
 
 #[allow(unused_imports)]
+use alloc::collections::BTreeMap;
+
+#[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 use jacquard_common::deps::bytes::Bytes;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Cid};
+use jacquard_common::types::value::Data;
 use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetBlob<'a> {
-    #[serde(borrow)]
-    pub cid: Cid<'a>,
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetBlob<S: BosStr = DefaultStr> {
+    pub cid: Cid<S>,
+    pub did: Did<S>,
 }
 
 
@@ -30,7 +33,6 @@ pub struct GetBlobOutput {
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -39,26 +41,27 @@ pub struct GetBlobOutput {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetBlobError<'a> {
+pub enum GetBlobError {
     #[serde(rename = "BlobNotFound")]
-    BlobNotFound(Option<CowStr<'a>>),
+    BlobNotFound(Option<SmolStr>),
     #[serde(rename = "RepoNotFound")]
-    RepoNotFound(Option<CowStr<'a>>),
+    RepoNotFound(Option<SmolStr>),
     #[serde(rename = "RepoTakendown")]
-    RepoTakendown(Option<CowStr<'a>>),
+    RepoTakendown(Option<SmolStr>),
     #[serde(rename = "RepoSuspended")]
-    RepoSuspended(Option<CowStr<'a>>),
+    RepoSuspended(Option<SmolStr>),
     #[serde(rename = "RepoDeactivated")]
-    RepoDeactivated(Option<CowStr<'a>>),
+    RepoDeactivated(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetBlobError<'_> {
+impl core::fmt::Display for GetBlobError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::BlobNotFound(msg) => {
@@ -96,28 +99,40 @@ impl core::fmt::Display for GetBlobError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for com.atproto.sync.getBlob
+/** Response marker for the `com.atproto.sync.getBlob` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetBlobOutput` for this endpoint.*/
 pub struct GetBlobResponse;
 impl jacquard_common::xrpc::XrpcResp for GetBlobResponse {
     const NSID: &'static str = "com.atproto.sync.getBlob";
     const ENCODING: &'static str = "*/*";
-    type Output<'de> = GetBlobOutput;
-    type Err<'de> = GetBlobError<'de>;
-    fn encode_output(
-        output: &Self::Output<'_>,
-    ) -> Result<Vec<u8>, jacquard_common::xrpc::EncodeError> {
+    type Output<S: BosStr> = GetBlobOutput;
+    type Err = GetBlobError;
+    fn encode_output<S: BosStr>(
+        output: &Self::Output<S>,
+    ) -> Result<Vec<u8>, jacquard_common::xrpc::EncodeError>
+    where
+        Self::Output<S>: Serialize,
+    {
         Ok(output.body.to_vec())
     }
-    fn decode_output<'de>(
+    fn decode_output<'de, S>(
         body: &'de [u8],
-    ) -> Result<Self::Output<'de>, jacquard_common::error::DecodeError>
+    ) -> Result<Self::Output<S>, jacquard_common::error::DecodeError>
     where
-        Self::Output<'de>: serde::Deserialize<'de>,
+        S: BosStr + Deserialize<'de>,
+        Self::Output<S>: Deserialize<'de>,
     {
         Ok(GetBlobOutput {
             body: jacquard_common::deps::bytes::Bytes::copy_from_slice(body),
@@ -125,18 +140,20 @@ impl jacquard_common::xrpc::XrpcResp for GetBlobResponse {
     }
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetBlob<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetBlob<S> {
     const NSID: &'static str = "com.atproto.sync.getBlob";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetBlobResponse;
 }
 
-/// Endpoint type for com.atproto.sync.getBlob
+/** Endpoint marker for the `com.atproto.sync.getBlob` query.
+
+Path: `/xrpc/com.atproto.sync.getBlob`. The request payload type is `GetBlob<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetBlobRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetBlobRequest {
     const PATH: &'static str = "/xrpc/com.atproto.sync.getBlob";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetBlob<'de>;
+    type Request<S: BosStr> = GetBlob<S>;
     type Response = GetBlobResponse;
 }
 
@@ -150,111 +167,129 @@ pub mod get_blob_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Did;
         type Cid;
+        type Did;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Did = Unset;
         type Cid = Unset;
-    }
-    ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
-        type Did = Set<members::did>;
-        type Cid = S::Cid;
+        type Did = Unset;
     }
     ///State transition - sets the `cid` field to Set
-    pub struct SetCid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCid<S> {}
-    impl<S: State> State for SetCid<S> {
-        type Did = S::Did;
+    pub struct SetCid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCid<St> {}
+    impl<St: State> State for SetCid<St> {
         type Cid = Set<members::cid>;
+        type Did = St::Did;
+    }
+    ///State transition - sets the `did` field to Set
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
+        type Cid = St::Cid;
+        type Did = Set<members::did>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `did` field
-        pub struct did(());
         ///Marker type for the `cid` field
         pub struct cid(());
+        ///Marker type for the `did` field
+        pub struct did(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetBlobBuilder<'a, S: get_blob_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Cid<'a>>, Option<Did<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetBlobBuilder<St: get_blob_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Cid<S>>, Option<Did<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetBlob<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetBlobBuilder<'a, get_blob_state::Empty> {
+impl GetBlob<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetBlobBuilder<get_blob_state::Empty, DefaultStr> {
         GetBlobBuilder::new()
     }
 }
 
-impl<'a> GetBlobBuilder<'a, get_blob_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetBlob<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetBlobBuilder<get_blob_state::Empty, S> {
+        GetBlobBuilder::builder()
+    }
+}
+
+impl GetBlobBuilder<get_blob_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetBlobBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetBlobBuilder<'a, S>
+impl<S: BosStr> GetBlobBuilder<get_blob_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetBlobBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetBlobBuilder<St, S>
 where
-    S: get_blob_state::State,
-    S::Cid: get_blob_state::IsUnset,
+    St: get_blob_state::State,
+    St::Cid: get_blob_state::IsUnset,
 {
     /// Set the `cid` field (required)
     pub fn cid(
         mut self,
-        value: impl Into<Cid<'a>>,
-    ) -> GetBlobBuilder<'a, get_blob_state::SetCid<S>> {
+        value: impl Into<Cid<S>>,
+    ) -> GetBlobBuilder<get_blob_state::SetCid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetBlobBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetBlobBuilder<'a, S>
+impl<St, S: BosStr> GetBlobBuilder<St, S>
 where
-    S: get_blob_state::State,
-    S::Did: get_blob_state::IsUnset,
+    St: get_blob_state::State,
+    St::Did: get_blob_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> GetBlobBuilder<'a, get_blob_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> GetBlobBuilder<get_blob_state::SetDid<St>, S> {
         self._fields.1 = Option::Some(value.into());
         GetBlobBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetBlobBuilder<'a, S>
+impl<St, S: BosStr> GetBlobBuilder<St, S>
 where
-    S: get_blob_state::State,
-    S::Did: get_blob_state::IsSet,
-    S::Cid: get_blob_state::IsSet,
+    St: get_blob_state::State,
+    St::Cid: get_blob_state::IsSet,
+    St::Did: get_blob_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetBlob<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetBlob<S> {
         GetBlob {
             cid: self._fields.0.unwrap(),
             did: self._fields.1.unwrap(),

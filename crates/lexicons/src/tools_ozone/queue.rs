@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `tools.ozone.queue` Lexicon namespace/module.
 pub mod assign_moderator;
 pub mod create_queue;
 pub mod delete_queue;
@@ -20,12 +21,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Nsid, Datetime};
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -35,29 +38,26 @@ use serde::{Serialize, Deserialize};
 use crate::tools_ozone::team::Member;
 use crate::tools_ozone::queue;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct AssignmentView<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct AssignmentView<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_at: Option<Datetime>,
     pub id: i64,
     ///The moderator assigned to this queue
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub moderator: Option<Member<'a>>,
-    #[serde(borrow)]
-    pub queue: queue::QueueView<'a>,
+    pub moderator: Option<Member<S>>,
+    pub queue: queue::QueueView<S>,
     pub start_at: Datetime,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct QueueStats<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct QueueStats<S: BosStr = DefaultStr> {
     ///Percentage of reports actioned (actionedCount / inboundCount * 100), rounded to nearest integer. Absent when inboundCount is 0.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub action_rate: Option<i64>,
@@ -79,54 +79,49 @@ pub struct QueueStats<'a> {
     ///Number of reports in 'open' status
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pending_count: Option<i64>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct QueueView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct QueueView<S: BosStr = DefaultStr> {
     ///Collection name for record subjects (e.g., 'app.bsky.feed.post')
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub collection: Option<Nsid<'a>>,
+    pub collection: Option<Nsid<S>>,
     pub created_at: Datetime,
     ///DID of moderator who created this queue
-    #[serde(borrow)]
-    pub created_by: Did<'a>,
+    pub created_by: Did<S>,
     ///When the queue was deleted, if applicable
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deleted_at: Option<Datetime>,
     ///Optional description of the queue
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
+    pub description: Option<S>,
     ///Whether this queue is currently active
     pub enabled: bool,
     ///Queue ID
     pub id: i64,
     ///Display name of the queue
-    #[serde(borrow)]
-    pub name: CowStr<'a>,
+    pub name: S,
     ///Policy keys recommended when actioning reports in this queue
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub recommended_policies: Option<Vec<CowStr<'a>>>,
+    pub recommended_policies: Option<Vec<S>>,
     ///Report reason types this queue accepts (fully qualified NSIDs)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub report_types: Option<Vec<CowStr<'a>>>,
+    pub report_types: Option<Vec<S>>,
     ///Statistics about this queue
-    #[serde(borrow)]
-    pub stats: queue::QueueStats<'a>,
+    pub stats: queue::QueueStats<S>,
     ///Subject types this queue accepts.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub subject_types: Option<Vec<CowStr<'a>>>,
+    pub subject_types: Option<Vec<S>>,
     pub updated_at: Datetime,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for AssignmentView<'a> {
+impl<S: BosStr> LexiconSchema for AssignmentView<S> {
     fn nsid() -> &'static str {
         "tools.ozone.queue.defs"
     }
@@ -141,7 +136,7 @@ impl<'a> LexiconSchema for AssignmentView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for QueueStats<'a> {
+impl<S: BosStr> LexiconSchema for QueueStats<S> {
     fn nsid() -> &'static str {
         "tools.ozone.queue.defs"
     }
@@ -156,7 +151,7 @@ impl<'a> LexiconSchema for QueueStats<'a> {
     }
 }
 
-impl<'a> LexiconSchema for QueueView<'a> {
+impl<S: BosStr> LexiconSchema for QueueView<S> {
     fn nsid() -> &'static str {
         "tools.ozone.queue.defs"
     }
@@ -181,122 +176,143 @@ pub mod assignment_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Id;
-        type StartAt;
-        type Queue;
         type Did;
+        type Id;
+        type Queue;
+        type StartAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Id = Unset;
-        type StartAt = Unset;
-        type Queue = Unset;
         type Did = Unset;
-    }
-    ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type Id = Set<members::id>;
-        type StartAt = S::StartAt;
-        type Queue = S::Queue;
-        type Did = S::Did;
-    }
-    ///State transition - sets the `start_at` field to Set
-    pub struct SetStartAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetStartAt<S> {}
-    impl<S: State> State for SetStartAt<S> {
-        type Id = S::Id;
-        type StartAt = Set<members::start_at>;
-        type Queue = S::Queue;
-        type Did = S::Did;
-    }
-    ///State transition - sets the `queue` field to Set
-    pub struct SetQueue<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetQueue<S> {}
-    impl<S: State> State for SetQueue<S> {
-        type Id = S::Id;
-        type StartAt = S::StartAt;
-        type Queue = Set<members::queue>;
-        type Did = S::Did;
+        type Id = Unset;
+        type Queue = Unset;
+        type StartAt = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
-        type Id = S::Id;
-        type StartAt = S::StartAt;
-        type Queue = S::Queue;
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
+        type Id = St::Id;
+        type Queue = St::Queue;
+        type StartAt = St::StartAt;
+    }
+    ///State transition - sets the `id` field to Set
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type Did = St::Did;
+        type Id = Set<members::id>;
+        type Queue = St::Queue;
+        type StartAt = St::StartAt;
+    }
+    ///State transition - sets the `queue` field to Set
+    pub struct SetQueue<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetQueue<St> {}
+    impl<St: State> State for SetQueue<St> {
+        type Did = St::Did;
+        type Id = St::Id;
+        type Queue = Set<members::queue>;
+        type StartAt = St::StartAt;
+    }
+    ///State transition - sets the `start_at` field to Set
+    pub struct SetStartAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetStartAt<St> {}
+    impl<St: State> State for SetStartAt<St> {
+        type Did = St::Did;
+        type Id = St::Id;
+        type Queue = St::Queue;
+        type StartAt = Set<members::start_at>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `id` field
-        pub struct id(());
-        ///Marker type for the `start_at` field
-        pub struct start_at(());
-        ///Marker type for the `queue` field
-        pub struct queue(());
         ///Marker type for the `did` field
         pub struct did(());
+        ///Marker type for the `id` field
+        pub struct id(());
+        ///Marker type for the `queue` field
+        pub struct queue(());
+        ///Marker type for the `start_at` field
+        pub struct start_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct AssignmentViewBuilder<'a, S: assignment_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct AssignmentViewBuilder<
+    St: assignment_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<Did<'a>>,
+        Option<Did<S>>,
         Option<Datetime>,
         Option<i64>,
-        Option<Member<'a>>,
-        Option<queue::QueueView<'a>>,
+        Option<Member<S>>,
+        Option<queue::QueueView<S>>,
         Option<Datetime>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> AssignmentView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> AssignmentViewBuilder<'a, assignment_view_state::Empty> {
+impl AssignmentView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> AssignmentViewBuilder<assignment_view_state::Empty, DefaultStr> {
         AssignmentViewBuilder::new()
     }
 }
 
-impl<'a> AssignmentViewBuilder<'a, assignment_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> AssignmentView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> AssignmentViewBuilder<assignment_view_state::Empty, S> {
+        AssignmentViewBuilder::builder()
+    }
+}
+
+impl AssignmentViewBuilder<assignment_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<S: BosStr> AssignmentViewBuilder<assignment_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        AssignmentViewBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::Did: assignment_view_state::IsUnset,
+    St: assignment_view_state::State,
+    St::Did: assignment_view_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> AssignmentViewBuilder<'a, assignment_view_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> AssignmentViewBuilder<assignment_view_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: assignment_view_state::State> AssignmentViewBuilder<'a, S> {
+impl<St: assignment_view_state::State, S: BosStr> AssignmentViewBuilder<St, S> {
     /// Set the `endAt` field (optional)
     pub fn end_at(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.1 = value.into();
@@ -309,86 +325,86 @@ impl<'a, S: assignment_view_state::State> AssignmentViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::Id: assignment_view_state::IsUnset,
+    St: assignment_view_state::State,
+    St::Id: assignment_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
         value: impl Into<i64>,
-    ) -> AssignmentViewBuilder<'a, assignment_view_state::SetId<S>> {
+    ) -> AssignmentViewBuilder<assignment_view_state::SetId<St>, S> {
         self._fields.2 = Option::Some(value.into());
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: assignment_view_state::State> AssignmentViewBuilder<'a, S> {
+impl<St: assignment_view_state::State, S: BosStr> AssignmentViewBuilder<St, S> {
     /// Set the `moderator` field (optional)
-    pub fn moderator(mut self, value: impl Into<Option<Member<'a>>>) -> Self {
+    pub fn moderator(mut self, value: impl Into<Option<Member<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `moderator` field to an Option value (optional)
-    pub fn maybe_moderator(mut self, value: Option<Member<'a>>) -> Self {
+    pub fn maybe_moderator(mut self, value: Option<Member<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::Queue: assignment_view_state::IsUnset,
+    St: assignment_view_state::State,
+    St::Queue: assignment_view_state::IsUnset,
 {
     /// Set the `queue` field (required)
     pub fn queue(
         mut self,
-        value: impl Into<queue::QueueView<'a>>,
-    ) -> AssignmentViewBuilder<'a, assignment_view_state::SetQueue<S>> {
+        value: impl Into<queue::QueueView<S>>,
+    ) -> AssignmentViewBuilder<assignment_view_state::SetQueue<St>, S> {
         self._fields.4 = Option::Some(value.into());
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::StartAt: assignment_view_state::IsUnset,
+    St: assignment_view_state::State,
+    St::StartAt: assignment_view_state::IsUnset,
 {
     /// Set the `startAt` field (required)
     pub fn start_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> AssignmentViewBuilder<'a, assignment_view_state::SetStartAt<S>> {
+    ) -> AssignmentViewBuilder<assignment_view_state::SetStartAt<St>, S> {
         self._fields.5 = Option::Some(value.into());
         AssignmentViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AssignmentViewBuilder<'a, S>
+impl<St, S: BosStr> AssignmentViewBuilder<St, S>
 where
-    S: assignment_view_state::State,
-    S::Id: assignment_view_state::IsSet,
-    S::StartAt: assignment_view_state::IsSet,
-    S::Queue: assignment_view_state::IsSet,
-    S::Did: assignment_view_state::IsSet,
+    St: assignment_view_state::State,
+    St::Did: assignment_view_state::IsSet,
+    St::Id: assignment_view_state::IsSet,
+    St::Queue: assignment_view_state::IsSet,
+    St::StartAt: assignment_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> AssignmentView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> AssignmentView<S> {
         AssignmentView {
             did: self._fields.0.unwrap(),
             end_at: self._fields.1,
@@ -399,14 +415,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> AssignmentView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> AssignmentView<S> {
         AssignmentView {
             did: self._fields.0.unwrap(),
             end_at: self._fields.1,
@@ -710,160 +723,167 @@ pub mod queue_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Stats;
-        type CreatedBy;
         type CreatedAt;
-        type Name;
-        type Id;
-        type UpdatedAt;
+        type CreatedBy;
         type Enabled;
+        type Id;
+        type Name;
+        type Stats;
+        type UpdatedAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Stats = Unset;
-        type CreatedBy = Unset;
         type CreatedAt = Unset;
-        type Name = Unset;
-        type Id = Unset;
-        type UpdatedAt = Unset;
+        type CreatedBy = Unset;
         type Enabled = Unset;
-    }
-    ///State transition - sets the `stats` field to Set
-    pub struct SetStats<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetStats<S> {}
-    impl<S: State> State for SetStats<S> {
-        type Stats = Set<members::stats>;
-        type CreatedBy = S::CreatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Name = S::Name;
-        type Id = S::Id;
-        type UpdatedAt = S::UpdatedAt;
-        type Enabled = S::Enabled;
-    }
-    ///State transition - sets the `created_by` field to Set
-    pub struct SetCreatedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedBy<S> {}
-    impl<S: State> State for SetCreatedBy<S> {
-        type Stats = S::Stats;
-        type CreatedBy = Set<members::created_by>;
-        type CreatedAt = S::CreatedAt;
-        type Name = S::Name;
-        type Id = S::Id;
-        type UpdatedAt = S::UpdatedAt;
-        type Enabled = S::Enabled;
+        type Id = Unset;
+        type Name = Unset;
+        type Stats = Unset;
+        type UpdatedAt = Unset;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Stats = S::Stats;
-        type CreatedBy = S::CreatedBy;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
         type CreatedAt = Set<members::created_at>;
-        type Name = S::Name;
-        type Id = S::Id;
-        type UpdatedAt = S::UpdatedAt;
-        type Enabled = S::Enabled;
+        type CreatedBy = St::CreatedBy;
+        type Enabled = St::Enabled;
+        type Id = St::Id;
+        type Name = St::Name;
+        type Stats = St::Stats;
+        type UpdatedAt = St::UpdatedAt;
     }
-    ///State transition - sets the `name` field to Set
-    pub struct SetName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetName<S> {}
-    impl<S: State> State for SetName<S> {
-        type Stats = S::Stats;
-        type CreatedBy = S::CreatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Name = Set<members::name>;
-        type Id = S::Id;
-        type UpdatedAt = S::UpdatedAt;
-        type Enabled = S::Enabled;
-    }
-    ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type Stats = S::Stats;
-        type CreatedBy = S::CreatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Name = S::Name;
-        type Id = Set<members::id>;
-        type UpdatedAt = S::UpdatedAt;
-        type Enabled = S::Enabled;
-    }
-    ///State transition - sets the `updated_at` field to Set
-    pub struct SetUpdatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUpdatedAt<S> {}
-    impl<S: State> State for SetUpdatedAt<S> {
-        type Stats = S::Stats;
-        type CreatedBy = S::CreatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Name = S::Name;
-        type Id = S::Id;
-        type UpdatedAt = Set<members::updated_at>;
-        type Enabled = S::Enabled;
+    ///State transition - sets the `created_by` field to Set
+    pub struct SetCreatedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedBy<St> {}
+    impl<St: State> State for SetCreatedBy<St> {
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = Set<members::created_by>;
+        type Enabled = St::Enabled;
+        type Id = St::Id;
+        type Name = St::Name;
+        type Stats = St::Stats;
+        type UpdatedAt = St::UpdatedAt;
     }
     ///State transition - sets the `enabled` field to Set
-    pub struct SetEnabled<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEnabled<S> {}
-    impl<S: State> State for SetEnabled<S> {
-        type Stats = S::Stats;
-        type CreatedBy = S::CreatedBy;
-        type CreatedAt = S::CreatedAt;
-        type Name = S::Name;
-        type Id = S::Id;
-        type UpdatedAt = S::UpdatedAt;
+    pub struct SetEnabled<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetEnabled<St> {}
+    impl<St: State> State for SetEnabled<St> {
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
         type Enabled = Set<members::enabled>;
+        type Id = St::Id;
+        type Name = St::Name;
+        type Stats = St::Stats;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `id` field to Set
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Enabled = St::Enabled;
+        type Id = Set<members::id>;
+        type Name = St::Name;
+        type Stats = St::Stats;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `name` field to Set
+    pub struct SetName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetName<St> {}
+    impl<St: State> State for SetName<St> {
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Enabled = St::Enabled;
+        type Id = St::Id;
+        type Name = Set<members::name>;
+        type Stats = St::Stats;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `stats` field to Set
+    pub struct SetStats<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetStats<St> {}
+    impl<St: State> State for SetStats<St> {
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Enabled = St::Enabled;
+        type Id = St::Id;
+        type Name = St::Name;
+        type Stats = Set<members::stats>;
+        type UpdatedAt = St::UpdatedAt;
+    }
+    ///State transition - sets the `updated_at` field to Set
+    pub struct SetUpdatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUpdatedAt<St> {}
+    impl<St: State> State for SetUpdatedAt<St> {
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Enabled = St::Enabled;
+        type Id = St::Id;
+        type Name = St::Name;
+        type Stats = St::Stats;
+        type UpdatedAt = Set<members::updated_at>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `stats` field
-        pub struct stats(());
-        ///Marker type for the `created_by` field
-        pub struct created_by(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
-        ///Marker type for the `name` field
-        pub struct name(());
-        ///Marker type for the `id` field
-        pub struct id(());
-        ///Marker type for the `updated_at` field
-        pub struct updated_at(());
+        ///Marker type for the `created_by` field
+        pub struct created_by(());
         ///Marker type for the `enabled` field
         pub struct enabled(());
+        ///Marker type for the `id` field
+        pub struct id(());
+        ///Marker type for the `name` field
+        pub struct name(());
+        ///Marker type for the `stats` field
+        pub struct stats(());
+        ///Marker type for the `updated_at` field
+        pub struct updated_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct QueueViewBuilder<'a, S: queue_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct QueueViewBuilder<St: queue_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<Nsid<'a>>,
+        Option<Nsid<S>>,
         Option<Datetime>,
-        Option<Did<'a>>,
+        Option<Did<S>>,
         Option<Datetime>,
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<bool>,
         Option<i64>,
-        Option<CowStr<'a>>,
-        Option<Vec<CowStr<'a>>>,
-        Option<Vec<CowStr<'a>>>,
-        Option<queue::QueueStats<'a>>,
-        Option<Vec<CowStr<'a>>>,
+        Option<S>,
+        Option<Vec<S>>,
+        Option<Vec<S>>,
+        Option<queue::QueueStats<S>>,
+        Option<Vec<S>>,
         Option<Datetime>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> QueueView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> QueueViewBuilder<'a, queue_view_state::Empty> {
+impl QueueView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> QueueViewBuilder<queue_view_state::Empty, DefaultStr> {
         QueueViewBuilder::new()
     }
 }
 
-impl<'a> QueueViewBuilder<'a, queue_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> QueueView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> QueueViewBuilder<queue_view_state::Empty, S> {
+        QueueViewBuilder::builder()
+    }
+}
+
+impl QueueViewBuilder<queue_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         QueueViewBuilder {
             _state: PhantomData,
@@ -882,63 +902,88 @@ impl<'a> QueueViewBuilder<'a, queue_view_state::Empty> {
                 None,
                 None,
             ),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: queue_view_state::State> QueueViewBuilder<'a, S> {
+impl<S: BosStr> QueueViewBuilder<queue_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        QueueViewBuilder {
+            _state: PhantomData,
+            _fields: (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: queue_view_state::State, S: BosStr> QueueViewBuilder<St, S> {
     /// Set the `collection` field (optional)
-    pub fn collection(mut self, value: impl Into<Option<Nsid<'a>>>) -> Self {
+    pub fn collection(mut self, value: impl Into<Option<Nsid<S>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `collection` field to an Option value (optional)
-    pub fn maybe_collection(mut self, value: Option<Nsid<'a>>) -> Self {
+    pub fn maybe_collection(mut self, value: Option<Nsid<S>>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> QueueViewBuilder<'a, S>
+impl<St, S: BosStr> QueueViewBuilder<St, S>
 where
-    S: queue_view_state::State,
-    S::CreatedAt: queue_view_state::IsUnset,
+    St: queue_view_state::State,
+    St::CreatedAt: queue_view_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> QueueViewBuilder<'a, queue_view_state::SetCreatedAt<S>> {
+    ) -> QueueViewBuilder<queue_view_state::SetCreatedAt<St>, S> {
         self._fields.1 = Option::Some(value.into());
         QueueViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> QueueViewBuilder<'a, S>
+impl<St, S: BosStr> QueueViewBuilder<St, S>
 where
-    S: queue_view_state::State,
-    S::CreatedBy: queue_view_state::IsUnset,
+    St: queue_view_state::State,
+    St::CreatedBy: queue_view_state::IsUnset,
 {
     /// Set the `createdBy` field (required)
     pub fn created_by(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> QueueViewBuilder<'a, queue_view_state::SetCreatedBy<S>> {
+        value: impl Into<Did<S>>,
+    ) -> QueueViewBuilder<queue_view_state::SetCreatedBy<St>, S> {
         self._fields.2 = Option::Some(value.into());
         QueueViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: queue_view_state::State> QueueViewBuilder<'a, S> {
+impl<St: queue_view_state::State, S: BosStr> QueueViewBuilder<St, S> {
     /// Set the `deletedAt` field (optional)
     pub fn deleted_at(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.3 = value.into();
@@ -951,169 +996,166 @@ impl<'a, S: queue_view_state::State> QueueViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S: queue_view_state::State> QueueViewBuilder<'a, S> {
+impl<St: queue_view_state::State, S: BosStr> QueueViewBuilder<St, S> {
     /// Set the `description` field (optional)
-    pub fn description(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn description(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `description` field to an Option value (optional)
-    pub fn maybe_description(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_description(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> QueueViewBuilder<'a, S>
+impl<St, S: BosStr> QueueViewBuilder<St, S>
 where
-    S: queue_view_state::State,
-    S::Enabled: queue_view_state::IsUnset,
+    St: queue_view_state::State,
+    St::Enabled: queue_view_state::IsUnset,
 {
     /// Set the `enabled` field (required)
     pub fn enabled(
         mut self,
         value: impl Into<bool>,
-    ) -> QueueViewBuilder<'a, queue_view_state::SetEnabled<S>> {
+    ) -> QueueViewBuilder<queue_view_state::SetEnabled<St>, S> {
         self._fields.5 = Option::Some(value.into());
         QueueViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> QueueViewBuilder<'a, S>
+impl<St, S: BosStr> QueueViewBuilder<St, S>
 where
-    S: queue_view_state::State,
-    S::Id: queue_view_state::IsUnset,
+    St: queue_view_state::State,
+    St::Id: queue_view_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
         value: impl Into<i64>,
-    ) -> QueueViewBuilder<'a, queue_view_state::SetId<S>> {
+    ) -> QueueViewBuilder<queue_view_state::SetId<St>, S> {
         self._fields.6 = Option::Some(value.into());
         QueueViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> QueueViewBuilder<'a, S>
+impl<St, S: BosStr> QueueViewBuilder<St, S>
 where
-    S: queue_view_state::State,
-    S::Name: queue_view_state::IsUnset,
+    St: queue_view_state::State,
+    St::Name: queue_view_state::IsUnset,
 {
     /// Set the `name` field (required)
     pub fn name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> QueueViewBuilder<'a, queue_view_state::SetName<S>> {
+        value: impl Into<S>,
+    ) -> QueueViewBuilder<queue_view_state::SetName<St>, S> {
         self._fields.7 = Option::Some(value.into());
         QueueViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: queue_view_state::State> QueueViewBuilder<'a, S> {
+impl<St: queue_view_state::State, S: BosStr> QueueViewBuilder<St, S> {
     /// Set the `recommendedPolicies` field (optional)
-    pub fn recommended_policies(
-        mut self,
-        value: impl Into<Option<Vec<CowStr<'a>>>>,
-    ) -> Self {
+    pub fn recommended_policies(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.8 = value.into();
         self
     }
     /// Set the `recommendedPolicies` field to an Option value (optional)
-    pub fn maybe_recommended_policies(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_recommended_policies(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.8 = value;
         self
     }
 }
 
-impl<'a, S: queue_view_state::State> QueueViewBuilder<'a, S> {
+impl<St: queue_view_state::State, S: BosStr> QueueViewBuilder<St, S> {
     /// Set the `reportTypes` field (optional)
-    pub fn report_types(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn report_types(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.9 = value.into();
         self
     }
     /// Set the `reportTypes` field to an Option value (optional)
-    pub fn maybe_report_types(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_report_types(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.9 = value;
         self
     }
 }
 
-impl<'a, S> QueueViewBuilder<'a, S>
+impl<St, S: BosStr> QueueViewBuilder<St, S>
 where
-    S: queue_view_state::State,
-    S::Stats: queue_view_state::IsUnset,
+    St: queue_view_state::State,
+    St::Stats: queue_view_state::IsUnset,
 {
     /// Set the `stats` field (required)
     pub fn stats(
         mut self,
-        value: impl Into<queue::QueueStats<'a>>,
-    ) -> QueueViewBuilder<'a, queue_view_state::SetStats<S>> {
+        value: impl Into<queue::QueueStats<S>>,
+    ) -> QueueViewBuilder<queue_view_state::SetStats<St>, S> {
         self._fields.10 = Option::Some(value.into());
         QueueViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: queue_view_state::State> QueueViewBuilder<'a, S> {
+impl<St: queue_view_state::State, S: BosStr> QueueViewBuilder<St, S> {
     /// Set the `subjectTypes` field (optional)
-    pub fn subject_types(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn subject_types(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.11 = value.into();
         self
     }
     /// Set the `subjectTypes` field to an Option value (optional)
-    pub fn maybe_subject_types(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_subject_types(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.11 = value;
         self
     }
 }
 
-impl<'a, S> QueueViewBuilder<'a, S>
+impl<St, S: BosStr> QueueViewBuilder<St, S>
 where
-    S: queue_view_state::State,
-    S::UpdatedAt: queue_view_state::IsUnset,
+    St: queue_view_state::State,
+    St::UpdatedAt: queue_view_state::IsUnset,
 {
     /// Set the `updatedAt` field (required)
     pub fn updated_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> QueueViewBuilder<'a, queue_view_state::SetUpdatedAt<S>> {
+    ) -> QueueViewBuilder<queue_view_state::SetUpdatedAt<St>, S> {
         self._fields.12 = Option::Some(value.into());
         QueueViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> QueueViewBuilder<'a, S>
+impl<St, S: BosStr> QueueViewBuilder<St, S>
 where
-    S: queue_view_state::State,
-    S::Stats: queue_view_state::IsSet,
-    S::CreatedBy: queue_view_state::IsSet,
-    S::CreatedAt: queue_view_state::IsSet,
-    S::Name: queue_view_state::IsSet,
-    S::Id: queue_view_state::IsSet,
-    S::UpdatedAt: queue_view_state::IsSet,
-    S::Enabled: queue_view_state::IsSet,
+    St: queue_view_state::State,
+    St::CreatedAt: queue_view_state::IsSet,
+    St::CreatedBy: queue_view_state::IsSet,
+    St::Enabled: queue_view_state::IsSet,
+    St::Id: queue_view_state::IsSet,
+    St::Name: queue_view_state::IsSet,
+    St::Stats: queue_view_state::IsSet,
+    St::UpdatedAt: queue_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> QueueView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> QueueView<S> {
         QueueView {
             collection: self._fields.0,
             created_at: self._fields.1.unwrap(),
@@ -1131,14 +1173,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> QueueView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> QueueView<S> {
         QueueView {
             collection: self._fields.0,
             created_at: self._fields.1.unwrap(),

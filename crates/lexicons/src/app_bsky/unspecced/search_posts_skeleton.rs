@@ -10,75 +10,64 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::ident::AtIdentifier;
 use jacquard_common::types::string::{Did, Language, UriValue};
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::unspecced::SkeletonSearchPost;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchPostsSkeleton<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SearchPostsSkeleton<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub author: Option<AtIdentifier<'a>>,
+    pub author: Option<AtIdentifier<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub domain: Option<CowStr<'a>>,
+    pub domain: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lang: Option<Language>,
-    ///Defaults to `25`. Min: 1. Max: 100.
+    /// Defaults to `25`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub mentions: Option<AtIdentifier<'a>>,
-    #[serde(borrow)]
-    pub q: CowStr<'a>,
+    pub mentions: Option<AtIdentifier<S>>,
+    pub q: S,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub since: Option<CowStr<'a>>,
-    ///Defaults to `"latest"`.
+    pub since: Option<S>,
+    /// Defaults to `"latest"`.
     #[serde(default = "_default_sort")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub sort: Option<CowStr<'a>>,
+    pub sort: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub tag: Option<Vec<CowStr<'a>>>,
+    pub tag: Option<Vec<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub until: Option<CowStr<'a>>,
+    pub until: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub url: Option<UriValue<'a>>,
+    pub url: Option<UriValue<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub viewer: Option<Did<'a>>,
+    pub viewer: Option<Did<S>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchPostsSkeletonOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SearchPostsSkeletonOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
     ///Count of search hits. Optional, may be rounded/truncated, and may not be possible to paginate through all hits.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hits_total: Option<i64>,
-    #[serde(borrow)]
-    pub posts: Vec<SkeletonSearchPost<'a>>,
+    pub posts: Vec<SkeletonSearchPost<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -87,18 +76,19 @@ pub struct SearchPostsSkeletonOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum SearchPostsSkeletonError<'a> {
+pub enum SearchPostsSkeletonError {
     #[serde(rename = "BadQueryString")]
-    BadQueryString(Option<CowStr<'a>>),
+    BadQueryString(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for SearchPostsSkeletonError<'_> {
+impl core::fmt::Display for SearchPostsSkeletonError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::BadQueryString(msg) => {
@@ -108,32 +98,42 @@ impl core::fmt::Display for SearchPostsSkeletonError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.unspecced.searchPostsSkeleton
+/** Response marker for the `app.bsky.unspecced.searchPostsSkeleton` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `SearchPostsSkeletonOutput<S>` for this endpoint.*/
 pub struct SearchPostsSkeletonResponse;
 impl jacquard_common::xrpc::XrpcResp for SearchPostsSkeletonResponse {
     const NSID: &'static str = "app.bsky.unspecced.searchPostsSkeleton";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = SearchPostsSkeletonOutput<'de>;
-    type Err<'de> = SearchPostsSkeletonError<'de>;
+    type Output<S: BosStr> = SearchPostsSkeletonOutput<S>;
+    type Err = SearchPostsSkeletonError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for SearchPostsSkeleton<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for SearchPostsSkeleton<S> {
     const NSID: &'static str = "app.bsky.unspecced.searchPostsSkeleton";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = SearchPostsSkeletonResponse;
 }
 
-/// Endpoint type for app.bsky.unspecced.searchPostsSkeleton
+/** Endpoint marker for the `app.bsky.unspecced.searchPostsSkeleton` query.
+
+Path: `/xrpc/app.bsky.unspecced.searchPostsSkeleton`. The request payload type is `SearchPostsSkeleton<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct SearchPostsSkeletonRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for SearchPostsSkeletonRequest {
     const PATH: &'static str = "/xrpc/app.bsky.unspecced.searchPostsSkeleton";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = SearchPostsSkeleton<'de>;
+    type Request<S: BosStr> = SearchPostsSkeleton<S>;
     type Response = SearchPostsSkeletonResponse;
 }
 
@@ -141,8 +141,8 @@ fn _default_limit() -> Option<i64> {
     Some(25i64)
 }
 
-fn _default_sort() -> Option<CowStr<'static>> {
-    Some(CowStr::from("latest"))
+fn _default_sort<S: jacquard_common::FromStaticStr>() -> Option<S> {
+    Some(S::from_static("latest"))
 }
 
 pub mod search_posts_skeleton_state {
@@ -164,9 +164,9 @@ pub mod search_posts_skeleton_state {
         type Q = Unset;
     }
     ///State transition - sets the `q` field to Set
-    pub struct SetQ<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetQ<S> {}
-    impl<S: State> State for SetQ<S> {
+    pub struct SetQ<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetQ<St> {}
+    impl<St: State> State for SetQ<St> {
         type Q = Set<members::q>;
     }
     /// Marker types for field names
@@ -177,36 +177,52 @@ pub mod search_posts_skeleton_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SearchPostsSkeletonBuilder<'a, S: search_posts_skeleton_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct SearchPostsSkeletonBuilder<
+    St: search_posts_skeleton_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<AtIdentifier<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
+        Option<AtIdentifier<S>>,
+        Option<S>,
+        Option<S>,
         Option<Language>,
         Option<i64>,
-        Option<AtIdentifier<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<Vec<CowStr<'a>>>,
-        Option<CowStr<'a>>,
-        Option<UriValue<'a>>,
-        Option<Did<'a>>,
+        Option<AtIdentifier<S>>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<Vec<S>>,
+        Option<S>,
+        Option<UriValue<S>>,
+        Option<Did<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SearchPostsSkeleton<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SearchPostsSkeletonBuilder<'a, search_posts_skeleton_state::Empty> {
+impl SearchPostsSkeleton<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SearchPostsSkeletonBuilder<
+        search_posts_skeleton_state::Empty,
+        DefaultStr,
+    > {
         SearchPostsSkeletonBuilder::new()
     }
 }
 
-impl<'a> SearchPostsSkeletonBuilder<'a, search_posts_skeleton_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SearchPostsSkeleton<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SearchPostsSkeletonBuilder<
+        search_posts_skeleton_state::Empty,
+        S,
+    > {
+        SearchPostsSkeletonBuilder::builder()
+    }
+}
+
+impl SearchPostsSkeletonBuilder<search_posts_skeleton_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SearchPostsSkeletonBuilder {
             _state: PhantomData,
@@ -225,51 +241,88 @@ impl<'a> SearchPostsSkeletonBuilder<'a, search_posts_skeleton_state::Empty> {
                 None,
                 None,
             ),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<S: BosStr> SearchPostsSkeletonBuilder<search_posts_skeleton_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SearchPostsSkeletonBuilder {
+            _state: PhantomData,
+            _fields: (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `author` field (optional)
-    pub fn author(mut self, value: impl Into<Option<AtIdentifier<'a>>>) -> Self {
+    pub fn author(mut self, value: impl Into<Option<AtIdentifier<S>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `author` field to an Option value (optional)
-    pub fn maybe_author(mut self, value: Option<AtIdentifier<'a>>) -> Self {
+    pub fn maybe_author(mut self, value: Option<AtIdentifier<S>>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `domain` field (optional)
-    pub fn domain(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn domain(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `domain` field to an Option value (optional)
-    pub fn maybe_domain(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_domain(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `lang` field (optional)
     pub fn lang(mut self, value: impl Into<Option<Language>>) -> Self {
         self._fields.3 = value.into();
@@ -282,7 +335,10 @@ impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.4 = value.into();
@@ -295,123 +351,144 @@ impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `mentions` field (optional)
-    pub fn mentions(mut self, value: impl Into<Option<AtIdentifier<'a>>>) -> Self {
+    pub fn mentions(mut self, value: impl Into<Option<AtIdentifier<S>>>) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `mentions` field to an Option value (optional)
-    pub fn maybe_mentions(mut self, value: Option<AtIdentifier<'a>>) -> Self {
+    pub fn maybe_mentions(mut self, value: Option<AtIdentifier<S>>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S> SearchPostsSkeletonBuilder<'a, S>
+impl<St, S: BosStr> SearchPostsSkeletonBuilder<St, S>
 where
-    S: search_posts_skeleton_state::State,
-    S::Q: search_posts_skeleton_state::IsUnset,
+    St: search_posts_skeleton_state::State,
+    St::Q: search_posts_skeleton_state::IsUnset,
 {
     /// Set the `q` field (required)
     pub fn q(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> SearchPostsSkeletonBuilder<'a, search_posts_skeleton_state::SetQ<S>> {
+        value: impl Into<S>,
+    ) -> SearchPostsSkeletonBuilder<search_posts_skeleton_state::SetQ<St>, S> {
         self._fields.6 = Option::Some(value.into());
         SearchPostsSkeletonBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `since` field (optional)
-    pub fn since(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn since(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.7 = value.into();
         self
     }
     /// Set the `since` field to an Option value (optional)
-    pub fn maybe_since(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_since(mut self, value: Option<S>) -> Self {
         self._fields.7 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `sort` field (optional)
-    pub fn sort(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn sort(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.8 = value.into();
         self
     }
     /// Set the `sort` field to an Option value (optional)
-    pub fn maybe_sort(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_sort(mut self, value: Option<S>) -> Self {
         self._fields.8 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `tag` field (optional)
-    pub fn tag(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn tag(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.9 = value.into();
         self
     }
     /// Set the `tag` field to an Option value (optional)
-    pub fn maybe_tag(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_tag(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.9 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `until` field (optional)
-    pub fn until(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn until(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.10 = value.into();
         self
     }
     /// Set the `until` field to an Option value (optional)
-    pub fn maybe_until(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_until(mut self, value: Option<S>) -> Self {
         self._fields.10 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `url` field (optional)
-    pub fn url(mut self, value: impl Into<Option<UriValue<'a>>>) -> Self {
+    pub fn url(mut self, value: impl Into<Option<UriValue<S>>>) -> Self {
         self._fields.11 = value.into();
         self
     }
     /// Set the `url` field to an Option value (optional)
-    pub fn maybe_url(mut self, value: Option<UriValue<'a>>) -> Self {
+    pub fn maybe_url(mut self, value: Option<UriValue<S>>) -> Self {
         self._fields.11 = value;
         self
     }
 }
 
-impl<'a, S: search_posts_skeleton_state::State> SearchPostsSkeletonBuilder<'a, S> {
+impl<
+    St: search_posts_skeleton_state::State,
+    S: BosStr,
+> SearchPostsSkeletonBuilder<St, S> {
     /// Set the `viewer` field (optional)
-    pub fn viewer(mut self, value: impl Into<Option<Did<'a>>>) -> Self {
+    pub fn viewer(mut self, value: impl Into<Option<Did<S>>>) -> Self {
         self._fields.12 = value.into();
         self
     }
     /// Set the `viewer` field to an Option value (optional)
-    pub fn maybe_viewer(mut self, value: Option<Did<'a>>) -> Self {
+    pub fn maybe_viewer(mut self, value: Option<Did<S>>) -> Self {
         self._fields.12 = value;
         self
     }
 }
 
-impl<'a, S> SearchPostsSkeletonBuilder<'a, S>
+impl<St, S: BosStr> SearchPostsSkeletonBuilder<St, S>
 where
-    S: search_posts_skeleton_state::State,
-    S::Q: search_posts_skeleton_state::IsSet,
+    St: search_posts_skeleton_state::State,
+    St::Q: search_posts_skeleton_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SearchPostsSkeleton<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SearchPostsSkeleton<S> {
         SearchPostsSkeleton {
             author: self._fields.0,
             cursor: self._fields.1,

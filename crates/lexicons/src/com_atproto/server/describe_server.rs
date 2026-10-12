@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, UriValue};
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -24,58 +26,54 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
 use crate::com_atproto::server::describe_server;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Contact<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Contact<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub email: Option<CowStr<'a>>,
+    pub email: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Links<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Links<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub privacy_policy: Option<UriValue<'a>>,
+    pub privacy_policy: Option<UriValue<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub terms_of_service: Option<UriValue<'a>>,
+    pub terms_of_service: Option<UriValue<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct DescribeServerOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct DescribeServerOutput<S: BosStr = DefaultStr> {
     ///List of domain suffixes that can be used in account handles.
-    #[serde(borrow)]
-    pub available_user_domains: Vec<CowStr<'a>>,
+    pub available_user_domains: Vec<S>,
     ///Maximum size of a blob that can be uploaded via com.atproto.repo.uploadBlob, in bytes.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blob_upload_limit: Option<i64>,
     ///Contact information
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub contact: Option<describe_server::Contact<'a>>,
-    #[serde(borrow)]
-    pub did: Did<'a>,
+    pub contact: Option<describe_server::Contact<S>>,
+    pub did: Did<S>,
     ///If true, an invite code must be supplied to create an account on this instance.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub invite_code_required: Option<bool>,
     ///URLs of service policy documents.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub links: Option<describe_server::Links<'a>>,
+    pub links: Option<describe_server::Links<S>>,
     ///If true, a phone verification token must be supplied to create an account on this instance.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub phone_verification_required: Option<bool>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for Contact<'a> {
+impl<S: BosStr> LexiconSchema for Contact<S> {
     fn nsid() -> &'static str {
         "com.atproto.server.describeServer"
     }
@@ -90,7 +88,7 @@ impl<'a> LexiconSchema for Contact<'a> {
     }
 }
 
-impl<'a> LexiconSchema for Links<'a> {
+impl<S: BosStr> LexiconSchema for Links<S> {
     fn nsid() -> &'static str {
         "com.atproto.server.describeServer"
     }
@@ -105,17 +103,21 @@ impl<'a> LexiconSchema for Links<'a> {
     }
 }
 
-/// XRPC request marker type.
+/** Request marker for the `com.atproto.server.describeServer` query.
+
+This endpoint has no request parameters or input body; send this marker with `jacquard::Client`.*/
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Copy)]
 pub struct DescribeServer;
-/// Response type for com.atproto.server.describeServer
+/** Response marker for the `com.atproto.server.describeServer` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `DescribeServerOutput<S>` for this endpoint.*/
 pub struct DescribeServerResponse;
 impl jacquard_common::xrpc::XrpcResp for DescribeServerResponse {
     const NSID: &'static str = "com.atproto.server.describeServer";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = DescribeServerOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = DescribeServerOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for DescribeServer {
@@ -124,12 +126,14 @@ impl jacquard_common::xrpc::XrpcRequest for DescribeServer {
     type Response = DescribeServerResponse;
 }
 
-/// Endpoint type for com.atproto.server.describeServer
+/** Endpoint marker for the `com.atproto.server.describeServer` query.
+
+Path: `/xrpc/com.atproto.server.describeServer`. The request payload type is `DescribeServer`; use this marker with lower-level `XrpcEndpoint` APIs when you need endpoint metadata.*/
 pub struct DescribeServerRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for DescribeServerRequest {
     const PATH: &'static str = "/xrpc/com.atproto.server.describeServer";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = DescribeServer;
+    type Request<S: BosStr> = DescribeServer;
     type Response = DescribeServerResponse;
 }
 

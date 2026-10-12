@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `app.bsky.feed` Lexicon namespace/module.
 pub mod describe_feed_generator;
 pub mod generator;
 pub mod get_actor_feeds;
@@ -37,13 +38,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, AtUri, Cid, Datetime, UriValue};
 use jacquard_common::types::value::Data;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -64,27 +66,25 @@ use crate::app_bsky::embed::record_with_media;
 use crate::app_bsky::embed::video;
 use crate::app_bsky::feed;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct BlockedAuthor<'a> {
-    #[serde(borrow)]
-    pub did: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct BlockedAuthor<S: BosStr = DefaultStr> {
+    pub did: Did<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub viewer: Option<actor::ViewerState<'a>>,
+    pub viewer: Option<actor::ViewerState<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct BlockedPost<'a> {
-    #[serde(borrow)]
-    pub author: feed::BlockedAuthor<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct BlockedPost<S: BosStr = DefaultStr> {
+    pub author: feed::BlockedAuthor<S>,
     pub blocked: bool,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// User clicked through to the author of the feed item
@@ -148,88 +148,74 @@ impl core::fmt::Display for ContentModeVideo {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedViewPost<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct FeedViewPost<S: BosStr = DefaultStr> {
     ///Context provided by feed generator that may be passed back alongside interactions.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub feed_context: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub post: feed::PostView<'a>,
+    pub feed_context: Option<S>,
+    pub post: feed::PostView<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reason: Option<FeedViewPostReason<'a>>,
+    pub reason: Option<FeedViewPostReason<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reply: Option<feed::ReplyRef<'a>>,
+    pub reply: Option<feed::ReplyRef<S>>,
     ///Unique identifier per request that may be passed back alongside interactions.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub req_id: Option<CowStr<'a>>,
+    pub req_id: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum FeedViewPostReason<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum FeedViewPostReason<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.feed.defs#reasonRepost")]
-    ReasonRepost(Box<feed::ReasonRepost<'a>>),
+    ReasonRepost(Box<feed::ReasonRepost<S>>),
     #[serde(rename = "app.bsky.feed.defs#reasonPin")]
-    ReasonPin(Box<feed::ReasonPin<'a>>),
+    ReasonPin(Box<feed::ReasonPin<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GeneratorView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GeneratorView<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accepts_interactions: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub avatar: Option<UriValue<'a>>,
-    #[serde(borrow)]
-    pub cid: Cid<'a>,
+    pub avatar: Option<UriValue<S>>,
+    pub cid: Cid<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub content_mode: Option<GeneratorViewContentMode<'a>>,
-    #[serde(borrow)]
-    pub creator: ProfileView<'a>,
+    pub content_mode: Option<GeneratorViewContentMode<S>>,
+    pub creator: ProfileView<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description: Option<CowStr<'a>>,
+    pub description: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub description_facets: Option<Vec<Facet<'a>>>,
-    #[serde(borrow)]
-    pub did: Did<'a>,
-    #[serde(borrow)]
-    pub display_name: CowStr<'a>,
+    pub description_facets: Option<Vec<Facet<S>>>,
+    pub did: Did<S>,
+    pub display_name: S,
     pub indexed_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub labels: Option<Vec<Label<'a>>>,
+    pub labels: Option<Vec<Label<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub like_count: Option<i64>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub uri: AtUri<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub viewer: Option<feed::GeneratorViewerState<'a>>,
+    pub viewer: Option<feed::GeneratorViewerState<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GeneratorViewContentMode<'a> {
+pub enum GeneratorViewContentMode<S: BosStr = DefaultStr> {
     ContentModeUnspecified,
     ContentModeVideo,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> GeneratorViewContentMode<'a> {
+impl<S: BosStr> GeneratorViewContentMode<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::ContentModeUnspecified => "app.bsky.feed.defs#contentModeUnspecified",
@@ -237,70 +223,60 @@ impl<'a> GeneratorViewContentMode<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for GeneratorViewContentMode<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "app.bsky.feed.defs#contentModeUnspecified" => Self::ContentModeUnspecified,
             "app.bsky.feed.defs#contentModeVideo" => Self::ContentModeVideo,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for GeneratorViewContentMode<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "app.bsky.feed.defs#contentModeUnspecified" => Self::ContentModeUnspecified,
-            "app.bsky.feed.defs#contentModeVideo" => Self::ContentModeVideo,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for GeneratorViewContentMode<'a> {
+impl<S: BosStr> core::fmt::Display for GeneratorViewContentMode<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for GeneratorViewContentMode<'a> {
+impl<S: BosStr> AsRef<str> for GeneratorViewContentMode<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for GeneratorViewContentMode<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for GeneratorViewContentMode<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for GeneratorViewContentMode<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for GeneratorViewContentMode<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for GeneratorViewContentMode<'a> {
+impl<S: BosStr + Default> Default for GeneratorViewContentMode<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for GeneratorViewContentMode<'_> {
-    type Output = GeneratorViewContentMode<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for GeneratorViewContentMode<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = GeneratorViewContentMode<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             GeneratorViewContentMode::ContentModeUnspecified => {
@@ -317,39 +293,36 @@ impl jacquard_common::IntoStatic for GeneratorViewContentMode<'_> {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct GeneratorViewerState<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GeneratorViewerState<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub like: Option<AtUri<'a>>,
+    pub like: Option<AtUri<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Interaction<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Interaction<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub event: Option<InteractionEvent<'a>>,
+    pub event: Option<InteractionEvent<S>>,
     ///Context on a feed item that was originally supplied by the feed generator on getFeedSkeleton.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub feed_context: Option<CowStr<'a>>,
+    pub feed_context: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub item: Option<AtUri<'a>>,
+    pub item: Option<AtUri<S>>,
     ///Unique identifier per request that may be passed back alongside interactions.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub req_id: Option<CowStr<'a>>,
+    pub req_id: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum InteractionEvent<'a> {
+pub enum InteractionEvent<S: BosStr = DefaultStr> {
     RequestLess,
     RequestMore,
     ClickthroughItem,
@@ -362,10 +335,10 @@ pub enum InteractionEvent<'a> {
     InteractionReply,
     InteractionQuote,
     InteractionShare,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> InteractionEvent<'a> {
+impl<S: BosStr> InteractionEvent<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::RequestLess => "app.bsky.feed.defs#requestLess",
@@ -383,11 +356,9 @@ impl<'a> InteractionEvent<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for InteractionEvent<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "app.bsky.feed.defs#requestLess" => Self::RequestLess,
             "app.bsky.feed.defs#requestMore" => Self::RequestMore,
             "app.bsky.feed.defs#clickthroughItem" => Self::ClickthroughItem,
@@ -400,73 +371,54 @@ impl<'a> From<&'a str> for InteractionEvent<'a> {
             "app.bsky.feed.defs#interactionReply" => Self::InteractionReply,
             "app.bsky.feed.defs#interactionQuote" => Self::InteractionQuote,
             "app.bsky.feed.defs#interactionShare" => Self::InteractionShare,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for InteractionEvent<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "app.bsky.feed.defs#requestLess" => Self::RequestLess,
-            "app.bsky.feed.defs#requestMore" => Self::RequestMore,
-            "app.bsky.feed.defs#clickthroughItem" => Self::ClickthroughItem,
-            "app.bsky.feed.defs#clickthroughAuthor" => Self::ClickthroughAuthor,
-            "app.bsky.feed.defs#clickthroughReposter" => Self::ClickthroughReposter,
-            "app.bsky.feed.defs#clickthroughEmbed" => Self::ClickthroughEmbed,
-            "app.bsky.feed.defs#interactionSeen" => Self::InteractionSeen,
-            "app.bsky.feed.defs#interactionLike" => Self::InteractionLike,
-            "app.bsky.feed.defs#interactionRepost" => Self::InteractionRepost,
-            "app.bsky.feed.defs#interactionReply" => Self::InteractionReply,
-            "app.bsky.feed.defs#interactionQuote" => Self::InteractionQuote,
-            "app.bsky.feed.defs#interactionShare" => Self::InteractionShare,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for InteractionEvent<'a> {
+impl<S: BosStr> core::fmt::Display for InteractionEvent<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for InteractionEvent<'a> {
+impl<S: BosStr> AsRef<str> for InteractionEvent<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for InteractionEvent<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for InteractionEvent<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for InteractionEvent<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for InteractionEvent<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for InteractionEvent<'a> {
+impl<S: BosStr + Default> Default for InteractionEvent<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for InteractionEvent<'_> {
-    type Output = InteractionEvent<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for InteractionEvent<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = InteractionEvent<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             InteractionEvent::RequestLess => InteractionEvent::RequestLess,
@@ -550,146 +502,137 @@ impl core::fmt::Display for InteractionShare {
 
 /// The post's likers whom you also follow
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct KnownLikers<'a> {
-    #[serde(borrow)]
-    pub actors: Vec<ProfileViewBasic<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct KnownLikers<S: BosStr = DefaultStr> {
+    pub actors: Vec<ProfileViewBasic<S>>,
     pub count: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct NotFoundPost<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct NotFoundPost<S: BosStr = DefaultStr> {
     pub not_found: bool,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct PostView<'a> {
-    #[serde(borrow)]
-    pub author: ProfileViewBasic<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct PostView<S: BosStr = DefaultStr> {
+    pub author: ProfileViewBasic<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bookmark_count: Option<i64>,
-    #[serde(borrow)]
-    pub cid: Cid<'a>,
+    pub cid: Cid<S>,
     ///Debug information for internal development
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub debug: Option<Data<'a>>,
+    pub debug: Option<Data<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub embed: Option<PostViewEmbed<'a>>,
+    pub embed: Option<PostViewEmbed<S>>,
     pub indexed_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub labels: Option<Vec<Label<'a>>>,
+    pub labels: Option<Vec<Label<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub like_count: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quote_count: Option<i64>,
-    #[serde(borrow)]
-    pub record: Data<'a>,
+    pub record: Data<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reply_count: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repost_count: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub threadgate: Option<feed::ThreadgateView<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+    pub threadgate: Option<feed::ThreadgateView<S>>,
+    pub uri: AtUri<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub viewer: Option<feed::ViewerState<'a>>,
+    pub viewer: Option<feed::ViewerState<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum PostViewEmbed<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum PostViewEmbed<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.embed.images#view")]
-    ImagesView(Box<images::View<'a>>),
+    ImagesView(Box<images::View<S>>),
     #[serde(rename = "app.bsky.embed.video#view")]
-    VideoView(Box<video::View<'a>>),
+    VideoView(Box<video::View<S>>),
     #[serde(rename = "app.bsky.embed.gallery#view")]
-    GalleryView(Box<gallery::View<'a>>),
+    GalleryView(Box<gallery::View<S>>),
     #[serde(rename = "app.bsky.embed.external#view")]
-    ExternalView(Box<external::View<'a>>),
+    ExternalView(Box<external::View<S>>),
     #[serde(rename = "app.bsky.embed.record#view")]
-    RecordView(Box<record::View<'a>>),
+    RecordView(Box<record::View<S>>),
     #[serde(rename = "app.bsky.embed.recordWithMedia#view")]
-    RecordWithMediaView(Box<record_with_media::View<'a>>),
+    RecordWithMediaView(Box<record_with_media::View<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ReasonPin<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReasonPin<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
 
-#[lexicon]
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReasonRepost<'a> {
-    #[serde(borrow)]
-    pub by: ProfileViewBasic<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReasonRepost<S: BosStr = DefaultStr> {
+    pub by: ProfileViewBasic<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
+    pub cid: Option<Cid<S>>,
     pub indexed_at: Datetime,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub uri: Option<AtUri<'a>>,
+    pub uri: Option<AtUri<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ReplyRef<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReplyRef<S: BosStr = DefaultStr> {
     ///When parent is a reply to another post, this is the author of that post.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub grandparent_author: Option<ProfileViewBasic<'a>>,
-    #[serde(borrow)]
-    pub parent: ReplyRefParent<'a>,
-    #[serde(borrow)]
-    pub root: ReplyRefRoot<'a>,
+    pub grandparent_author: Option<ProfileViewBasic<S>>,
+    pub parent: ReplyRefParent<S>,
+    pub root: ReplyRefRoot<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ReplyRefParent<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ReplyRefParent<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.feed.defs#postView")]
-    PostView(Box<feed::PostView<'a>>),
+    PostView(Box<feed::PostView<S>>),
     #[serde(rename = "app.bsky.feed.defs#notFoundPost")]
-    NotFoundPost(Box<feed::NotFoundPost<'a>>),
+    NotFoundPost(Box<feed::NotFoundPost<S>>),
     #[serde(rename = "app.bsky.feed.defs#blockedPost")]
-    BlockedPost(Box<feed::BlockedPost<'a>>),
+    BlockedPost(Box<feed::BlockedPost<S>>),
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ReplyRefRoot<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ReplyRefRoot<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.feed.defs#postView")]
-    PostView(Box<feed::PostView<'a>>),
+    PostView(Box<feed::PostView<S>>),
     #[serde(rename = "app.bsky.feed.defs#notFoundPost")]
-    NotFoundPost(Box<feed::NotFoundPost<'a>>),
+    NotFoundPost(Box<feed::NotFoundPost<S>>),
     #[serde(rename = "app.bsky.feed.defs#blockedPost")]
-    BlockedPost(Box<feed::BlockedPost<'a>>),
+    BlockedPost(Box<feed::BlockedPost<S>>),
 }
 
 /// Request that less content like the given feed item be shown in the feed
@@ -713,149 +656,142 @@ impl core::fmt::Display for RequestMore {
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SkeletonFeedPost<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SkeletonFeedPost<S: BosStr = DefaultStr> {
     ///Context that will be passed through to client and may be passed to feed generator back alongside interactions.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub feed_context: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub post: AtUri<'a>,
+    pub feed_context: Option<S>,
+    pub post: AtUri<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reason: Option<SkeletonFeedPostReason<'a>>,
+    pub reason: Option<SkeletonFeedPostReason<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum SkeletonFeedPostReason<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum SkeletonFeedPostReason<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.feed.defs#skeletonReasonRepost")]
-    SkeletonReasonRepost(Box<feed::SkeletonReasonRepost<'a>>),
+    SkeletonReasonRepost(Box<feed::SkeletonReasonRepost<S>>),
     #[serde(rename = "app.bsky.feed.defs#skeletonReasonPin")]
-    SkeletonReasonPin(Box<feed::SkeletonReasonPin<'a>>),
+    SkeletonReasonPin(Box<feed::SkeletonReasonPin<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SkeletonReasonPin<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SkeletonReasonPin<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
 
-#[lexicon]
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct SkeletonReasonRepost<'a> {
-    #[serde(borrow)]
-    pub repost: AtUri<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct SkeletonReasonRepost<S: BosStr = DefaultStr> {
+    pub repost: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Metadata about this post within the context of the thread it is in.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadContext<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ThreadContext<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub root_author_like: Option<AtUri<'a>>,
+    pub root_author_like: Option<AtUri<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadViewPost<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ThreadViewPost<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub parent: Option<ThreadViewPostParent<'a>>,
-    #[serde(borrow)]
-    pub post: feed::PostView<'a>,
+    pub parent: Option<ThreadViewPostParent<S>>,
+    pub post: feed::PostView<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub replies: Option<Vec<ThreadViewPostRepliesItem<'a>>>,
+    pub replies: Option<Vec<ThreadViewPostRepliesItem<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub thread_context: Option<feed::ThreadContext<'a>>,
+    pub thread_context: Option<feed::ThreadContext<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ThreadViewPostParent<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ThreadViewPostParent<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.feed.defs#threadViewPost")]
-    ThreadViewPost(Box<feed::ThreadViewPost<'a>>),
+    ThreadViewPost(Box<feed::ThreadViewPost<S>>),
     #[serde(rename = "app.bsky.feed.defs#notFoundPost")]
-    NotFoundPost(Box<feed::NotFoundPost<'a>>),
+    NotFoundPost(Box<feed::NotFoundPost<S>>),
     #[serde(rename = "app.bsky.feed.defs#blockedPost")]
-    BlockedPost(Box<feed::BlockedPost<'a>>),
+    BlockedPost(Box<feed::BlockedPost<S>>),
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum ThreadViewPostRepliesItem<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum ThreadViewPostRepliesItem<S: BosStr = DefaultStr> {
     #[serde(rename = "app.bsky.feed.defs#threadViewPost")]
-    ThreadViewPost(Box<feed::ThreadViewPost<'a>>),
+    ThreadViewPost(Box<feed::ThreadViewPost<S>>),
     #[serde(rename = "app.bsky.feed.defs#notFoundPost")]
-    NotFoundPost(Box<feed::NotFoundPost<'a>>),
+    NotFoundPost(Box<feed::NotFoundPost<S>>),
     #[serde(rename = "app.bsky.feed.defs#blockedPost")]
-    BlockedPost(Box<feed::BlockedPost<'a>>),
+    BlockedPost(Box<feed::BlockedPost<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadgateView<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ThreadgateView<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
+    pub cid: Option<Cid<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub lists: Option<Vec<ListViewBasic<'a>>>,
+    pub lists: Option<Vec<ListViewBasic<S>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub record: Option<Data<'a>>,
+    pub record: Option<Data<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub uri: Option<AtUri<'a>>,
+    pub uri: Option<AtUri<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Metadata about the requesting account's relationship with the subject content. Only has meaningful content for authed requests.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewerState<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ViewerState<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bookmarked: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub embedding_disabled: Option<bool>,
     ///This property is present only in selected cases, as an optimization.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub known_likers: Option<feed::KnownLikers<'a>>,
+    pub known_likers: Option<feed::KnownLikers<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub like: Option<AtUri<'a>>,
+    pub like: Option<AtUri<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pinned: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reply_disabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub repost: Option<AtUri<'a>>,
+    pub repost: Option<AtUri<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thread_muted: Option<bool>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for BlockedAuthor<'a> {
+impl<S: BosStr> LexiconSchema for BlockedAuthor<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -870,7 +806,7 @@ impl<'a> LexiconSchema for BlockedAuthor<'a> {
     }
 }
 
-impl<'a> LexiconSchema for BlockedPost<'a> {
+impl<S: BosStr> LexiconSchema for BlockedPost<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -885,7 +821,7 @@ impl<'a> LexiconSchema for BlockedPost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for FeedViewPost<'a> {
+impl<S: BosStr> LexiconSchema for FeedViewPost<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -920,7 +856,7 @@ impl<'a> LexiconSchema for FeedViewPost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for GeneratorView<'a> {
+impl<S: BosStr> LexiconSchema for GeneratorView<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -966,7 +902,7 @@ impl<'a> LexiconSchema for GeneratorView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for GeneratorViewerState<'a> {
+impl<S: BosStr> LexiconSchema for GeneratorViewerState<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -981,7 +917,7 @@ impl<'a> LexiconSchema for GeneratorViewerState<'a> {
     }
 }
 
-impl<'a> LexiconSchema for Interaction<'a> {
+impl<S: BosStr> LexiconSchema for Interaction<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1016,7 +952,7 @@ impl<'a> LexiconSchema for Interaction<'a> {
     }
 }
 
-impl<'a> LexiconSchema for KnownLikers<'a> {
+impl<S: BosStr> LexiconSchema for KnownLikers<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1053,7 +989,7 @@ impl<'a> LexiconSchema for KnownLikers<'a> {
     }
 }
 
-impl<'a> LexiconSchema for NotFoundPost<'a> {
+impl<S: BosStr> LexiconSchema for NotFoundPost<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1068,7 +1004,7 @@ impl<'a> LexiconSchema for NotFoundPost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for PostView<'a> {
+impl<S: BosStr> LexiconSchema for PostView<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1083,7 +1019,7 @@ impl<'a> LexiconSchema for PostView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReasonPin<'a> {
+impl<S: BosStr> LexiconSchema for ReasonPin<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1098,7 +1034,7 @@ impl<'a> LexiconSchema for ReasonPin<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReasonRepost<'a> {
+impl<S: BosStr> LexiconSchema for ReasonRepost<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1113,7 +1049,7 @@ impl<'a> LexiconSchema for ReasonRepost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ReplyRef<'a> {
+impl<S: BosStr> LexiconSchema for ReplyRef<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1128,7 +1064,7 @@ impl<'a> LexiconSchema for ReplyRef<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SkeletonFeedPost<'a> {
+impl<S: BosStr> LexiconSchema for SkeletonFeedPost<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1153,7 +1089,7 @@ impl<'a> LexiconSchema for SkeletonFeedPost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SkeletonReasonPin<'a> {
+impl<S: BosStr> LexiconSchema for SkeletonReasonPin<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1168,7 +1104,7 @@ impl<'a> LexiconSchema for SkeletonReasonPin<'a> {
     }
 }
 
-impl<'a> LexiconSchema for SkeletonReasonRepost<'a> {
+impl<S: BosStr> LexiconSchema for SkeletonReasonRepost<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1183,7 +1119,7 @@ impl<'a> LexiconSchema for SkeletonReasonRepost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ThreadContext<'a> {
+impl<S: BosStr> LexiconSchema for ThreadContext<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1198,7 +1134,7 @@ impl<'a> LexiconSchema for ThreadContext<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ThreadViewPost<'a> {
+impl<S: BosStr> LexiconSchema for ThreadViewPost<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1213,7 +1149,7 @@ impl<'a> LexiconSchema for ThreadViewPost<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ThreadgateView<'a> {
+impl<S: BosStr> LexiconSchema for ThreadgateView<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1228,7 +1164,7 @@ impl<'a> LexiconSchema for ThreadgateView<'a> {
     }
 }
 
-impl<'a> LexiconSchema for ViewerState<'a> {
+impl<S: BosStr> LexiconSchema for ViewerState<S> {
     fn nsid() -> &'static str {
         "app.bsky.feed.defs"
     }
@@ -1262,9 +1198,9 @@ pub mod blocked_author_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -1275,81 +1211,102 @@ pub mod blocked_author_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct BlockedAuthorBuilder<'a, S: blocked_author_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>, Option<actor::ViewerState<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct BlockedAuthorBuilder<
+    St: blocked_author_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>, Option<actor::ViewerState<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> BlockedAuthor<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> BlockedAuthorBuilder<'a, blocked_author_state::Empty> {
+impl BlockedAuthor<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> BlockedAuthorBuilder<blocked_author_state::Empty, DefaultStr> {
         BlockedAuthorBuilder::new()
     }
 }
 
-impl<'a> BlockedAuthorBuilder<'a, blocked_author_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> BlockedAuthor<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> BlockedAuthorBuilder<blocked_author_state::Empty, S> {
+        BlockedAuthorBuilder::builder()
+    }
+}
+
+impl BlockedAuthorBuilder<blocked_author_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         BlockedAuthorBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> BlockedAuthorBuilder<'a, S>
+impl<S: BosStr> BlockedAuthorBuilder<blocked_author_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        BlockedAuthorBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> BlockedAuthorBuilder<St, S>
 where
-    S: blocked_author_state::State,
-    S::Did: blocked_author_state::IsUnset,
+    St: blocked_author_state::State,
+    St::Did: blocked_author_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> BlockedAuthorBuilder<'a, blocked_author_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> BlockedAuthorBuilder<blocked_author_state::SetDid<St>, S> {
         self._fields.0 = Option::Some(value.into());
         BlockedAuthorBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: blocked_author_state::State> BlockedAuthorBuilder<'a, S> {
+impl<St: blocked_author_state::State, S: BosStr> BlockedAuthorBuilder<St, S> {
     /// Set the `viewer` field (optional)
-    pub fn viewer(mut self, value: impl Into<Option<actor::ViewerState<'a>>>) -> Self {
+    pub fn viewer(mut self, value: impl Into<Option<actor::ViewerState<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `viewer` field to an Option value (optional)
-    pub fn maybe_viewer(mut self, value: Option<actor::ViewerState<'a>>) -> Self {
+    pub fn maybe_viewer(mut self, value: Option<actor::ViewerState<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> BlockedAuthorBuilder<'a, S>
+impl<St, S: BosStr> BlockedAuthorBuilder<St, S>
 where
-    S: blocked_author_state::State,
-    S::Did: blocked_author_state::IsSet,
+    St: blocked_author_state::State,
+    St::Did: blocked_author_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> BlockedAuthor<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> BlockedAuthor<S> {
         BlockedAuthor {
             did: self._fields.0.unwrap(),
             viewer: self._fields.1,
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> BlockedAuthor<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> BlockedAuthor<S> {
         BlockedAuthor {
             did: self._fields.0.unwrap(),
             viewer: self._fields.1,
@@ -2308,27 +2265,27 @@ pub mod blocked_post_state {
         type Uri = Unset;
     }
     ///State transition - sets the `author` field to Set
-    pub struct SetAuthor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAuthor<S> {}
-    impl<S: State> State for SetAuthor<S> {
+    pub struct SetAuthor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAuthor<St> {}
+    impl<St: State> State for SetAuthor<St> {
         type Author = Set<members::author>;
-        type Blocked = S::Blocked;
-        type Uri = S::Uri;
+        type Blocked = St::Blocked;
+        type Uri = St::Uri;
     }
     ///State transition - sets the `blocked` field to Set
-    pub struct SetBlocked<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetBlocked<S> {}
-    impl<S: State> State for SetBlocked<S> {
-        type Author = S::Author;
+    pub struct SetBlocked<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetBlocked<St> {}
+    impl<St: State> State for SetBlocked<St> {
+        type Author = St::Author;
         type Blocked = Set<members::blocked>;
-        type Uri = S::Uri;
+        type Uri = St::Uri;
     }
     ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type Author = S::Author;
-        type Blocked = S::Blocked;
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type Author = St::Author;
+        type Blocked = St::Blocked;
         type Uri = Set<members::uri>;
     }
     /// Marker types for field names
@@ -2343,97 +2300,115 @@ pub mod blocked_post_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct BlockedPostBuilder<'a, S: blocked_post_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<feed::BlockedAuthor<'a>>, Option<bool>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct BlockedPostBuilder<St: blocked_post_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<feed::BlockedAuthor<S>>, Option<bool>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> BlockedPost<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> BlockedPostBuilder<'a, blocked_post_state::Empty> {
+impl BlockedPost<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> BlockedPostBuilder<blocked_post_state::Empty, DefaultStr> {
         BlockedPostBuilder::new()
     }
 }
 
-impl<'a> BlockedPostBuilder<'a, blocked_post_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> BlockedPost<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> BlockedPostBuilder<blocked_post_state::Empty, S> {
+        BlockedPostBuilder::builder()
+    }
+}
+
+impl BlockedPostBuilder<blocked_post_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         BlockedPostBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> BlockedPostBuilder<'a, S>
+impl<S: BosStr> BlockedPostBuilder<blocked_post_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        BlockedPostBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> BlockedPostBuilder<St, S>
 where
-    S: blocked_post_state::State,
-    S::Author: blocked_post_state::IsUnset,
+    St: blocked_post_state::State,
+    St::Author: blocked_post_state::IsUnset,
 {
     /// Set the `author` field (required)
     pub fn author(
         mut self,
-        value: impl Into<feed::BlockedAuthor<'a>>,
-    ) -> BlockedPostBuilder<'a, blocked_post_state::SetAuthor<S>> {
+        value: impl Into<feed::BlockedAuthor<S>>,
+    ) -> BlockedPostBuilder<blocked_post_state::SetAuthor<St>, S> {
         self._fields.0 = Option::Some(value.into());
         BlockedPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> BlockedPostBuilder<'a, S>
+impl<St, S: BosStr> BlockedPostBuilder<St, S>
 where
-    S: blocked_post_state::State,
-    S::Blocked: blocked_post_state::IsUnset,
+    St: blocked_post_state::State,
+    St::Blocked: blocked_post_state::IsUnset,
 {
     /// Set the `blocked` field (required)
     pub fn blocked(
         mut self,
         value: impl Into<bool>,
-    ) -> BlockedPostBuilder<'a, blocked_post_state::SetBlocked<S>> {
+    ) -> BlockedPostBuilder<blocked_post_state::SetBlocked<St>, S> {
         self._fields.1 = Option::Some(value.into());
         BlockedPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> BlockedPostBuilder<'a, S>
+impl<St, S: BosStr> BlockedPostBuilder<St, S>
 where
-    S: blocked_post_state::State,
-    S::Uri: blocked_post_state::IsUnset,
+    St: blocked_post_state::State,
+    St::Uri: blocked_post_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> BlockedPostBuilder<'a, blocked_post_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> BlockedPostBuilder<blocked_post_state::SetUri<St>, S> {
         self._fields.2 = Option::Some(value.into());
         BlockedPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> BlockedPostBuilder<'a, S>
+impl<St, S: BosStr> BlockedPostBuilder<St, S>
 where
-    S: blocked_post_state::State,
-    S::Author: blocked_post_state::IsSet,
-    S::Blocked: blocked_post_state::IsSet,
-    S::Uri: blocked_post_state::IsSet,
+    St: blocked_post_state::State,
+    St::Author: blocked_post_state::IsSet,
+    St::Blocked: blocked_post_state::IsSet,
+    St::Uri: blocked_post_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> BlockedPost<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> BlockedPost<S> {
         BlockedPost {
             author: self._fields.0.unwrap(),
             blocked: self._fields.1.unwrap(),
@@ -2441,11 +2416,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> BlockedPost<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> BlockedPost<S> {
         BlockedPost {
             author: self._fields.0.unwrap(),
             blocked: self._fields.1.unwrap(),
@@ -2474,9 +2449,9 @@ pub mod feed_view_post_state {
         type Post = Unset;
     }
     ///State transition - sets the `post` field to Set
-    pub struct SetPost<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPost<S> {}
-    impl<S: State> State for SetPost<S> {
+    pub struct SetPost<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPost<St> {}
+    impl<St: State> State for SetPost<St> {
         type Post = Set<members::post>;
     }
     /// Marker types for field names
@@ -2487,115 +2462,133 @@ pub mod feed_view_post_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct FeedViewPostBuilder<'a, S: feed_view_post_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct FeedViewPostBuilder<St: feed_view_post_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<feed::PostView<'a>>,
-        Option<FeedViewPostReason<'a>>,
-        Option<feed::ReplyRef<'a>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<feed::PostView<S>>,
+        Option<FeedViewPostReason<S>>,
+        Option<feed::ReplyRef<S>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> FeedViewPost<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> FeedViewPostBuilder<'a, feed_view_post_state::Empty> {
+impl FeedViewPost<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> FeedViewPostBuilder<feed_view_post_state::Empty, DefaultStr> {
         FeedViewPostBuilder::new()
     }
 }
 
-impl<'a> FeedViewPostBuilder<'a, feed_view_post_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> FeedViewPost<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> FeedViewPostBuilder<feed_view_post_state::Empty, S> {
+        FeedViewPostBuilder::builder()
+    }
+}
+
+impl FeedViewPostBuilder<feed_view_post_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         FeedViewPostBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: feed_view_post_state::State> FeedViewPostBuilder<'a, S> {
+impl<S: BosStr> FeedViewPostBuilder<feed_view_post_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        FeedViewPostBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: feed_view_post_state::State, S: BosStr> FeedViewPostBuilder<St, S> {
     /// Set the `feedContext` field (optional)
-    pub fn feed_context(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn feed_context(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `feedContext` field to an Option value (optional)
-    pub fn maybe_feed_context(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_feed_context(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> FeedViewPostBuilder<'a, S>
+impl<St, S: BosStr> FeedViewPostBuilder<St, S>
 where
-    S: feed_view_post_state::State,
-    S::Post: feed_view_post_state::IsUnset,
+    St: feed_view_post_state::State,
+    St::Post: feed_view_post_state::IsUnset,
 {
     /// Set the `post` field (required)
     pub fn post(
         mut self,
-        value: impl Into<feed::PostView<'a>>,
-    ) -> FeedViewPostBuilder<'a, feed_view_post_state::SetPost<S>> {
+        value: impl Into<feed::PostView<S>>,
+    ) -> FeedViewPostBuilder<feed_view_post_state::SetPost<St>, S> {
         self._fields.1 = Option::Some(value.into());
         FeedViewPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: feed_view_post_state::State> FeedViewPostBuilder<'a, S> {
+impl<St: feed_view_post_state::State, S: BosStr> FeedViewPostBuilder<St, S> {
     /// Set the `reason` field (optional)
-    pub fn reason(mut self, value: impl Into<Option<FeedViewPostReason<'a>>>) -> Self {
+    pub fn reason(mut self, value: impl Into<Option<FeedViewPostReason<S>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `reason` field to an Option value (optional)
-    pub fn maybe_reason(mut self, value: Option<FeedViewPostReason<'a>>) -> Self {
+    pub fn maybe_reason(mut self, value: Option<FeedViewPostReason<S>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: feed_view_post_state::State> FeedViewPostBuilder<'a, S> {
+impl<St: feed_view_post_state::State, S: BosStr> FeedViewPostBuilder<St, S> {
     /// Set the `reply` field (optional)
-    pub fn reply(mut self, value: impl Into<Option<feed::ReplyRef<'a>>>) -> Self {
+    pub fn reply(mut self, value: impl Into<Option<feed::ReplyRef<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `reply` field to an Option value (optional)
-    pub fn maybe_reply(mut self, value: Option<feed::ReplyRef<'a>>) -> Self {
+    pub fn maybe_reply(mut self, value: Option<feed::ReplyRef<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: feed_view_post_state::State> FeedViewPostBuilder<'a, S> {
+impl<St: feed_view_post_state::State, S: BosStr> FeedViewPostBuilder<St, S> {
     /// Set the `reqId` field (optional)
-    pub fn req_id(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn req_id(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `reqId` field to an Option value (optional)
-    pub fn maybe_req_id(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_req_id(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> FeedViewPostBuilder<'a, S>
+impl<St, S: BosStr> FeedViewPostBuilder<St, S>
 where
-    S: feed_view_post_state::State,
-    S::Post: feed_view_post_state::IsSet,
+    St: feed_view_post_state::State,
+    St::Post: feed_view_post_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> FeedViewPost<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> FeedViewPost<S> {
         FeedViewPost {
             feed_context: self._fields.0,
             post: self._fields.1.unwrap(),
@@ -2605,11 +2598,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> FeedViewPost<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> FeedViewPost<S> {
         FeedViewPost {
             feed_context: self._fields.0,
             post: self._fields.1.unwrap(),
@@ -2631,139 +2624,149 @@ pub mod generator_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type Cid;
         type Creator;
+        type Did;
+        type DisplayName;
         type IndexedAt;
         type Uri;
-        type DisplayName;
-        type Cid;
-        type Did;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type Cid = Unset;
         type Creator = Unset;
+        type Did = Unset;
+        type DisplayName = Unset;
         type IndexedAt = Unset;
         type Uri = Unset;
-        type DisplayName = Unset;
-        type Cid = Unset;
-        type Did = Unset;
-    }
-    ///State transition - sets the `creator` field to Set
-    pub struct SetCreator<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreator<S> {}
-    impl<S: State> State for SetCreator<S> {
-        type Creator = Set<members::creator>;
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
-        type DisplayName = S::DisplayName;
-        type Cid = S::Cid;
-        type Did = S::Did;
-    }
-    ///State transition - sets the `indexed_at` field to Set
-    pub struct SetIndexedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetIndexedAt<S> {}
-    impl<S: State> State for SetIndexedAt<S> {
-        type Creator = S::Creator;
-        type IndexedAt = Set<members::indexed_at>;
-        type Uri = S::Uri;
-        type DisplayName = S::DisplayName;
-        type Cid = S::Cid;
-        type Did = S::Did;
-    }
-    ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type Creator = S::Creator;
-        type IndexedAt = S::IndexedAt;
-        type Uri = Set<members::uri>;
-        type DisplayName = S::DisplayName;
-        type Cid = S::Cid;
-        type Did = S::Did;
-    }
-    ///State transition - sets the `display_name` field to Set
-    pub struct SetDisplayName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDisplayName<S> {}
-    impl<S: State> State for SetDisplayName<S> {
-        type Creator = S::Creator;
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
-        type DisplayName = Set<members::display_name>;
-        type Cid = S::Cid;
-        type Did = S::Did;
     }
     ///State transition - sets the `cid` field to Set
-    pub struct SetCid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCid<S> {}
-    impl<S: State> State for SetCid<S> {
-        type Creator = S::Creator;
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
-        type DisplayName = S::DisplayName;
+    pub struct SetCid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCid<St> {}
+    impl<St: State> State for SetCid<St> {
         type Cid = Set<members::cid>;
-        type Did = S::Did;
+        type Creator = St::Creator;
+        type Did = St::Did;
+        type DisplayName = St::DisplayName;
+        type IndexedAt = St::IndexedAt;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `creator` field to Set
+    pub struct SetCreator<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreator<St> {}
+    impl<St: State> State for SetCreator<St> {
+        type Cid = St::Cid;
+        type Creator = Set<members::creator>;
+        type Did = St::Did;
+        type DisplayName = St::DisplayName;
+        type IndexedAt = St::IndexedAt;
+        type Uri = St::Uri;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
-        type Creator = S::Creator;
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
-        type DisplayName = S::DisplayName;
-        type Cid = S::Cid;
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
+        type Cid = St::Cid;
+        type Creator = St::Creator;
         type Did = Set<members::did>;
+        type DisplayName = St::DisplayName;
+        type IndexedAt = St::IndexedAt;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `display_name` field to Set
+    pub struct SetDisplayName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDisplayName<St> {}
+    impl<St: State> State for SetDisplayName<St> {
+        type Cid = St::Cid;
+        type Creator = St::Creator;
+        type Did = St::Did;
+        type DisplayName = Set<members::display_name>;
+        type IndexedAt = St::IndexedAt;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `indexed_at` field to Set
+    pub struct SetIndexedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetIndexedAt<St> {}
+    impl<St: State> State for SetIndexedAt<St> {
+        type Cid = St::Cid;
+        type Creator = St::Creator;
+        type Did = St::Did;
+        type DisplayName = St::DisplayName;
+        type IndexedAt = Set<members::indexed_at>;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type Cid = St::Cid;
+        type Creator = St::Creator;
+        type Did = St::Did;
+        type DisplayName = St::DisplayName;
+        type IndexedAt = St::IndexedAt;
+        type Uri = Set<members::uri>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `cid` field
+        pub struct cid(());
         ///Marker type for the `creator` field
         pub struct creator(());
+        ///Marker type for the `did` field
+        pub struct did(());
+        ///Marker type for the `display_name` field
+        pub struct display_name(());
         ///Marker type for the `indexed_at` field
         pub struct indexed_at(());
         ///Marker type for the `uri` field
         pub struct uri(());
-        ///Marker type for the `display_name` field
-        pub struct display_name(());
-        ///Marker type for the `cid` field
-        pub struct cid(());
-        ///Marker type for the `did` field
-        pub struct did(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GeneratorViewBuilder<'a, S: generator_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct GeneratorViewBuilder<
+    St: generator_view_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
         Option<bool>,
-        Option<UriValue<'a>>,
-        Option<Cid<'a>>,
-        Option<GeneratorViewContentMode<'a>>,
-        Option<ProfileView<'a>>,
-        Option<CowStr<'a>>,
-        Option<Vec<Facet<'a>>>,
-        Option<Did<'a>>,
-        Option<CowStr<'a>>,
+        Option<UriValue<S>>,
+        Option<Cid<S>>,
+        Option<GeneratorViewContentMode<S>>,
+        Option<ProfileView<S>>,
+        Option<S>,
+        Option<Vec<Facet<S>>>,
+        Option<Did<S>>,
+        Option<S>,
         Option<Datetime>,
-        Option<Vec<Label<'a>>>,
+        Option<Vec<Label<S>>>,
         Option<i64>,
-        Option<AtUri<'a>>,
-        Option<feed::GeneratorViewerState<'a>>,
+        Option<AtUri<S>>,
+        Option<feed::GeneratorViewerState<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GeneratorView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GeneratorViewBuilder<'a, generator_view_state::Empty> {
+impl GeneratorView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GeneratorViewBuilder<generator_view_state::Empty, DefaultStr> {
         GeneratorViewBuilder::new()
     }
 }
 
-impl<'a> GeneratorViewBuilder<'a, generator_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GeneratorView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GeneratorViewBuilder<generator_view_state::Empty, S> {
+        GeneratorViewBuilder::builder()
+    }
+}
+
+impl GeneratorViewBuilder<generator_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GeneratorViewBuilder {
             _state: PhantomData,
@@ -2783,12 +2786,38 @@ impl<'a> GeneratorViewBuilder<'a, generator_view_state::Empty> {
                 None,
                 None,
             ),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
+impl<S: BosStr> GeneratorViewBuilder<generator_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GeneratorViewBuilder {
+            _state: PhantomData,
+            _fields: (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: generator_view_state::State, S: BosStr> GeneratorViewBuilder<St, S> {
     /// Set the `acceptsInteractions` field (optional)
     pub fn accepts_interactions(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.0 = value.into();
@@ -2801,43 +2830,43 @@ impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
+impl<St: generator_view_state::State, S: BosStr> GeneratorViewBuilder<St, S> {
     /// Set the `avatar` field (optional)
-    pub fn avatar(mut self, value: impl Into<Option<UriValue<'a>>>) -> Self {
+    pub fn avatar(mut self, value: impl Into<Option<UriValue<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `avatar` field to an Option value (optional)
-    pub fn maybe_avatar(mut self, value: Option<UriValue<'a>>) -> Self {
+    pub fn maybe_avatar(mut self, value: Option<UriValue<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> GeneratorViewBuilder<'a, S>
+impl<St, S: BosStr> GeneratorViewBuilder<St, S>
 where
-    S: generator_view_state::State,
-    S::Cid: generator_view_state::IsUnset,
+    St: generator_view_state::State,
+    St::Cid: generator_view_state::IsUnset,
 {
     /// Set the `cid` field (required)
     pub fn cid(
         mut self,
-        value: impl Into<Cid<'a>>,
-    ) -> GeneratorViewBuilder<'a, generator_view_state::SetCid<S>> {
+        value: impl Into<Cid<S>>,
+    ) -> GeneratorViewBuilder<generator_view_state::SetCid<St>, S> {
         self._fields.2 = Option::Some(value.into());
         GeneratorViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
+impl<St: generator_view_state::State, S: BosStr> GeneratorViewBuilder<St, S> {
     /// Set the `contentMode` field (optional)
     pub fn content_mode(
         mut self,
-        value: impl Into<Option<GeneratorViewContentMode<'a>>>,
+        value: impl Into<Option<GeneratorViewContentMode<S>>>,
     ) -> Self {
         self._fields.3 = value.into();
         self
@@ -2845,132 +2874,132 @@ impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
     /// Set the `contentMode` field to an Option value (optional)
     pub fn maybe_content_mode(
         mut self,
-        value: Option<GeneratorViewContentMode<'a>>,
+        value: Option<GeneratorViewContentMode<S>>,
     ) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> GeneratorViewBuilder<'a, S>
+impl<St, S: BosStr> GeneratorViewBuilder<St, S>
 where
-    S: generator_view_state::State,
-    S::Creator: generator_view_state::IsUnset,
+    St: generator_view_state::State,
+    St::Creator: generator_view_state::IsUnset,
 {
     /// Set the `creator` field (required)
     pub fn creator(
         mut self,
-        value: impl Into<ProfileView<'a>>,
-    ) -> GeneratorViewBuilder<'a, generator_view_state::SetCreator<S>> {
+        value: impl Into<ProfileView<S>>,
+    ) -> GeneratorViewBuilder<generator_view_state::SetCreator<St>, S> {
         self._fields.4 = Option::Some(value.into());
         GeneratorViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
+impl<St: generator_view_state::State, S: BosStr> GeneratorViewBuilder<St, S> {
     /// Set the `description` field (optional)
-    pub fn description(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn description(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `description` field to an Option value (optional)
-    pub fn maybe_description(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_description(mut self, value: Option<S>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
+impl<St: generator_view_state::State, S: BosStr> GeneratorViewBuilder<St, S> {
     /// Set the `descriptionFacets` field (optional)
     pub fn description_facets(
         mut self,
-        value: impl Into<Option<Vec<Facet<'a>>>>,
+        value: impl Into<Option<Vec<Facet<S>>>>,
     ) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `descriptionFacets` field to an Option value (optional)
-    pub fn maybe_description_facets(mut self, value: Option<Vec<Facet<'a>>>) -> Self {
+    pub fn maybe_description_facets(mut self, value: Option<Vec<Facet<S>>>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S> GeneratorViewBuilder<'a, S>
+impl<St, S: BosStr> GeneratorViewBuilder<St, S>
 where
-    S: generator_view_state::State,
-    S::Did: generator_view_state::IsUnset,
+    St: generator_view_state::State,
+    St::Did: generator_view_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> GeneratorViewBuilder<'a, generator_view_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> GeneratorViewBuilder<generator_view_state::SetDid<St>, S> {
         self._fields.7 = Option::Some(value.into());
         GeneratorViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GeneratorViewBuilder<'a, S>
+impl<St, S: BosStr> GeneratorViewBuilder<St, S>
 where
-    S: generator_view_state::State,
-    S::DisplayName: generator_view_state::IsUnset,
+    St: generator_view_state::State,
+    St::DisplayName: generator_view_state::IsUnset,
 {
     /// Set the `displayName` field (required)
     pub fn display_name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> GeneratorViewBuilder<'a, generator_view_state::SetDisplayName<S>> {
+        value: impl Into<S>,
+    ) -> GeneratorViewBuilder<generator_view_state::SetDisplayName<St>, S> {
         self._fields.8 = Option::Some(value.into());
         GeneratorViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GeneratorViewBuilder<'a, S>
+impl<St, S: BosStr> GeneratorViewBuilder<St, S>
 where
-    S: generator_view_state::State,
-    S::IndexedAt: generator_view_state::IsUnset,
+    St: generator_view_state::State,
+    St::IndexedAt: generator_view_state::IsUnset,
 {
     /// Set the `indexedAt` field (required)
     pub fn indexed_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> GeneratorViewBuilder<'a, generator_view_state::SetIndexedAt<S>> {
+    ) -> GeneratorViewBuilder<generator_view_state::SetIndexedAt<St>, S> {
         self._fields.9 = Option::Some(value.into());
         GeneratorViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
+impl<St: generator_view_state::State, S: BosStr> GeneratorViewBuilder<St, S> {
     /// Set the `labels` field (optional)
-    pub fn labels(mut self, value: impl Into<Option<Vec<Label<'a>>>>) -> Self {
+    pub fn labels(mut self, value: impl Into<Option<Vec<Label<S>>>>) -> Self {
         self._fields.10 = value.into();
         self
     }
     /// Set the `labels` field to an Option value (optional)
-    pub fn maybe_labels(mut self, value: Option<Vec<Label<'a>>>) -> Self {
+    pub fn maybe_labels(mut self, value: Option<Vec<Label<S>>>) -> Self {
         self._fields.10 = value;
         self
     }
 }
 
-impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
+impl<St: generator_view_state::State, S: BosStr> GeneratorViewBuilder<St, S> {
     /// Set the `likeCount` field (optional)
     pub fn like_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.11 = value.into();
@@ -2983,56 +3012,53 @@ impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S> GeneratorViewBuilder<'a, S>
+impl<St, S: BosStr> GeneratorViewBuilder<St, S>
 where
-    S: generator_view_state::State,
-    S::Uri: generator_view_state::IsUnset,
+    St: generator_view_state::State,
+    St::Uri: generator_view_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> GeneratorViewBuilder<'a, generator_view_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> GeneratorViewBuilder<generator_view_state::SetUri<St>, S> {
         self._fields.12 = Option::Some(value.into());
         GeneratorViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: generator_view_state::State> GeneratorViewBuilder<'a, S> {
+impl<St: generator_view_state::State, S: BosStr> GeneratorViewBuilder<St, S> {
     /// Set the `viewer` field (optional)
     pub fn viewer(
         mut self,
-        value: impl Into<Option<feed::GeneratorViewerState<'a>>>,
+        value: impl Into<Option<feed::GeneratorViewerState<S>>>,
     ) -> Self {
         self._fields.13 = value.into();
         self
     }
     /// Set the `viewer` field to an Option value (optional)
-    pub fn maybe_viewer(
-        mut self,
-        value: Option<feed::GeneratorViewerState<'a>>,
-    ) -> Self {
+    pub fn maybe_viewer(mut self, value: Option<feed::GeneratorViewerState<S>>) -> Self {
         self._fields.13 = value;
         self
     }
 }
 
-impl<'a, S> GeneratorViewBuilder<'a, S>
+impl<St, S: BosStr> GeneratorViewBuilder<St, S>
 where
-    S: generator_view_state::State,
-    S::Creator: generator_view_state::IsSet,
-    S::IndexedAt: generator_view_state::IsSet,
-    S::Uri: generator_view_state::IsSet,
-    S::DisplayName: generator_view_state::IsSet,
-    S::Cid: generator_view_state::IsSet,
-    S::Did: generator_view_state::IsSet,
+    St: generator_view_state::State,
+    St::Cid: generator_view_state::IsSet,
+    St::Creator: generator_view_state::IsSet,
+    St::Did: generator_view_state::IsSet,
+    St::DisplayName: generator_view_state::IsSet,
+    St::IndexedAt: generator_view_state::IsSet,
+    St::Uri: generator_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GeneratorView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GeneratorView<S> {
         GeneratorView {
             accepts_interactions: self._fields.0,
             avatar: self._fields.1,
@@ -3051,11 +3077,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> GeneratorView<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> GeneratorView<S> {
         GeneratorView {
             accepts_interactions: self._fields.0,
             avatar: self._fields.1,
@@ -3086,122 +3112,140 @@ pub mod known_likers_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Count;
         type Actors;
+        type Count;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Count = Unset;
         type Actors = Unset;
-    }
-    ///State transition - sets the `count` field to Set
-    pub struct SetCount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCount<S> {}
-    impl<S: State> State for SetCount<S> {
-        type Count = Set<members::count>;
-        type Actors = S::Actors;
+        type Count = Unset;
     }
     ///State transition - sets the `actors` field to Set
-    pub struct SetActors<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetActors<S> {}
-    impl<S: State> State for SetActors<S> {
-        type Count = S::Count;
+    pub struct SetActors<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetActors<St> {}
+    impl<St: State> State for SetActors<St> {
         type Actors = Set<members::actors>;
+        type Count = St::Count;
+    }
+    ///State transition - sets the `count` field to Set
+    pub struct SetCount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCount<St> {}
+    impl<St: State> State for SetCount<St> {
+        type Actors = St::Actors;
+        type Count = Set<members::count>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `count` field
-        pub struct count(());
         ///Marker type for the `actors` field
         pub struct actors(());
+        ///Marker type for the `count` field
+        pub struct count(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct KnownLikersBuilder<'a, S: known_likers_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Vec<ProfileViewBasic<'a>>>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct KnownLikersBuilder<St: known_likers_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Vec<ProfileViewBasic<S>>>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> KnownLikers<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> KnownLikersBuilder<'a, known_likers_state::Empty> {
+impl KnownLikers<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> KnownLikersBuilder<known_likers_state::Empty, DefaultStr> {
         KnownLikersBuilder::new()
     }
 }
 
-impl<'a> KnownLikersBuilder<'a, known_likers_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> KnownLikers<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> KnownLikersBuilder<known_likers_state::Empty, S> {
+        KnownLikersBuilder::builder()
+    }
+}
+
+impl KnownLikersBuilder<known_likers_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         KnownLikersBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> KnownLikersBuilder<'a, S>
+impl<S: BosStr> KnownLikersBuilder<known_likers_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        KnownLikersBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> KnownLikersBuilder<St, S>
 where
-    S: known_likers_state::State,
-    S::Actors: known_likers_state::IsUnset,
+    St: known_likers_state::State,
+    St::Actors: known_likers_state::IsUnset,
 {
     /// Set the `actors` field (required)
     pub fn actors(
         mut self,
-        value: impl Into<Vec<ProfileViewBasic<'a>>>,
-    ) -> KnownLikersBuilder<'a, known_likers_state::SetActors<S>> {
+        value: impl Into<Vec<ProfileViewBasic<S>>>,
+    ) -> KnownLikersBuilder<known_likers_state::SetActors<St>, S> {
         self._fields.0 = Option::Some(value.into());
         KnownLikersBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> KnownLikersBuilder<'a, S>
+impl<St, S: BosStr> KnownLikersBuilder<St, S>
 where
-    S: known_likers_state::State,
-    S::Count: known_likers_state::IsUnset,
+    St: known_likers_state::State,
+    St::Count: known_likers_state::IsUnset,
 {
     /// Set the `count` field (required)
     pub fn count(
         mut self,
         value: impl Into<i64>,
-    ) -> KnownLikersBuilder<'a, known_likers_state::SetCount<S>> {
+    ) -> KnownLikersBuilder<known_likers_state::SetCount<St>, S> {
         self._fields.1 = Option::Some(value.into());
         KnownLikersBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> KnownLikersBuilder<'a, S>
+impl<St, S: BosStr> KnownLikersBuilder<St, S>
 where
-    S: known_likers_state::State,
-    S::Count: known_likers_state::IsSet,
-    S::Actors: known_likers_state::IsSet,
+    St: known_likers_state::State,
+    St::Actors: known_likers_state::IsSet,
+    St::Count: known_likers_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> KnownLikers<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> KnownLikers<S> {
         KnownLikers {
             actors: self._fields.0.unwrap(),
             count: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> KnownLikers<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> KnownLikers<S> {
         KnownLikers {
             actors: self._fields.0.unwrap(),
             count: self._fields.1.unwrap(),
@@ -3220,122 +3264,140 @@ pub mod not_found_post_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Uri;
         type NotFound;
+        type Uri;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Uri = Unset;
         type NotFound = Unset;
-    }
-    ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type Uri = Set<members::uri>;
-        type NotFound = S::NotFound;
+        type Uri = Unset;
     }
     ///State transition - sets the `not_found` field to Set
-    pub struct SetNotFound<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetNotFound<S> {}
-    impl<S: State> State for SetNotFound<S> {
-        type Uri = S::Uri;
+    pub struct SetNotFound<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetNotFound<St> {}
+    impl<St: State> State for SetNotFound<St> {
         type NotFound = Set<members::not_found>;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type NotFound = St::NotFound;
+        type Uri = Set<members::uri>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `uri` field
-        pub struct uri(());
         ///Marker type for the `not_found` field
         pub struct not_found(());
+        ///Marker type for the `uri` field
+        pub struct uri(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct NotFoundPostBuilder<'a, S: not_found_post_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<bool>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct NotFoundPostBuilder<St: not_found_post_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<bool>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> NotFoundPost<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> NotFoundPostBuilder<'a, not_found_post_state::Empty> {
+impl NotFoundPost<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> NotFoundPostBuilder<not_found_post_state::Empty, DefaultStr> {
         NotFoundPostBuilder::new()
     }
 }
 
-impl<'a> NotFoundPostBuilder<'a, not_found_post_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> NotFoundPost<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> NotFoundPostBuilder<not_found_post_state::Empty, S> {
+        NotFoundPostBuilder::builder()
+    }
+}
+
+impl NotFoundPostBuilder<not_found_post_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         NotFoundPostBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> NotFoundPostBuilder<'a, S>
+impl<S: BosStr> NotFoundPostBuilder<not_found_post_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        NotFoundPostBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> NotFoundPostBuilder<St, S>
 where
-    S: not_found_post_state::State,
-    S::NotFound: not_found_post_state::IsUnset,
+    St: not_found_post_state::State,
+    St::NotFound: not_found_post_state::IsUnset,
 {
     /// Set the `notFound` field (required)
     pub fn not_found(
         mut self,
         value: impl Into<bool>,
-    ) -> NotFoundPostBuilder<'a, not_found_post_state::SetNotFound<S>> {
+    ) -> NotFoundPostBuilder<not_found_post_state::SetNotFound<St>, S> {
         self._fields.0 = Option::Some(value.into());
         NotFoundPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> NotFoundPostBuilder<'a, S>
+impl<St, S: BosStr> NotFoundPostBuilder<St, S>
 where
-    S: not_found_post_state::State,
-    S::Uri: not_found_post_state::IsUnset,
+    St: not_found_post_state::State,
+    St::Uri: not_found_post_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> NotFoundPostBuilder<'a, not_found_post_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> NotFoundPostBuilder<not_found_post_state::SetUri<St>, S> {
         self._fields.1 = Option::Some(value.into());
         NotFoundPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> NotFoundPostBuilder<'a, S>
+impl<St, S: BosStr> NotFoundPostBuilder<St, S>
 where
-    S: not_found_post_state::State,
-    S::Uri: not_found_post_state::IsSet,
-    S::NotFound: not_found_post_state::IsSet,
+    St: not_found_post_state::State,
+    St::NotFound: not_found_post_state::IsSet,
+    St::Uri: not_found_post_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> NotFoundPost<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> NotFoundPost<S> {
         NotFoundPost {
             not_found: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> NotFoundPost<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> NotFoundPost<S> {
         NotFoundPost {
             not_found: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),
@@ -3354,120 +3416,127 @@ pub mod post_view_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type IndexedAt;
-        type Uri;
-        type Cid;
-        type Record;
         type Author;
+        type Cid;
+        type IndexedAt;
+        type Record;
+        type Uri;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type IndexedAt = Unset;
-        type Uri = Unset;
-        type Cid = Unset;
-        type Record = Unset;
         type Author = Unset;
-    }
-    ///State transition - sets the `indexed_at` field to Set
-    pub struct SetIndexedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetIndexedAt<S> {}
-    impl<S: State> State for SetIndexedAt<S> {
-        type IndexedAt = Set<members::indexed_at>;
-        type Uri = S::Uri;
-        type Cid = S::Cid;
-        type Record = S::Record;
-        type Author = S::Author;
-    }
-    ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type IndexedAt = S::IndexedAt;
-        type Uri = Set<members::uri>;
-        type Cid = S::Cid;
-        type Record = S::Record;
-        type Author = S::Author;
-    }
-    ///State transition - sets the `cid` field to Set
-    pub struct SetCid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCid<S> {}
-    impl<S: State> State for SetCid<S> {
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
-        type Cid = Set<members::cid>;
-        type Record = S::Record;
-        type Author = S::Author;
-    }
-    ///State transition - sets the `record` field to Set
-    pub struct SetRecord<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRecord<S> {}
-    impl<S: State> State for SetRecord<S> {
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
-        type Cid = S::Cid;
-        type Record = Set<members::record>;
-        type Author = S::Author;
+        type Cid = Unset;
+        type IndexedAt = Unset;
+        type Record = Unset;
+        type Uri = Unset;
     }
     ///State transition - sets the `author` field to Set
-    pub struct SetAuthor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAuthor<S> {}
-    impl<S: State> State for SetAuthor<S> {
-        type IndexedAt = S::IndexedAt;
-        type Uri = S::Uri;
-        type Cid = S::Cid;
-        type Record = S::Record;
+    pub struct SetAuthor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAuthor<St> {}
+    impl<St: State> State for SetAuthor<St> {
         type Author = Set<members::author>;
+        type Cid = St::Cid;
+        type IndexedAt = St::IndexedAt;
+        type Record = St::Record;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `cid` field to Set
+    pub struct SetCid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCid<St> {}
+    impl<St: State> State for SetCid<St> {
+        type Author = St::Author;
+        type Cid = Set<members::cid>;
+        type IndexedAt = St::IndexedAt;
+        type Record = St::Record;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `indexed_at` field to Set
+    pub struct SetIndexedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetIndexedAt<St> {}
+    impl<St: State> State for SetIndexedAt<St> {
+        type Author = St::Author;
+        type Cid = St::Cid;
+        type IndexedAt = Set<members::indexed_at>;
+        type Record = St::Record;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `record` field to Set
+    pub struct SetRecord<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRecord<St> {}
+    impl<St: State> State for SetRecord<St> {
+        type Author = St::Author;
+        type Cid = St::Cid;
+        type IndexedAt = St::IndexedAt;
+        type Record = Set<members::record>;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type Author = St::Author;
+        type Cid = St::Cid;
+        type IndexedAt = St::IndexedAt;
+        type Record = St::Record;
+        type Uri = Set<members::uri>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `indexed_at` field
-        pub struct indexed_at(());
-        ///Marker type for the `uri` field
-        pub struct uri(());
-        ///Marker type for the `cid` field
-        pub struct cid(());
-        ///Marker type for the `record` field
-        pub struct record(());
         ///Marker type for the `author` field
         pub struct author(());
+        ///Marker type for the `cid` field
+        pub struct cid(());
+        ///Marker type for the `indexed_at` field
+        pub struct indexed_at(());
+        ///Marker type for the `record` field
+        pub struct record(());
+        ///Marker type for the `uri` field
+        pub struct uri(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct PostViewBuilder<'a, S: post_view_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct PostViewBuilder<St: post_view_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<ProfileViewBasic<'a>>,
+        Option<ProfileViewBasic<S>>,
         Option<i64>,
-        Option<Cid<'a>>,
-        Option<Data<'a>>,
-        Option<PostViewEmbed<'a>>,
+        Option<Cid<S>>,
+        Option<Data<S>>,
+        Option<PostViewEmbed<S>>,
         Option<Datetime>,
-        Option<Vec<Label<'a>>>,
+        Option<Vec<Label<S>>>,
         Option<i64>,
         Option<i64>,
-        Option<Data<'a>>,
+        Option<Data<S>>,
         Option<i64>,
         Option<i64>,
-        Option<feed::ThreadgateView<'a>>,
-        Option<AtUri<'a>>,
-        Option<feed::ViewerState<'a>>,
+        Option<feed::ThreadgateView<S>>,
+        Option<AtUri<S>>,
+        Option<feed::ViewerState<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> PostView<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> PostViewBuilder<'a, post_view_state::Empty> {
+impl PostView<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> PostViewBuilder<post_view_state::Empty, DefaultStr> {
         PostViewBuilder::new()
     }
 }
 
-impl<'a> PostViewBuilder<'a, post_view_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> PostView<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> PostViewBuilder<post_view_state::Empty, S> {
+        PostViewBuilder::builder()
+    }
+}
+
+impl PostViewBuilder<post_view_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         PostViewBuilder {
             _state: PhantomData,
@@ -3488,31 +3557,58 @@ impl<'a> PostViewBuilder<'a, post_view_state::Empty> {
                 None,
                 None,
             ),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> PostViewBuilder<'a, S>
+impl<S: BosStr> PostViewBuilder<post_view_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        PostViewBuilder {
+            _state: PhantomData,
+            _fields: (
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> PostViewBuilder<St, S>
 where
-    S: post_view_state::State,
-    S::Author: post_view_state::IsUnset,
+    St: post_view_state::State,
+    St::Author: post_view_state::IsUnset,
 {
     /// Set the `author` field (required)
     pub fn author(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
-    ) -> PostViewBuilder<'a, post_view_state::SetAuthor<S>> {
+        value: impl Into<ProfileViewBasic<S>>,
+    ) -> PostViewBuilder<post_view_state::SetAuthor<St>, S> {
         self._fields.0 = Option::Some(value.into());
         PostViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `bookmarkCount` field (optional)
     pub fn bookmark_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -3525,84 +3621,84 @@ impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S> PostViewBuilder<'a, S>
+impl<St, S: BosStr> PostViewBuilder<St, S>
 where
-    S: post_view_state::State,
-    S::Cid: post_view_state::IsUnset,
+    St: post_view_state::State,
+    St::Cid: post_view_state::IsUnset,
 {
     /// Set the `cid` field (required)
     pub fn cid(
         mut self,
-        value: impl Into<Cid<'a>>,
-    ) -> PostViewBuilder<'a, post_view_state::SetCid<S>> {
+        value: impl Into<Cid<S>>,
+    ) -> PostViewBuilder<post_view_state::SetCid<St>, S> {
         self._fields.2 = Option::Some(value.into());
         PostViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `debug` field (optional)
-    pub fn debug(mut self, value: impl Into<Option<Data<'a>>>) -> Self {
+    pub fn debug(mut self, value: impl Into<Option<Data<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `debug` field to an Option value (optional)
-    pub fn maybe_debug(mut self, value: Option<Data<'a>>) -> Self {
+    pub fn maybe_debug(mut self, value: Option<Data<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `embed` field (optional)
-    pub fn embed(mut self, value: impl Into<Option<PostViewEmbed<'a>>>) -> Self {
+    pub fn embed(mut self, value: impl Into<Option<PostViewEmbed<S>>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `embed` field to an Option value (optional)
-    pub fn maybe_embed(mut self, value: Option<PostViewEmbed<'a>>) -> Self {
+    pub fn maybe_embed(mut self, value: Option<PostViewEmbed<S>>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> PostViewBuilder<'a, S>
+impl<St, S: BosStr> PostViewBuilder<St, S>
 where
-    S: post_view_state::State,
-    S::IndexedAt: post_view_state::IsUnset,
+    St: post_view_state::State,
+    St::IndexedAt: post_view_state::IsUnset,
 {
     /// Set the `indexedAt` field (required)
     pub fn indexed_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> PostViewBuilder<'a, post_view_state::SetIndexedAt<S>> {
+    ) -> PostViewBuilder<post_view_state::SetIndexedAt<St>, S> {
         self._fields.5 = Option::Some(value.into());
         PostViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `labels` field (optional)
-    pub fn labels(mut self, value: impl Into<Option<Vec<Label<'a>>>>) -> Self {
+    pub fn labels(mut self, value: impl Into<Option<Vec<Label<S>>>>) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `labels` field to an Option value (optional)
-    pub fn maybe_labels(mut self, value: Option<Vec<Label<'a>>>) -> Self {
+    pub fn maybe_labels(mut self, value: Option<Vec<Label<S>>>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `likeCount` field (optional)
     pub fn like_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.7 = value.into();
@@ -3615,7 +3711,7 @@ impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `quoteCount` field (optional)
     pub fn quote_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.8 = value.into();
@@ -3628,26 +3724,26 @@ impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S> PostViewBuilder<'a, S>
+impl<St, S: BosStr> PostViewBuilder<St, S>
 where
-    S: post_view_state::State,
-    S::Record: post_view_state::IsUnset,
+    St: post_view_state::State,
+    St::Record: post_view_state::IsUnset,
 {
     /// Set the `record` field (required)
     pub fn record(
         mut self,
-        value: impl Into<Data<'a>>,
-    ) -> PostViewBuilder<'a, post_view_state::SetRecord<S>> {
+        value: impl Into<Data<S>>,
+    ) -> PostViewBuilder<post_view_state::SetRecord<St>, S> {
         self._fields.9 = Option::Some(value.into());
         PostViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `replyCount` field (optional)
     pub fn reply_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.10 = value.into();
@@ -3660,7 +3756,7 @@ impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `repostCount` field (optional)
     pub fn repost_count(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.11 = value.into();
@@ -3673,65 +3769,65 @@ impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `threadgate` field (optional)
     pub fn threadgate(
         mut self,
-        value: impl Into<Option<feed::ThreadgateView<'a>>>,
+        value: impl Into<Option<feed::ThreadgateView<S>>>,
     ) -> Self {
         self._fields.12 = value.into();
         self
     }
     /// Set the `threadgate` field to an Option value (optional)
-    pub fn maybe_threadgate(mut self, value: Option<feed::ThreadgateView<'a>>) -> Self {
+    pub fn maybe_threadgate(mut self, value: Option<feed::ThreadgateView<S>>) -> Self {
         self._fields.12 = value;
         self
     }
 }
 
-impl<'a, S> PostViewBuilder<'a, S>
+impl<St, S: BosStr> PostViewBuilder<St, S>
 where
-    S: post_view_state::State,
-    S::Uri: post_view_state::IsUnset,
+    St: post_view_state::State,
+    St::Uri: post_view_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> PostViewBuilder<'a, post_view_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> PostViewBuilder<post_view_state::SetUri<St>, S> {
         self._fields.13 = Option::Some(value.into());
         PostViewBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: post_view_state::State> PostViewBuilder<'a, S> {
+impl<St: post_view_state::State, S: BosStr> PostViewBuilder<St, S> {
     /// Set the `viewer` field (optional)
-    pub fn viewer(mut self, value: impl Into<Option<feed::ViewerState<'a>>>) -> Self {
+    pub fn viewer(mut self, value: impl Into<Option<feed::ViewerState<S>>>) -> Self {
         self._fields.14 = value.into();
         self
     }
     /// Set the `viewer` field to an Option value (optional)
-    pub fn maybe_viewer(mut self, value: Option<feed::ViewerState<'a>>) -> Self {
+    pub fn maybe_viewer(mut self, value: Option<feed::ViewerState<S>>) -> Self {
         self._fields.14 = value;
         self
     }
 }
 
-impl<'a, S> PostViewBuilder<'a, S>
+impl<St, S: BosStr> PostViewBuilder<St, S>
 where
-    S: post_view_state::State,
-    S::IndexedAt: post_view_state::IsSet,
-    S::Uri: post_view_state::IsSet,
-    S::Cid: post_view_state::IsSet,
-    S::Record: post_view_state::IsSet,
-    S::Author: post_view_state::IsSet,
+    St: post_view_state::State,
+    St::Author: post_view_state::IsSet,
+    St::Cid: post_view_state::IsSet,
+    St::IndexedAt: post_view_state::IsSet,
+    St::Record: post_view_state::IsSet,
+    St::Uri: post_view_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> PostView<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> PostView<S> {
         PostView {
             author: self._fields.0.unwrap(),
             bookmark_count: self._fields.1,
@@ -3751,11 +3847,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> PostView<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> PostView<S> {
         PostView {
             author: self._fields.0.unwrap(),
             bookmark_count: self._fields.1,
@@ -3787,142 +3880,160 @@ pub mod reason_repost_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type IndexedAt;
         type By;
+        type IndexedAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type IndexedAt = Unset;
         type By = Unset;
-    }
-    ///State transition - sets the `indexed_at` field to Set
-    pub struct SetIndexedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetIndexedAt<S> {}
-    impl<S: State> State for SetIndexedAt<S> {
-        type IndexedAt = Set<members::indexed_at>;
-        type By = S::By;
+        type IndexedAt = Unset;
     }
     ///State transition - sets the `by` field to Set
-    pub struct SetBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetBy<S> {}
-    impl<S: State> State for SetBy<S> {
-        type IndexedAt = S::IndexedAt;
+    pub struct SetBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetBy<St> {}
+    impl<St: State> State for SetBy<St> {
         type By = Set<members::by>;
+        type IndexedAt = St::IndexedAt;
+    }
+    ///State transition - sets the `indexed_at` field to Set
+    pub struct SetIndexedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetIndexedAt<St> {}
+    impl<St: State> State for SetIndexedAt<St> {
+        type By = St::By;
+        type IndexedAt = Set<members::indexed_at>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `indexed_at` field
-        pub struct indexed_at(());
         ///Marker type for the `by` field
         pub struct by(());
+        ///Marker type for the `indexed_at` field
+        pub struct indexed_at(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReasonRepostBuilder<'a, S: reason_repost_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ReasonRepostBuilder<St: reason_repost_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<ProfileViewBasic<'a>>,
-        Option<Cid<'a>>,
+        Option<ProfileViewBasic<S>>,
+        Option<Cid<S>>,
         Option<Datetime>,
-        Option<AtUri<'a>>,
+        Option<AtUri<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ReasonRepost<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReasonRepostBuilder<'a, reason_repost_state::Empty> {
+impl ReasonRepost<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReasonRepostBuilder<reason_repost_state::Empty, DefaultStr> {
         ReasonRepostBuilder::new()
     }
 }
 
-impl<'a> ReasonRepostBuilder<'a, reason_repost_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ReasonRepost<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReasonRepostBuilder<reason_repost_state::Empty, S> {
+        ReasonRepostBuilder::builder()
+    }
+}
+
+impl ReasonRepostBuilder<reason_repost_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReasonRepostBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReasonRepostBuilder<'a, S>
+impl<S: BosStr> ReasonRepostBuilder<reason_repost_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReasonRepostBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ReasonRepostBuilder<St, S>
 where
-    S: reason_repost_state::State,
-    S::By: reason_repost_state::IsUnset,
+    St: reason_repost_state::State,
+    St::By: reason_repost_state::IsUnset,
 {
     /// Set the `by` field (required)
     pub fn by(
         mut self,
-        value: impl Into<ProfileViewBasic<'a>>,
-    ) -> ReasonRepostBuilder<'a, reason_repost_state::SetBy<S>> {
+        value: impl Into<ProfileViewBasic<S>>,
+    ) -> ReasonRepostBuilder<reason_repost_state::SetBy<St>, S> {
         self._fields.0 = Option::Some(value.into());
         ReasonRepostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: reason_repost_state::State> ReasonRepostBuilder<'a, S> {
+impl<St: reason_repost_state::State, S: BosStr> ReasonRepostBuilder<St, S> {
     /// Set the `cid` field (optional)
-    pub fn cid(mut self, value: impl Into<Option<Cid<'a>>>) -> Self {
+    pub fn cid(mut self, value: impl Into<Option<Cid<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `cid` field to an Option value (optional)
-    pub fn maybe_cid(mut self, value: Option<Cid<'a>>) -> Self {
+    pub fn maybe_cid(mut self, value: Option<Cid<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> ReasonRepostBuilder<'a, S>
+impl<St, S: BosStr> ReasonRepostBuilder<St, S>
 where
-    S: reason_repost_state::State,
-    S::IndexedAt: reason_repost_state::IsUnset,
+    St: reason_repost_state::State,
+    St::IndexedAt: reason_repost_state::IsUnset,
 {
     /// Set the `indexedAt` field (required)
     pub fn indexed_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> ReasonRepostBuilder<'a, reason_repost_state::SetIndexedAt<S>> {
+    ) -> ReasonRepostBuilder<reason_repost_state::SetIndexedAt<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ReasonRepostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: reason_repost_state::State> ReasonRepostBuilder<'a, S> {
+impl<St: reason_repost_state::State, S: BosStr> ReasonRepostBuilder<St, S> {
     /// Set the `uri` field (optional)
-    pub fn uri(mut self, value: impl Into<Option<AtUri<'a>>>) -> Self {
+    pub fn uri(mut self, value: impl Into<Option<AtUri<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `uri` field to an Option value (optional)
-    pub fn maybe_uri(mut self, value: Option<AtUri<'a>>) -> Self {
+    pub fn maybe_uri(mut self, value: Option<AtUri<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> ReasonRepostBuilder<'a, S>
+impl<St, S: BosStr> ReasonRepostBuilder<St, S>
 where
-    S: reason_repost_state::State,
-    S::IndexedAt: reason_repost_state::IsSet,
-    S::By: reason_repost_state::IsSet,
+    St: reason_repost_state::State,
+    St::By: reason_repost_state::IsSet,
+    St::IndexedAt: reason_repost_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ReasonRepost<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ReasonRepost<S> {
         ReasonRepost {
             by: self._fields.0.unwrap(),
             cid: self._fields.1,
@@ -3931,11 +4042,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ReasonRepost<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ReasonRepost<S> {
         ReasonRepost {
             by: self._fields.0.unwrap(),
             cid: self._fields.1,
@@ -3956,74 +4067,92 @@ pub mod reply_ref_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Root;
         type Parent;
+        type Root;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Root = Unset;
         type Parent = Unset;
-    }
-    ///State transition - sets the `root` field to Set
-    pub struct SetRoot<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRoot<S> {}
-    impl<S: State> State for SetRoot<S> {
-        type Root = Set<members::root>;
-        type Parent = S::Parent;
+        type Root = Unset;
     }
     ///State transition - sets the `parent` field to Set
-    pub struct SetParent<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetParent<S> {}
-    impl<S: State> State for SetParent<S> {
-        type Root = S::Root;
+    pub struct SetParent<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetParent<St> {}
+    impl<St: State> State for SetParent<St> {
         type Parent = Set<members::parent>;
+        type Root = St::Root;
+    }
+    ///State transition - sets the `root` field to Set
+    pub struct SetRoot<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRoot<St> {}
+    impl<St: State> State for SetRoot<St> {
+        type Parent = St::Parent;
+        type Root = Set<members::root>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `root` field
-        pub struct root(());
         ///Marker type for the `parent` field
         pub struct parent(());
+        ///Marker type for the `root` field
+        pub struct root(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ReplyRefBuilder<'a, S: reply_ref_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ReplyRefBuilder<St: reply_ref_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<ProfileViewBasic<'a>>,
-        Option<ReplyRefParent<'a>>,
-        Option<ReplyRefRoot<'a>>,
+        Option<ProfileViewBasic<S>>,
+        Option<ReplyRefParent<S>>,
+        Option<ReplyRefRoot<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ReplyRef<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ReplyRefBuilder<'a, reply_ref_state::Empty> {
+impl ReplyRef<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ReplyRefBuilder<reply_ref_state::Empty, DefaultStr> {
         ReplyRefBuilder::new()
     }
 }
 
-impl<'a> ReplyRefBuilder<'a, reply_ref_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ReplyRef<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ReplyRefBuilder<reply_ref_state::Empty, S> {
+        ReplyRefBuilder::builder()
+    }
+}
+
+impl ReplyRefBuilder<reply_ref_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ReplyRefBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: reply_ref_state::State> ReplyRefBuilder<'a, S> {
+impl<S: BosStr> ReplyRefBuilder<reply_ref_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ReplyRefBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: reply_ref_state::State, S: BosStr> ReplyRefBuilder<St, S> {
     /// Set the `grandparentAuthor` field (optional)
     pub fn grandparent_author(
         mut self,
-        value: impl Into<Option<ProfileViewBasic<'a>>>,
+        value: impl Into<Option<ProfileViewBasic<S>>>,
     ) -> Self {
         self._fields.0 = value.into();
         self
@@ -4031,59 +4160,59 @@ impl<'a, S: reply_ref_state::State> ReplyRefBuilder<'a, S> {
     /// Set the `grandparentAuthor` field to an Option value (optional)
     pub fn maybe_grandparent_author(
         mut self,
-        value: Option<ProfileViewBasic<'a>>,
+        value: Option<ProfileViewBasic<S>>,
     ) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> ReplyRefBuilder<'a, S>
+impl<St, S: BosStr> ReplyRefBuilder<St, S>
 where
-    S: reply_ref_state::State,
-    S::Parent: reply_ref_state::IsUnset,
+    St: reply_ref_state::State,
+    St::Parent: reply_ref_state::IsUnset,
 {
     /// Set the `parent` field (required)
     pub fn parent(
         mut self,
-        value: impl Into<ReplyRefParent<'a>>,
-    ) -> ReplyRefBuilder<'a, reply_ref_state::SetParent<S>> {
+        value: impl Into<ReplyRefParent<S>>,
+    ) -> ReplyRefBuilder<reply_ref_state::SetParent<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ReplyRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReplyRefBuilder<'a, S>
+impl<St, S: BosStr> ReplyRefBuilder<St, S>
 where
-    S: reply_ref_state::State,
-    S::Root: reply_ref_state::IsUnset,
+    St: reply_ref_state::State,
+    St::Root: reply_ref_state::IsUnset,
 {
     /// Set the `root` field (required)
     pub fn root(
         mut self,
-        value: impl Into<ReplyRefRoot<'a>>,
-    ) -> ReplyRefBuilder<'a, reply_ref_state::SetRoot<S>> {
+        value: impl Into<ReplyRefRoot<S>>,
+    ) -> ReplyRefBuilder<reply_ref_state::SetRoot<St>, S> {
         self._fields.2 = Option::Some(value.into());
         ReplyRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> ReplyRefBuilder<'a, S>
+impl<St, S: BosStr> ReplyRefBuilder<St, S>
 where
-    S: reply_ref_state::State,
-    S::Root: reply_ref_state::IsSet,
-    S::Parent: reply_ref_state::IsSet,
+    St: reply_ref_state::State,
+    St::Parent: reply_ref_state::IsSet,
+    St::Root: reply_ref_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ReplyRef<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ReplyRef<S> {
         ReplyRef {
             grandparent_author: self._fields.0,
             parent: self._fields.1.unwrap(),
@@ -4091,11 +4220,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ReplyRef<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> ReplyRef<S> {
         ReplyRef {
             grandparent_author: self._fields.0,
             parent: self._fields.1.unwrap(),
@@ -4124,9 +4250,9 @@ pub mod skeleton_feed_post_state {
         type Post = Unset;
     }
     ///State transition - sets the `post` field to Set
-    pub struct SetPost<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPost<S> {}
-    impl<S: State> State for SetPost<S> {
+    pub struct SetPost<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPost<St> {}
+    impl<St: State> State for SetPost<St> {
         type Post = Set<members::post>;
     }
     /// Marker types for field names
@@ -4137,86 +4263,110 @@ pub mod skeleton_feed_post_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SkeletonFeedPostBuilder<'a, S: skeleton_feed_post_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<AtUri<'a>>, Option<SkeletonFeedPostReason<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct SkeletonFeedPostBuilder<
+    St: skeleton_feed_post_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<AtUri<S>>, Option<SkeletonFeedPostReason<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SkeletonFeedPost<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> SkeletonFeedPostBuilder<'a, skeleton_feed_post_state::Empty> {
+impl SkeletonFeedPost<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> SkeletonFeedPostBuilder<
+        skeleton_feed_post_state::Empty,
+        DefaultStr,
+    > {
         SkeletonFeedPostBuilder::new()
     }
 }
 
-impl<'a> SkeletonFeedPostBuilder<'a, skeleton_feed_post_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SkeletonFeedPost<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SkeletonFeedPostBuilder<skeleton_feed_post_state::Empty, S> {
+        SkeletonFeedPostBuilder::builder()
+    }
+}
+
+impl SkeletonFeedPostBuilder<skeleton_feed_post_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SkeletonFeedPostBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: skeleton_feed_post_state::State> SkeletonFeedPostBuilder<'a, S> {
+impl<S: BosStr> SkeletonFeedPostBuilder<skeleton_feed_post_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SkeletonFeedPostBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: skeleton_feed_post_state::State, S: BosStr> SkeletonFeedPostBuilder<St, S> {
     /// Set the `feedContext` field (optional)
-    pub fn feed_context(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn feed_context(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `feedContext` field to an Option value (optional)
-    pub fn maybe_feed_context(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_feed_context(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> SkeletonFeedPostBuilder<'a, S>
+impl<St, S: BosStr> SkeletonFeedPostBuilder<St, S>
 where
-    S: skeleton_feed_post_state::State,
-    S::Post: skeleton_feed_post_state::IsUnset,
+    St: skeleton_feed_post_state::State,
+    St::Post: skeleton_feed_post_state::IsUnset,
 {
     /// Set the `post` field (required)
     pub fn post(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> SkeletonFeedPostBuilder<'a, skeleton_feed_post_state::SetPost<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> SkeletonFeedPostBuilder<skeleton_feed_post_state::SetPost<St>, S> {
         self._fields.1 = Option::Some(value.into());
         SkeletonFeedPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: skeleton_feed_post_state::State> SkeletonFeedPostBuilder<'a, S> {
+impl<St: skeleton_feed_post_state::State, S: BosStr> SkeletonFeedPostBuilder<St, S> {
     /// Set the `reason` field (optional)
     pub fn reason(
         mut self,
-        value: impl Into<Option<SkeletonFeedPostReason<'a>>>,
+        value: impl Into<Option<SkeletonFeedPostReason<S>>>,
     ) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `reason` field to an Option value (optional)
-    pub fn maybe_reason(mut self, value: Option<SkeletonFeedPostReason<'a>>) -> Self {
+    pub fn maybe_reason(mut self, value: Option<SkeletonFeedPostReason<S>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> SkeletonFeedPostBuilder<'a, S>
+impl<St, S: BosStr> SkeletonFeedPostBuilder<St, S>
 where
-    S: skeleton_feed_post_state::State,
-    S::Post: skeleton_feed_post_state::IsSet,
+    St: skeleton_feed_post_state::State,
+    St::Post: skeleton_feed_post_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SkeletonFeedPost<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SkeletonFeedPost<S> {
         SkeletonFeedPost {
             feed_context: self._fields.0,
             post: self._fields.1.unwrap(),
@@ -4224,11 +4374,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> SkeletonFeedPost<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SkeletonFeedPost<S> {
         SkeletonFeedPost {
             feed_context: self._fields.0,
             post: self._fields.1.unwrap(),
@@ -4257,9 +4407,9 @@ pub mod skeleton_reason_repost_state {
         type Repost = Unset;
     }
     ///State transition - sets the `repost` field to Set
-    pub struct SetRepost<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetRepost<S> {}
-    impl<S: State> State for SetRepost<S> {
+    pub struct SetRepost<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetRepost<St> {}
+    impl<St: State> State for SetRepost<St> {
         type Repost = Set<members::repost>;
     }
     /// Marker types for field names
@@ -4270,70 +4420,94 @@ pub mod skeleton_reason_repost_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct SkeletonReasonRepostBuilder<'a, S: skeleton_reason_repost_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<AtUri<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct SkeletonReasonRepostBuilder<
+    St: skeleton_reason_repost_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AtUri<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> SkeletonReasonRepost<'a> {
-    /// Create a new builder for this type
+impl SkeletonReasonRepost<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
     pub fn new() -> SkeletonReasonRepostBuilder<
-        'a,
         skeleton_reason_repost_state::Empty,
+        DefaultStr,
     > {
         SkeletonReasonRepostBuilder::new()
     }
 }
 
-impl<'a> SkeletonReasonRepostBuilder<'a, skeleton_reason_repost_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> SkeletonReasonRepost<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> SkeletonReasonRepostBuilder<
+        skeleton_reason_repost_state::Empty,
+        S,
+    > {
+        SkeletonReasonRepostBuilder::builder()
+    }
+}
+
+impl SkeletonReasonRepostBuilder<skeleton_reason_repost_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         SkeletonReasonRepostBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonReasonRepostBuilder<'a, S>
+impl<S: BosStr> SkeletonReasonRepostBuilder<skeleton_reason_repost_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        SkeletonReasonRepostBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> SkeletonReasonRepostBuilder<St, S>
 where
-    S: skeleton_reason_repost_state::State,
-    S::Repost: skeleton_reason_repost_state::IsUnset,
+    St: skeleton_reason_repost_state::State,
+    St::Repost: skeleton_reason_repost_state::IsUnset,
 {
     /// Set the `repost` field (required)
     pub fn repost(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> SkeletonReasonRepostBuilder<'a, skeleton_reason_repost_state::SetRepost<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> SkeletonReasonRepostBuilder<skeleton_reason_repost_state::SetRepost<St>, S> {
         self._fields.0 = Option::Some(value.into());
         SkeletonReasonRepostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> SkeletonReasonRepostBuilder<'a, S>
+impl<St, S: BosStr> SkeletonReasonRepostBuilder<St, S>
 where
-    S: skeleton_reason_repost_state::State,
-    S::Repost: skeleton_reason_repost_state::IsSet,
+    St: skeleton_reason_repost_state::State,
+    St::Repost: skeleton_reason_repost_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> SkeletonReasonRepost<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> SkeletonReasonRepost<S> {
         SkeletonReasonRepost {
             repost: self._fields.0.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> SkeletonReasonRepost<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> SkeletonReasonRepost<S> {
         SkeletonReasonRepost {
             repost: self._fields.0.unwrap(),
             extra_data: Some(extra_data),
@@ -4360,9 +4534,9 @@ pub mod thread_view_post_state {
         type Post = Unset;
     }
     ///State transition - sets the `post` field to Set
-    pub struct SetPost<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPost<S> {}
-    impl<S: State> State for SetPost<S> {
+    pub struct SetPost<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPost<St> {}
+    impl<St: State> State for SetPost<St> {
         type Post = Set<members::post>;
     }
     /// Marker types for field names
@@ -4373,73 +4547,94 @@ pub mod thread_view_post_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct ThreadViewPostBuilder<'a, S: thread_view_post_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct ThreadViewPostBuilder<
+    St: thread_view_post_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<ThreadViewPostParent<'a>>,
-        Option<feed::PostView<'a>>,
-        Option<Vec<ThreadViewPostRepliesItem<'a>>>,
-        Option<feed::ThreadContext<'a>>,
+        Option<ThreadViewPostParent<S>>,
+        Option<feed::PostView<S>>,
+        Option<Vec<ThreadViewPostRepliesItem<S>>>,
+        Option<feed::ThreadContext<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> ThreadViewPost<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ThreadViewPostBuilder<'a, thread_view_post_state::Empty> {
+impl ThreadViewPost<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ThreadViewPostBuilder<thread_view_post_state::Empty, DefaultStr> {
         ThreadViewPostBuilder::new()
     }
 }
 
-impl<'a> ThreadViewPostBuilder<'a, thread_view_post_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> ThreadViewPost<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ThreadViewPostBuilder<thread_view_post_state::Empty, S> {
+        ThreadViewPostBuilder::builder()
+    }
+}
+
+impl ThreadViewPostBuilder<thread_view_post_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         ThreadViewPostBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: thread_view_post_state::State> ThreadViewPostBuilder<'a, S> {
+impl<S: BosStr> ThreadViewPostBuilder<thread_view_post_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ThreadViewPostBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: thread_view_post_state::State, S: BosStr> ThreadViewPostBuilder<St, S> {
     /// Set the `parent` field (optional)
-    pub fn parent(mut self, value: impl Into<Option<ThreadViewPostParent<'a>>>) -> Self {
+    pub fn parent(mut self, value: impl Into<Option<ThreadViewPostParent<S>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `parent` field to an Option value (optional)
-    pub fn maybe_parent(mut self, value: Option<ThreadViewPostParent<'a>>) -> Self {
+    pub fn maybe_parent(mut self, value: Option<ThreadViewPostParent<S>>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> ThreadViewPostBuilder<'a, S>
+impl<St, S: BosStr> ThreadViewPostBuilder<St, S>
 where
-    S: thread_view_post_state::State,
-    S::Post: thread_view_post_state::IsUnset,
+    St: thread_view_post_state::State,
+    St::Post: thread_view_post_state::IsUnset,
 {
     /// Set the `post` field (required)
     pub fn post(
         mut self,
-        value: impl Into<feed::PostView<'a>>,
-    ) -> ThreadViewPostBuilder<'a, thread_view_post_state::SetPost<S>> {
+        value: impl Into<feed::PostView<S>>,
+    ) -> ThreadViewPostBuilder<thread_view_post_state::SetPost<St>, S> {
         self._fields.1 = Option::Some(value.into());
         ThreadViewPostBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: thread_view_post_state::State> ThreadViewPostBuilder<'a, S> {
+impl<St: thread_view_post_state::State, S: BosStr> ThreadViewPostBuilder<St, S> {
     /// Set the `replies` field (optional)
     pub fn replies(
         mut self,
-        value: impl Into<Option<Vec<ThreadViewPostRepliesItem<'a>>>>,
+        value: impl Into<Option<Vec<ThreadViewPostRepliesItem<S>>>>,
     ) -> Self {
         self._fields.2 = value.into();
         self
@@ -4447,18 +4642,18 @@ impl<'a, S: thread_view_post_state::State> ThreadViewPostBuilder<'a, S> {
     /// Set the `replies` field to an Option value (optional)
     pub fn maybe_replies(
         mut self,
-        value: Option<Vec<ThreadViewPostRepliesItem<'a>>>,
+        value: Option<Vec<ThreadViewPostRepliesItem<S>>>,
     ) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: thread_view_post_state::State> ThreadViewPostBuilder<'a, S> {
+impl<St: thread_view_post_state::State, S: BosStr> ThreadViewPostBuilder<St, S> {
     /// Set the `threadContext` field (optional)
     pub fn thread_context(
         mut self,
-        value: impl Into<Option<feed::ThreadContext<'a>>>,
+        value: impl Into<Option<feed::ThreadContext<S>>>,
     ) -> Self {
         self._fields.3 = value.into();
         self
@@ -4466,20 +4661,20 @@ impl<'a, S: thread_view_post_state::State> ThreadViewPostBuilder<'a, S> {
     /// Set the `threadContext` field to an Option value (optional)
     pub fn maybe_thread_context(
         mut self,
-        value: Option<feed::ThreadContext<'a>>,
+        value: Option<feed::ThreadContext<S>>,
     ) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> ThreadViewPostBuilder<'a, S>
+impl<St, S: BosStr> ThreadViewPostBuilder<St, S>
 where
-    S: thread_view_post_state::State,
-    S::Post: thread_view_post_state::IsSet,
+    St: thread_view_post_state::State,
+    St::Post: thread_view_post_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> ThreadViewPost<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> ThreadViewPost<S> {
         ThreadViewPost {
             parent: self._fields.0,
             post: self._fields.1.unwrap(),
@@ -4488,11 +4683,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<jacquard_common::deps::smol_str::SmolStr, Data<'a>>,
-    ) -> ThreadViewPost<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> ThreadViewPost<S> {
         ThreadViewPost {
             parent: self._fields.0,
             post: self._fields.1.unwrap(),

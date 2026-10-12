@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Cid};
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -53,112 +55,105 @@ use crate::tools_ozone::moderation::RevokeAccountCredentialsEvent;
 use crate::tools_ozone::moderation::ScheduleTakedownEvent;
 use crate::tools_ozone::moderation::emit_event;
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct EmitEvent<'a> {
-    #[serde(borrow)]
-    pub created_by: Did<'a>,
-    #[serde(borrow)]
-    pub event: EmitEventEvent<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct EmitEvent<S: BosStr = DefaultStr> {
+    pub created_by: Did<S>,
+    pub event: EmitEventEvent<S>,
     ///An optional external ID for the event, used to deduplicate events from external systems. Fails when an event of same type with the same external ID exists for the same subject.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub external_id: Option<CowStr<'a>>,
+    pub external_id: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub mod_tool: Option<ModTool<'a>>,
+    pub mod_tool: Option<ModTool<S>>,
     ///Optional report-level targeting. If provided, this event will be linked to specific reports and reporters may be notified.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub report_action: Option<emit_event::ReportAction<'a>>,
-    #[serde(borrow)]
-    pub subject: EmitEventSubject<'a>,
+    pub report_action: Option<emit_event::ReportAction<S>>,
+    pub subject: EmitEventSubject<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub subject_blob_cids: Option<Vec<Cid<'a>>>,
+    pub subject_blob_cids: Option<Vec<Cid<S>>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum EmitEventEvent<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum EmitEventEvent<S: BosStr = DefaultStr> {
     #[serde(rename = "tools.ozone.moderation.defs#modEventTakedown")]
-    ModEventTakedown(Box<ModEventTakedown<'a>>),
+    ModEventTakedown(Box<ModEventTakedown<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventAcknowledge")]
-    ModEventAcknowledge(Box<ModEventAcknowledge<'a>>),
+    ModEventAcknowledge(Box<ModEventAcknowledge<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventEscalate")]
-    ModEventEscalate(Box<ModEventEscalate<'a>>),
+    ModEventEscalate(Box<ModEventEscalate<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventComment")]
-    ModEventComment(Box<ModEventComment<'a>>),
+    ModEventComment(Box<ModEventComment<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventLabel")]
-    ModEventLabel(Box<ModEventLabel<'a>>),
+    ModEventLabel(Box<ModEventLabel<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventReport")]
-    ModEventReport(Box<ModEventReport<'a>>),
+    ModEventReport(Box<ModEventReport<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventMute")]
-    ModEventMute(Box<ModEventMute<'a>>),
+    ModEventMute(Box<ModEventMute<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventUnmute")]
-    ModEventUnmute(Box<ModEventUnmute<'a>>),
+    ModEventUnmute(Box<ModEventUnmute<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventMuteReporter")]
-    ModEventMuteReporter(Box<ModEventMuteReporter<'a>>),
+    ModEventMuteReporter(Box<ModEventMuteReporter<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventUnmuteReporter")]
-    ModEventUnmuteReporter(Box<ModEventUnmuteReporter<'a>>),
+    ModEventUnmuteReporter(Box<ModEventUnmuteReporter<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventReverseTakedown")]
-    ModEventReverseTakedown(Box<ModEventReverseTakedown<'a>>),
+    ModEventReverseTakedown(Box<ModEventReverseTakedown<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventResolveAppeal")]
-    ModEventResolveAppeal(Box<ModEventResolveAppeal<'a>>),
+    ModEventResolveAppeal(Box<ModEventResolveAppeal<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventEmail")]
-    ModEventEmail(Box<ModEventEmail<'a>>),
+    ModEventEmail(Box<ModEventEmail<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventDivert")]
-    ModEventDivert(Box<ModEventDivert<'a>>),
+    ModEventDivert(Box<ModEventDivert<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventTag")]
-    ModEventTag(Box<ModEventTag<'a>>),
+    ModEventTag(Box<ModEventTag<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#accountEvent")]
-    AccountEvent(Box<AccountEvent<'a>>),
+    AccountEvent(Box<AccountEvent<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#identityEvent")]
-    IdentityEvent(Box<IdentityEvent<'a>>),
+    IdentityEvent(Box<IdentityEvent<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#recordEvent")]
-    RecordEvent(Box<RecordEvent<'a>>),
+    RecordEvent(Box<RecordEvent<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#modEventPriorityScore")]
-    ModEventPriorityScore(Box<ModEventPriorityScore<'a>>),
+    ModEventPriorityScore(Box<ModEventPriorityScore<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#ageAssuranceEvent")]
-    AgeAssuranceEvent(Box<AgeAssuranceEvent<'a>>),
+    AgeAssuranceEvent(Box<AgeAssuranceEvent<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#ageAssuranceOverrideEvent")]
-    AgeAssuranceOverrideEvent(Box<AgeAssuranceOverrideEvent<'a>>),
+    AgeAssuranceOverrideEvent(Box<AgeAssuranceOverrideEvent<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#ageAssurancePurgeEvent")]
-    AgeAssurancePurgeEvent(Box<AgeAssurancePurgeEvent<'a>>),
+    AgeAssurancePurgeEvent(Box<AgeAssurancePurgeEvent<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#revokeAccountCredentialsEvent")]
-    RevokeAccountCredentialsEvent(Box<RevokeAccountCredentialsEvent<'a>>),
+    RevokeAccountCredentialsEvent(Box<RevokeAccountCredentialsEvent<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#scheduleTakedownEvent")]
-    ScheduleTakedownEvent(Box<ScheduleTakedownEvent<'a>>),
+    ScheduleTakedownEvent(Box<ScheduleTakedownEvent<S>>),
     #[serde(rename = "tools.ozone.moderation.defs#cancelScheduledTakedownEvent")]
-    CancelScheduledTakedownEvent(Box<CancelScheduledTakedownEvent<'a>>),
+    CancelScheduledTakedownEvent(Box<CancelScheduledTakedownEvent<S>>),
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum EmitEventSubject<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum EmitEventSubject<S: BosStr = DefaultStr> {
     #[serde(rename = "com.atproto.admin.defs#repoRef")]
-    RepoRef(Box<RepoRef<'a>>),
+    RepoRef(Box<RepoRef<S>>),
     #[serde(rename = "com.atproto.repo.strongRef")]
-    StrongRef(Box<StrongRef<'a>>),
+    StrongRef(Box<StrongRef<S>>),
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct EmitEventOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct EmitEventOutput<S: BosStr = DefaultStr> {
     #[serde(flatten)]
-    #[serde(borrow)]
-    pub value: ModEventView<'a>,
+    pub value: ModEventView<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -167,21 +162,22 @@ pub struct EmitEventOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum EmitEventError<'a> {
+pub enum EmitEventError {
     #[serde(rename = "SubjectHasAction")]
-    SubjectHasAction(Option<CowStr<'a>>),
+    SubjectHasAction(Option<SmolStr>),
     /// An event with the same external ID already exists for the subject.
     #[serde(rename = "DuplicateExternalId")]
-    DuplicateExternalId(Option<CowStr<'a>>),
+    DuplicateExternalId(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for EmitEventError<'_> {
+impl core::fmt::Display for EmitEventError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::SubjectHasAction(msg) => {
@@ -198,17 +194,22 @@ impl core::fmt::Display for EmitEventError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
 /// Target specific reports when emitting a moderation event
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ReportAction<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct ReportAction<S: BosStr = DefaultStr> {
     ///Target ALL reports on the subject
     #[serde(skip_serializing_if = "Option::is_none")]
     pub all: Option<bool>,
@@ -217,24 +218,26 @@ pub struct ReportAction<'a> {
     pub ids: Option<Vec<i64>>,
     ///Note to send to reporter(s) when actioning their report
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub note: Option<CowStr<'a>>,
+    pub note: Option<S>,
     ///Target reports matching these report types on the subject (fully qualified NSIDs)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub types: Option<Vec<CowStr<'a>>>,
+    pub types: Option<Vec<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.moderation.emitEvent
+/** Response marker for the `tools.ozone.moderation.emitEvent` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `EmitEventOutput<S>` for this endpoint.*/
 pub struct EmitEventResponse;
 impl jacquard_common::xrpc::XrpcResp for EmitEventResponse {
     const NSID: &'static str = "tools.ozone.moderation.emitEvent";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = EmitEventOutput<'de>;
-    type Err<'de> = EmitEventError<'de>;
+    type Output<S: BosStr> = EmitEventOutput<S>;
+    type Err = EmitEventError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for EmitEvent<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for EmitEvent<S> {
     const NSID: &'static str = "tools.ozone.moderation.emitEvent";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -242,18 +245,20 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for EmitEvent<'a> {
     type Response = EmitEventResponse;
 }
 
-/// Endpoint type for tools.ozone.moderation.emitEvent
+/** Endpoint marker for the `tools.ozone.moderation.emitEvent` procedure.
+
+Path: `/xrpc/tools.ozone.moderation.emitEvent`. The request payload type is `EmitEvent<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct EmitEventRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for EmitEventRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.moderation.emitEvent";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = EmitEvent<'de>;
+    type Request<S: BosStr> = EmitEvent<S>;
     type Response = EmitEventResponse;
 }
 
-impl<'a> LexiconSchema for ReportAction<'a> {
+impl<S: BosStr> LexiconSchema for ReportAction<S> {
     fn nsid() -> &'static str {
         "tools.ozone.moderation.emitEvent"
     }
@@ -278,156 +283,174 @@ pub mod emit_event_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Event;
         type CreatedBy;
+        type Event;
         type Subject;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Event = Unset;
         type CreatedBy = Unset;
+        type Event = Unset;
         type Subject = Unset;
     }
-    ///State transition - sets the `event` field to Set
-    pub struct SetEvent<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEvent<S> {}
-    impl<S: State> State for SetEvent<S> {
-        type Event = Set<members::event>;
-        type CreatedBy = S::CreatedBy;
-        type Subject = S::Subject;
-    }
     ///State transition - sets the `created_by` field to Set
-    pub struct SetCreatedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedBy<S> {}
-    impl<S: State> State for SetCreatedBy<S> {
-        type Event = S::Event;
+    pub struct SetCreatedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedBy<St> {}
+    impl<St: State> State for SetCreatedBy<St> {
         type CreatedBy = Set<members::created_by>;
-        type Subject = S::Subject;
+        type Event = St::Event;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `event` field to Set
+    pub struct SetEvent<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetEvent<St> {}
+    impl<St: State> State for SetEvent<St> {
+        type CreatedBy = St::CreatedBy;
+        type Event = Set<members::event>;
+        type Subject = St::Subject;
     }
     ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
-        type Event = S::Event;
-        type CreatedBy = S::CreatedBy;
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
+        type CreatedBy = St::CreatedBy;
+        type Event = St::Event;
         type Subject = Set<members::subject>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `event` field
-        pub struct event(());
         ///Marker type for the `created_by` field
         pub struct created_by(());
+        ///Marker type for the `event` field
+        pub struct event(());
         ///Marker type for the `subject` field
         pub struct subject(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct EmitEventBuilder<'a, S: emit_event_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct EmitEventBuilder<St: emit_event_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<Did<'a>>,
-        Option<EmitEventEvent<'a>>,
-        Option<CowStr<'a>>,
-        Option<ModTool<'a>>,
-        Option<emit_event::ReportAction<'a>>,
-        Option<EmitEventSubject<'a>>,
-        Option<Vec<Cid<'a>>>,
+        Option<Did<S>>,
+        Option<EmitEventEvent<S>>,
+        Option<S>,
+        Option<ModTool<S>>,
+        Option<emit_event::ReportAction<S>>,
+        Option<EmitEventSubject<S>>,
+        Option<Vec<Cid<S>>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> EmitEvent<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> EmitEventBuilder<'a, emit_event_state::Empty> {
+impl EmitEvent<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> EmitEventBuilder<emit_event_state::Empty, DefaultStr> {
         EmitEventBuilder::new()
     }
 }
 
-impl<'a> EmitEventBuilder<'a, emit_event_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> EmitEvent<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> EmitEventBuilder<emit_event_state::Empty, S> {
+        EmitEventBuilder::builder()
+    }
+}
+
+impl EmitEventBuilder<emit_event_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         EmitEventBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EmitEventBuilder<'a, S>
+impl<S: BosStr> EmitEventBuilder<emit_event_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        EmitEventBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> EmitEventBuilder<St, S>
 where
-    S: emit_event_state::State,
-    S::CreatedBy: emit_event_state::IsUnset,
+    St: emit_event_state::State,
+    St::CreatedBy: emit_event_state::IsUnset,
 {
     /// Set the `createdBy` field (required)
     pub fn created_by(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> EmitEventBuilder<'a, emit_event_state::SetCreatedBy<S>> {
+        value: impl Into<Did<S>>,
+    ) -> EmitEventBuilder<emit_event_state::SetCreatedBy<St>, S> {
         self._fields.0 = Option::Some(value.into());
         EmitEventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EmitEventBuilder<'a, S>
+impl<St, S: BosStr> EmitEventBuilder<St, S>
 where
-    S: emit_event_state::State,
-    S::Event: emit_event_state::IsUnset,
+    St: emit_event_state::State,
+    St::Event: emit_event_state::IsUnset,
 {
     /// Set the `event` field (required)
     pub fn event(
         mut self,
-        value: impl Into<EmitEventEvent<'a>>,
-    ) -> EmitEventBuilder<'a, emit_event_state::SetEvent<S>> {
+        value: impl Into<EmitEventEvent<S>>,
+    ) -> EmitEventBuilder<emit_event_state::SetEvent<St>, S> {
         self._fields.1 = Option::Some(value.into());
         EmitEventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: emit_event_state::State> EmitEventBuilder<'a, S> {
+impl<St: emit_event_state::State, S: BosStr> EmitEventBuilder<St, S> {
     /// Set the `externalId` field (optional)
-    pub fn external_id(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn external_id(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `externalId` field to an Option value (optional)
-    pub fn maybe_external_id(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_external_id(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: emit_event_state::State> EmitEventBuilder<'a, S> {
+impl<St: emit_event_state::State, S: BosStr> EmitEventBuilder<St, S> {
     /// Set the `modTool` field (optional)
-    pub fn mod_tool(mut self, value: impl Into<Option<ModTool<'a>>>) -> Self {
+    pub fn mod_tool(mut self, value: impl Into<Option<ModTool<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `modTool` field to an Option value (optional)
-    pub fn maybe_mod_tool(mut self, value: Option<ModTool<'a>>) -> Self {
+    pub fn maybe_mod_tool(mut self, value: Option<ModTool<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: emit_event_state::State> EmitEventBuilder<'a, S> {
+impl<St: emit_event_state::State, S: BosStr> EmitEventBuilder<St, S> {
     /// Set the `reportAction` field (optional)
     pub fn report_action(
         mut self,
-        value: impl Into<Option<emit_event::ReportAction<'a>>>,
+        value: impl Into<Option<emit_event::ReportAction<S>>>,
     ) -> Self {
         self._fields.4 = value.into();
         self
@@ -435,54 +458,54 @@ impl<'a, S: emit_event_state::State> EmitEventBuilder<'a, S> {
     /// Set the `reportAction` field to an Option value (optional)
     pub fn maybe_report_action(
         mut self,
-        value: Option<emit_event::ReportAction<'a>>,
+        value: Option<emit_event::ReportAction<S>>,
     ) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S> EmitEventBuilder<'a, S>
+impl<St, S: BosStr> EmitEventBuilder<St, S>
 where
-    S: emit_event_state::State,
-    S::Subject: emit_event_state::IsUnset,
+    St: emit_event_state::State,
+    St::Subject: emit_event_state::IsUnset,
 {
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<EmitEventSubject<'a>>,
-    ) -> EmitEventBuilder<'a, emit_event_state::SetSubject<S>> {
+        value: impl Into<EmitEventSubject<S>>,
+    ) -> EmitEventBuilder<emit_event_state::SetSubject<St>, S> {
         self._fields.5 = Option::Some(value.into());
         EmitEventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: emit_event_state::State> EmitEventBuilder<'a, S> {
+impl<St: emit_event_state::State, S: BosStr> EmitEventBuilder<St, S> {
     /// Set the `subjectBlobCids` field (optional)
-    pub fn subject_blob_cids(mut self, value: impl Into<Option<Vec<Cid<'a>>>>) -> Self {
+    pub fn subject_blob_cids(mut self, value: impl Into<Option<Vec<Cid<S>>>>) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `subjectBlobCids` field to an Option value (optional)
-    pub fn maybe_subject_blob_cids(mut self, value: Option<Vec<Cid<'a>>>) -> Self {
+    pub fn maybe_subject_blob_cids(mut self, value: Option<Vec<Cid<S>>>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S> EmitEventBuilder<'a, S>
+impl<St, S: BosStr> EmitEventBuilder<St, S>
 where
-    S: emit_event_state::State,
-    S::Event: emit_event_state::IsSet,
-    S::CreatedBy: emit_event_state::IsSet,
-    S::Subject: emit_event_state::IsSet,
+    St: emit_event_state::State,
+    St::CreatedBy: emit_event_state::IsSet,
+    St::Event: emit_event_state::IsSet,
+    St::Subject: emit_event_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> EmitEvent<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> EmitEvent<S> {
         EmitEvent {
             created_by: self._fields.0.unwrap(),
             event: self._fields.1.unwrap(),
@@ -494,14 +517,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> EmitEvent<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> EmitEvent<S> {
         EmitEvent {
             created_by: self._fields.0.unwrap(),
             event: self._fields.1.unwrap(),

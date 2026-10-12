@@ -10,8 +10,10 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::chat_bsky::convo::LogAcceptConvo;
 use crate::chat_bsky::convo::LogAddMember;
@@ -45,113 +47,115 @@ use crate::chat_bsky::convo::LogWithdrawIncomingJoinRequest;
 use crate::chat_bsky::convo::LogWithdrawOutgoingJoinRequest;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetLog<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetLog<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetLogOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetLogOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub logs: Vec<GetLogOutputLogsItem<'a>>,
+    pub cursor: Option<S>,
+    pub logs: Vec<GetLogOutputLogsItem<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[open_union]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(tag = "$type", bound(deserialize = "'de: 'a"))]
-pub enum GetLogOutputLogsItem<'a> {
+#[serde(tag = "$type", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub enum GetLogOutputLogsItem<S: BosStr = DefaultStr> {
     #[serde(rename = "chat.bsky.convo.defs#logBeginConvo")]
-    LogBeginConvo(Box<LogBeginConvo<'a>>),
+    LogBeginConvo(Box<LogBeginConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logAcceptConvo")]
-    LogAcceptConvo(Box<LogAcceptConvo<'a>>),
+    LogAcceptConvo(Box<LogAcceptConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logLeaveConvo")]
-    LogLeaveConvo(Box<LogLeaveConvo<'a>>),
+    LogLeaveConvo(Box<LogLeaveConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logMuteConvo")]
-    LogMuteConvo(Box<LogMuteConvo<'a>>),
+    LogMuteConvo(Box<LogMuteConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logUnmuteConvo")]
-    LogUnmuteConvo(Box<LogUnmuteConvo<'a>>),
+    LogUnmuteConvo(Box<LogUnmuteConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logCreateMessage")]
-    LogCreateMessage(Box<LogCreateMessage<'a>>),
+    LogCreateMessage(Box<LogCreateMessage<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logDeleteMessage")]
-    LogDeleteMessage(Box<LogDeleteMessage<'a>>),
+    LogDeleteMessage(Box<LogDeleteMessage<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logReadMessage")]
-    LogReadMessage(Box<LogReadMessage<'a>>),
+    LogReadMessage(Box<LogReadMessage<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logAddReaction")]
-    LogAddReaction(Box<LogAddReaction<'a>>),
+    LogAddReaction(Box<LogAddReaction<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logRemoveReaction")]
-    LogRemoveReaction(Box<LogRemoveReaction<'a>>),
+    LogRemoveReaction(Box<LogRemoveReaction<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logReadConvo")]
-    LogReadConvo(Box<LogReadConvo<'a>>),
+    LogReadConvo(Box<LogReadConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logAddMember")]
-    LogAddMember(Box<LogAddMember<'a>>),
+    LogAddMember(Box<LogAddMember<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logRemoveMember")]
-    LogRemoveMember(Box<LogRemoveMember<'a>>),
+    LogRemoveMember(Box<LogRemoveMember<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logMemberJoin")]
-    LogMemberJoin(Box<LogMemberJoin<'a>>),
+    LogMemberJoin(Box<LogMemberJoin<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logMemberLeave")]
-    LogMemberLeave(Box<LogMemberLeave<'a>>),
+    LogMemberLeave(Box<LogMemberLeave<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logLockConvo")]
-    LogLockConvo(Box<LogLockConvo<'a>>),
+    LogLockConvo(Box<LogLockConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logUnlockConvo")]
-    LogUnlockConvo(Box<LogUnlockConvo<'a>>),
+    LogUnlockConvo(Box<LogUnlockConvo<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logLockConvoPermanently")]
-    LogLockConvoPermanently(Box<LogLockConvoPermanently<'a>>),
+    LogLockConvoPermanently(Box<LogLockConvoPermanently<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logEditGroup")]
-    LogEditGroup(Box<LogEditGroup<'a>>),
+    LogEditGroup(Box<LogEditGroup<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logCreateJoinLink")]
-    LogCreateJoinLink(Box<LogCreateJoinLink<'a>>),
+    LogCreateJoinLink(Box<LogCreateJoinLink<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logEditJoinLink")]
-    LogEditJoinLink(Box<LogEditJoinLink<'a>>),
+    LogEditJoinLink(Box<LogEditJoinLink<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logEnableJoinLink")]
-    LogEnableJoinLink(Box<LogEnableJoinLink<'a>>),
+    LogEnableJoinLink(Box<LogEnableJoinLink<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logDisableJoinLink")]
-    LogDisableJoinLink(Box<LogDisableJoinLink<'a>>),
+    LogDisableJoinLink(Box<LogDisableJoinLink<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logIncomingJoinRequest")]
-    LogIncomingJoinRequest(Box<LogIncomingJoinRequest<'a>>),
+    LogIncomingJoinRequest(Box<LogIncomingJoinRequest<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logApproveJoinRequest")]
-    LogApproveJoinRequest(Box<LogApproveJoinRequest<'a>>),
+    LogApproveJoinRequest(Box<LogApproveJoinRequest<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logRejectJoinRequest")]
-    LogRejectJoinRequest(Box<LogRejectJoinRequest<'a>>),
+    LogRejectJoinRequest(Box<LogRejectJoinRequest<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logOutgoingJoinRequest")]
-    LogOutgoingJoinRequest(Box<LogOutgoingJoinRequest<'a>>),
+    LogOutgoingJoinRequest(Box<LogOutgoingJoinRequest<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logWithdrawIncomingJoinRequest")]
-    LogWithdrawIncomingJoinRequest(Box<LogWithdrawIncomingJoinRequest<'a>>),
+    LogWithdrawIncomingJoinRequest(Box<LogWithdrawIncomingJoinRequest<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logWithdrawOutgoingJoinRequest")]
-    LogWithdrawOutgoingJoinRequest(Box<LogWithdrawOutgoingJoinRequest<'a>>),
+    LogWithdrawOutgoingJoinRequest(Box<LogWithdrawOutgoingJoinRequest<S>>),
     #[serde(rename = "chat.bsky.convo.defs#logReadJoinRequests")]
-    LogReadJoinRequests(Box<LogReadJoinRequests<'a>>),
+    LogReadJoinRequests(Box<LogReadJoinRequests<S>>),
 }
 
-/// Response type for chat.bsky.convo.getLog
+/** Response marker for the `chat.bsky.convo.getLog` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetLogOutput<S>` for this endpoint.*/
 pub struct GetLogResponse;
 impl jacquard_common::xrpc::XrpcResp for GetLogResponse {
     const NSID: &'static str = "chat.bsky.convo.getLog";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetLogOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetLogOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetLog<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetLog<S> {
     const NSID: &'static str = "chat.bsky.convo.getLog";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetLogResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.getLog
+/** Endpoint marker for the `chat.bsky.convo.getLog` query.
+
+Path: `/xrpc/chat.bsky.convo.getLog`. The request payload type is `GetLog<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetLogRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetLogRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.getLog";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetLog<'de>;
+    type Request<S: BosStr> = GetLog<S>;
     type Response = GetLogResponse;
 }
 
@@ -174,50 +178,68 @@ pub mod get_log_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetLogBuilder<'a, S: get_log_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetLogBuilder<St: get_log_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetLog<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetLogBuilder<'a, get_log_state::Empty> {
+impl GetLog<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetLogBuilder<get_log_state::Empty, DefaultStr> {
         GetLogBuilder::new()
     }
 }
 
-impl<'a> GetLogBuilder<'a, get_log_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetLog<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetLogBuilder<get_log_state::Empty, S> {
+        GetLogBuilder::builder()
+    }
+}
+
+impl GetLogBuilder<get_log_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetLogBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_log_state::State> GetLogBuilder<'a, S> {
+impl<S: BosStr> GetLogBuilder<get_log_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetLogBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: get_log_state::State, S: BosStr> GetLogBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> GetLogBuilder<'a, S>
+impl<St, S: BosStr> GetLogBuilder<St, S>
 where
-    S: get_log_state::State,
+    St: get_log_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetLog<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetLog<S> {
         GetLog { cursor: self._fields.0 }
     }
 }

@@ -5,6 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `tools.ozone.safelink` Lexicon namespace/module.
 pub mod add_rule;
 pub mod query_events;
 pub mod query_rules;
@@ -17,12 +18,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{Did, Datetime};
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -32,14 +35,14 @@ use serde::{Serialize, Deserialize};
 use crate::tools_ozone::safelink;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ActionType<'a> {
+pub enum ActionType<S: BosStr = DefaultStr> {
     Block,
     Warn,
     Whitelist,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> ActionType<'a> {
+impl<S: BosStr> ActionType<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Block => "block",
@@ -48,66 +51,54 @@ impl<'a> ActionType<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for ActionType<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "block" => Self::Block,
             "warn" => Self::Warn,
             "whitelist" => Self::Whitelist,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for ActionType<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "block" => Self::Block,
-            "warn" => Self::Warn,
-            "whitelist" => Self::Whitelist,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for ActionType<'a> {
+impl<S: BosStr> AsRef<str> for ActionType<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for ActionType<'a> {
+impl<S: BosStr> core::fmt::Display for ActionType<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for ActionType<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for ActionType<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for ActionType<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for ActionType<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for ActionType<'_> {
-    type Output = ActionType<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for ActionType<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ActionType<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             ActionType::Block => ActionType::Block,
@@ -120,43 +111,37 @@ impl jacquard_common::IntoStatic for ActionType<'_> {
 
 /// An event for URL safety decisions
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Event<'a> {
-    #[serde(borrow)]
-    pub action: safelink::ActionType<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Event<S: BosStr = DefaultStr> {
+    pub action: safelink::ActionType<S>,
     ///Optional comment about the decision
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub comment: Option<CowStr<'a>>,
+    pub comment: Option<S>,
     pub created_at: Datetime,
     ///DID of the user who created this rule
-    #[serde(borrow)]
-    pub created_by: Did<'a>,
-    #[serde(borrow)]
-    pub event_type: safelink::EventType<'a>,
+    pub created_by: Did<S>,
+    pub event_type: safelink::EventType<S>,
     ///Auto-incrementing row ID
     pub id: i64,
-    #[serde(borrow)]
-    pub pattern: safelink::PatternType<'a>,
-    #[serde(borrow)]
-    pub reason: safelink::ReasonType<'a>,
+    pub pattern: safelink::PatternType<S>,
+    pub reason: safelink::ReasonType<S>,
     ///The URL that this rule applies to
-    #[serde(borrow)]
-    pub url: CowStr<'a>,
+    pub url: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum EventType<'a> {
+pub enum EventType<S: BosStr = DefaultStr> {
     AddRule,
     UpdateRule,
     RemoveRule,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> EventType<'a> {
+impl<S: BosStr> EventType<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::AddRule => "addRule",
@@ -165,66 +150,54 @@ impl<'a> EventType<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for EventType<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "addRule" => Self::AddRule,
             "updateRule" => Self::UpdateRule,
             "removeRule" => Self::RemoveRule,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for EventType<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "addRule" => Self::AddRule,
-            "updateRule" => Self::UpdateRule,
-            "removeRule" => Self::RemoveRule,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for EventType<'a> {
+impl<S: BosStr> AsRef<str> for EventType<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for EventType<'a> {
+impl<S: BosStr> core::fmt::Display for EventType<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for EventType<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for EventType<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for EventType<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for EventType<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for EventType<'_> {
-    type Output = EventType<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for EventType<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = EventType<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             EventType::AddRule => EventType::AddRule,
@@ -237,13 +210,13 @@ impl jacquard_common::IntoStatic for EventType<'_> {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PatternType<'a> {
+pub enum PatternType<S: BosStr = DefaultStr> {
     Domain,
     Url,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> PatternType<'a> {
+impl<S: BosStr> PatternType<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Domain => "domain",
@@ -251,64 +224,53 @@ impl<'a> PatternType<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for PatternType<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "domain" => Self::Domain,
             "url" => Self::Url,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for PatternType<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "domain" => Self::Domain,
-            "url" => Self::Url,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for PatternType<'a> {
+impl<S: BosStr> AsRef<str> for PatternType<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for PatternType<'a> {
+impl<S: BosStr> core::fmt::Display for PatternType<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for PatternType<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for PatternType<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for PatternType<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for PatternType<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for PatternType<'_> {
-    type Output = PatternType<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for PatternType<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = PatternType<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             PatternType::Domain => PatternType::Domain,
@@ -320,15 +282,15 @@ impl jacquard_common::IntoStatic for PatternType<'_> {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ReasonType<'a> {
+pub enum ReasonType<S: BosStr = DefaultStr> {
     Csam,
     Spam,
     Phishing,
     None,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> ReasonType<'a> {
+impl<S: BosStr> ReasonType<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Csam => "csam",
@@ -338,68 +300,55 @@ impl<'a> ReasonType<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for ReasonType<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "csam" => Self::Csam,
             "spam" => Self::Spam,
             "phishing" => Self::Phishing,
             "none" => Self::None,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for ReasonType<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "csam" => Self::Csam,
-            "spam" => Self::Spam,
-            "phishing" => Self::Phishing,
-            "none" => Self::None,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> AsRef<str> for ReasonType<'a> {
+impl<S: BosStr> AsRef<str> for ReasonType<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> core::fmt::Display for ReasonType<'a> {
+impl<S: BosStr> core::fmt::Display for ReasonType<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> serde::Serialize for ReasonType<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for ReasonType<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for ReasonType<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for ReasonType<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl jacquard_common::IntoStatic for ReasonType<'_> {
-    type Output = ReasonType<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for ReasonType<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ReasonType<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             ReasonType::Csam => ReasonType::Csam,
@@ -413,33 +362,28 @@ impl jacquard_common::IntoStatic for ReasonType<'_> {
 
 /// Input for creating a URL safety rule
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct UrlRule<'a> {
-    #[serde(borrow)]
-    pub action: safelink::ActionType<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct UrlRule<S: BosStr = DefaultStr> {
+    pub action: safelink::ActionType<S>,
     ///Optional comment about the decision
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub comment: Option<CowStr<'a>>,
+    pub comment: Option<S>,
     ///Timestamp when the rule was created
     pub created_at: Datetime,
     ///DID of the user added the rule.
-    #[serde(borrow)]
-    pub created_by: Did<'a>,
-    #[serde(borrow)]
-    pub pattern: safelink::PatternType<'a>,
-    #[serde(borrow)]
-    pub reason: safelink::ReasonType<'a>,
+    pub created_by: Did<S>,
+    pub pattern: safelink::PatternType<S>,
+    pub reason: safelink::ReasonType<S>,
     ///Timestamp when the rule was last updated
     pub updated_at: Datetime,
     ///The URL or domain to apply the rule to
-    #[serde(borrow)]
-    pub url: CowStr<'a>,
+    pub url: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for Event<'a> {
+impl<S: BosStr> LexiconSchema for Event<S> {
     fn nsid() -> &'static str {
         "tools.ozone.safelink.defs"
     }
@@ -454,7 +398,7 @@ impl<'a> LexiconSchema for Event<'a> {
     }
 }
 
-impl<'a> LexiconSchema for UrlRule<'a> {
+impl<S: BosStr> LexiconSchema for UrlRule<S> {
     fn nsid() -> &'static str {
         "tools.ozone.safelink.defs"
     }
@@ -479,368 +423,386 @@ pub mod event_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Url;
-        type CreatedAt;
-        type Reason;
-        type Pattern;
         type Action;
-        type Id;
-        type EventType;
+        type CreatedAt;
         type CreatedBy;
+        type EventType;
+        type Id;
+        type Pattern;
+        type Reason;
+        type Url;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Url = Unset;
-        type CreatedAt = Unset;
-        type Reason = Unset;
-        type Pattern = Unset;
         type Action = Unset;
-        type Id = Unset;
-        type EventType = Unset;
+        type CreatedAt = Unset;
         type CreatedBy = Unset;
-    }
-    ///State transition - sets the `url` field to Set
-    pub struct SetUrl<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUrl<S> {}
-    impl<S: State> State for SetUrl<S> {
-        type Url = Set<members::url>;
-        type CreatedAt = S::CreatedAt;
-        type Reason = S::Reason;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Id = S::Id;
-        type EventType = S::EventType;
-        type CreatedBy = S::CreatedBy;
-    }
-    ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Url = S::Url;
-        type CreatedAt = Set<members::created_at>;
-        type Reason = S::Reason;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Id = S::Id;
-        type EventType = S::EventType;
-        type CreatedBy = S::CreatedBy;
-    }
-    ///State transition - sets the `reason` field to Set
-    pub struct SetReason<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReason<S> {}
-    impl<S: State> State for SetReason<S> {
-        type Url = S::Url;
-        type CreatedAt = S::CreatedAt;
-        type Reason = Set<members::reason>;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Id = S::Id;
-        type EventType = S::EventType;
-        type CreatedBy = S::CreatedBy;
-    }
-    ///State transition - sets the `pattern` field to Set
-    pub struct SetPattern<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPattern<S> {}
-    impl<S: State> State for SetPattern<S> {
-        type Url = S::Url;
-        type CreatedAt = S::CreatedAt;
-        type Reason = S::Reason;
-        type Pattern = Set<members::pattern>;
-        type Action = S::Action;
-        type Id = S::Id;
-        type EventType = S::EventType;
-        type CreatedBy = S::CreatedBy;
+        type EventType = Unset;
+        type Id = Unset;
+        type Pattern = Unset;
+        type Reason = Unset;
+        type Url = Unset;
     }
     ///State transition - sets the `action` field to Set
-    pub struct SetAction<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAction<S> {}
-    impl<S: State> State for SetAction<S> {
-        type Url = S::Url;
-        type CreatedAt = S::CreatedAt;
-        type Reason = S::Reason;
-        type Pattern = S::Pattern;
+    pub struct SetAction<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAction<St> {}
+    impl<St: State> State for SetAction<St> {
         type Action = Set<members::action>;
-        type Id = S::Id;
-        type EventType = S::EventType;
-        type CreatedBy = S::CreatedBy;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type EventType = St::EventType;
+        type Id = St::Id;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type Url = St::Url;
     }
-    ///State transition - sets the `id` field to Set
-    pub struct SetId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetId<S> {}
-    impl<S: State> State for SetId<S> {
-        type Url = S::Url;
-        type CreatedAt = S::CreatedAt;
-        type Reason = S::Reason;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Id = Set<members::id>;
-        type EventType = S::EventType;
-        type CreatedBy = S::CreatedBy;
-    }
-    ///State transition - sets the `event_type` field to Set
-    pub struct SetEventType<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEventType<S> {}
-    impl<S: State> State for SetEventType<S> {
-        type Url = S::Url;
-        type CreatedAt = S::CreatedAt;
-        type Reason = S::Reason;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Id = S::Id;
-        type EventType = Set<members::event_type>;
-        type CreatedBy = S::CreatedBy;
+    ///State transition - sets the `created_at` field to Set
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
+        type Action = St::Action;
+        type CreatedAt = Set<members::created_at>;
+        type CreatedBy = St::CreatedBy;
+        type EventType = St::EventType;
+        type Id = St::Id;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type Url = St::Url;
     }
     ///State transition - sets the `created_by` field to Set
-    pub struct SetCreatedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedBy<S> {}
-    impl<S: State> State for SetCreatedBy<S> {
-        type Url = S::Url;
-        type CreatedAt = S::CreatedAt;
-        type Reason = S::Reason;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Id = S::Id;
-        type EventType = S::EventType;
+    pub struct SetCreatedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedBy<St> {}
+    impl<St: State> State for SetCreatedBy<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
         type CreatedBy = Set<members::created_by>;
+        type EventType = St::EventType;
+        type Id = St::Id;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type Url = St::Url;
+    }
+    ///State transition - sets the `event_type` field to Set
+    pub struct SetEventType<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetEventType<St> {}
+    impl<St: State> State for SetEventType<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type EventType = Set<members::event_type>;
+        type Id = St::Id;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type Url = St::Url;
+    }
+    ///State transition - sets the `id` field to Set
+    pub struct SetId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetId<St> {}
+    impl<St: State> State for SetId<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type EventType = St::EventType;
+        type Id = Set<members::id>;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type Url = St::Url;
+    }
+    ///State transition - sets the `pattern` field to Set
+    pub struct SetPattern<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPattern<St> {}
+    impl<St: State> State for SetPattern<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type EventType = St::EventType;
+        type Id = St::Id;
+        type Pattern = Set<members::pattern>;
+        type Reason = St::Reason;
+        type Url = St::Url;
+    }
+    ///State transition - sets the `reason` field to Set
+    pub struct SetReason<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReason<St> {}
+    impl<St: State> State for SetReason<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type EventType = St::EventType;
+        type Id = St::Id;
+        type Pattern = St::Pattern;
+        type Reason = Set<members::reason>;
+        type Url = St::Url;
+    }
+    ///State transition - sets the `url` field to Set
+    pub struct SetUrl<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUrl<St> {}
+    impl<St: State> State for SetUrl<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type EventType = St::EventType;
+        type Id = St::Id;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type Url = Set<members::url>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `url` field
-        pub struct url(());
-        ///Marker type for the `created_at` field
-        pub struct created_at(());
-        ///Marker type for the `reason` field
-        pub struct reason(());
-        ///Marker type for the `pattern` field
-        pub struct pattern(());
         ///Marker type for the `action` field
         pub struct action(());
-        ///Marker type for the `id` field
-        pub struct id(());
-        ///Marker type for the `event_type` field
-        pub struct event_type(());
+        ///Marker type for the `created_at` field
+        pub struct created_at(());
         ///Marker type for the `created_by` field
         pub struct created_by(());
+        ///Marker type for the `event_type` field
+        pub struct event_type(());
+        ///Marker type for the `id` field
+        pub struct id(());
+        ///Marker type for the `pattern` field
+        pub struct pattern(());
+        ///Marker type for the `reason` field
+        pub struct reason(());
+        ///Marker type for the `url` field
+        pub struct url(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct EventBuilder<'a, S: event_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct EventBuilder<St: event_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<safelink::ActionType<'a>>,
-        Option<CowStr<'a>>,
+        Option<safelink::ActionType<S>>,
+        Option<S>,
         Option<Datetime>,
-        Option<Did<'a>>,
-        Option<safelink::EventType<'a>>,
+        Option<Did<S>>,
+        Option<safelink::EventType<S>>,
         Option<i64>,
-        Option<safelink::PatternType<'a>>,
-        Option<safelink::ReasonType<'a>>,
-        Option<CowStr<'a>>,
+        Option<safelink::PatternType<S>>,
+        Option<safelink::ReasonType<S>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Event<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> EventBuilder<'a, event_state::Empty> {
+impl Event<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> EventBuilder<event_state::Empty, DefaultStr> {
         EventBuilder::new()
     }
 }
 
-impl<'a> EventBuilder<'a, event_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Event<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> EventBuilder<event_state::Empty, S> {
+        EventBuilder::builder()
+    }
+}
+
+impl EventBuilder<event_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         EventBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EventBuilder<'a, S>
+impl<S: BosStr> EventBuilder<event_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        EventBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> EventBuilder<St, S>
 where
-    S: event_state::State,
-    S::Action: event_state::IsUnset,
+    St: event_state::State,
+    St::Action: event_state::IsUnset,
 {
     /// Set the `action` field (required)
     pub fn action(
         mut self,
-        value: impl Into<safelink::ActionType<'a>>,
-    ) -> EventBuilder<'a, event_state::SetAction<S>> {
+        value: impl Into<safelink::ActionType<S>>,
+    ) -> EventBuilder<event_state::SetAction<St>, S> {
         self._fields.0 = Option::Some(value.into());
         EventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: event_state::State> EventBuilder<'a, S> {
+impl<St: event_state::State, S: BosStr> EventBuilder<St, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn comment(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `comment` field to an Option value (optional)
-    pub fn maybe_comment(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_comment(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> EventBuilder<'a, S>
+impl<St, S: BosStr> EventBuilder<St, S>
 where
-    S: event_state::State,
-    S::CreatedAt: event_state::IsUnset,
+    St: event_state::State,
+    St::CreatedAt: event_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> EventBuilder<'a, event_state::SetCreatedAt<S>> {
+    ) -> EventBuilder<event_state::SetCreatedAt<St>, S> {
         self._fields.2 = Option::Some(value.into());
         EventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EventBuilder<'a, S>
+impl<St, S: BosStr> EventBuilder<St, S>
 where
-    S: event_state::State,
-    S::CreatedBy: event_state::IsUnset,
+    St: event_state::State,
+    St::CreatedBy: event_state::IsUnset,
 {
     /// Set the `createdBy` field (required)
     pub fn created_by(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> EventBuilder<'a, event_state::SetCreatedBy<S>> {
+        value: impl Into<Did<S>>,
+    ) -> EventBuilder<event_state::SetCreatedBy<St>, S> {
         self._fields.3 = Option::Some(value.into());
         EventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EventBuilder<'a, S>
+impl<St, S: BosStr> EventBuilder<St, S>
 where
-    S: event_state::State,
-    S::EventType: event_state::IsUnset,
+    St: event_state::State,
+    St::EventType: event_state::IsUnset,
 {
     /// Set the `eventType` field (required)
     pub fn event_type(
         mut self,
-        value: impl Into<safelink::EventType<'a>>,
-    ) -> EventBuilder<'a, event_state::SetEventType<S>> {
+        value: impl Into<safelink::EventType<S>>,
+    ) -> EventBuilder<event_state::SetEventType<St>, S> {
         self._fields.4 = Option::Some(value.into());
         EventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EventBuilder<'a, S>
+impl<St, S: BosStr> EventBuilder<St, S>
 where
-    S: event_state::State,
-    S::Id: event_state::IsUnset,
+    St: event_state::State,
+    St::Id: event_state::IsUnset,
 {
     /// Set the `id` field (required)
     pub fn id(
         mut self,
         value: impl Into<i64>,
-    ) -> EventBuilder<'a, event_state::SetId<S>> {
+    ) -> EventBuilder<event_state::SetId<St>, S> {
         self._fields.5 = Option::Some(value.into());
         EventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EventBuilder<'a, S>
+impl<St, S: BosStr> EventBuilder<St, S>
 where
-    S: event_state::State,
-    S::Pattern: event_state::IsUnset,
+    St: event_state::State,
+    St::Pattern: event_state::IsUnset,
 {
     /// Set the `pattern` field (required)
     pub fn pattern(
         mut self,
-        value: impl Into<safelink::PatternType<'a>>,
-    ) -> EventBuilder<'a, event_state::SetPattern<S>> {
+        value: impl Into<safelink::PatternType<S>>,
+    ) -> EventBuilder<event_state::SetPattern<St>, S> {
         self._fields.6 = Option::Some(value.into());
         EventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EventBuilder<'a, S>
+impl<St, S: BosStr> EventBuilder<St, S>
 where
-    S: event_state::State,
-    S::Reason: event_state::IsUnset,
+    St: event_state::State,
+    St::Reason: event_state::IsUnset,
 {
     /// Set the `reason` field (required)
     pub fn reason(
         mut self,
-        value: impl Into<safelink::ReasonType<'a>>,
-    ) -> EventBuilder<'a, event_state::SetReason<S>> {
+        value: impl Into<safelink::ReasonType<S>>,
+    ) -> EventBuilder<event_state::SetReason<St>, S> {
         self._fields.7 = Option::Some(value.into());
         EventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EventBuilder<'a, S>
+impl<St, S: BosStr> EventBuilder<St, S>
 where
-    S: event_state::State,
-    S::Url: event_state::IsUnset,
+    St: event_state::State,
+    St::Url: event_state::IsUnset,
 {
     /// Set the `url` field (required)
     pub fn url(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> EventBuilder<'a, event_state::SetUrl<S>> {
+        value: impl Into<S>,
+    ) -> EventBuilder<event_state::SetUrl<St>, S> {
         self._fields.8 = Option::Some(value.into());
         EventBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> EventBuilder<'a, S>
+impl<St, S: BosStr> EventBuilder<St, S>
 where
-    S: event_state::State,
-    S::Url: event_state::IsSet,
-    S::CreatedAt: event_state::IsSet,
-    S::Reason: event_state::IsSet,
-    S::Pattern: event_state::IsSet,
-    S::Action: event_state::IsSet,
-    S::Id: event_state::IsSet,
-    S::EventType: event_state::IsSet,
-    S::CreatedBy: event_state::IsSet,
+    St: event_state::State,
+    St::Action: event_state::IsSet,
+    St::CreatedAt: event_state::IsSet,
+    St::CreatedBy: event_state::IsSet,
+    St::EventType: event_state::IsSet,
+    St::Id: event_state::IsSet,
+    St::Pattern: event_state::IsSet,
+    St::Reason: event_state::IsSet,
+    St::Url: event_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Event<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Event<S> {
         Event {
             action: self._fields.0.unwrap(),
             comment: self._fields.1,
@@ -854,14 +816,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Event<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Event<S> {
         Event {
             action: self._fields.0.unwrap(),
             comment: self._fields.1,
@@ -1105,323 +1061,341 @@ pub mod url_rule_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type CreatedAt;
-        type UpdatedAt;
-        type Pattern;
         type Action;
-        type Reason;
+        type CreatedAt;
         type CreatedBy;
+        type Pattern;
+        type Reason;
+        type UpdatedAt;
         type Url;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type CreatedAt = Unset;
-        type UpdatedAt = Unset;
-        type Pattern = Unset;
         type Action = Unset;
-        type Reason = Unset;
+        type CreatedAt = Unset;
         type CreatedBy = Unset;
+        type Pattern = Unset;
+        type Reason = Unset;
+        type UpdatedAt = Unset;
         type Url = Unset;
     }
-    ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type CreatedAt = Set<members::created_at>;
-        type UpdatedAt = S::UpdatedAt;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Reason = S::Reason;
-        type CreatedBy = S::CreatedBy;
-        type Url = S::Url;
-    }
-    ///State transition - sets the `updated_at` field to Set
-    pub struct SetUpdatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUpdatedAt<S> {}
-    impl<S: State> State for SetUpdatedAt<S> {
-        type CreatedAt = S::CreatedAt;
-        type UpdatedAt = Set<members::updated_at>;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Reason = S::Reason;
-        type CreatedBy = S::CreatedBy;
-        type Url = S::Url;
-    }
-    ///State transition - sets the `pattern` field to Set
-    pub struct SetPattern<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetPattern<S> {}
-    impl<S: State> State for SetPattern<S> {
-        type CreatedAt = S::CreatedAt;
-        type UpdatedAt = S::UpdatedAt;
-        type Pattern = Set<members::pattern>;
-        type Action = S::Action;
-        type Reason = S::Reason;
-        type CreatedBy = S::CreatedBy;
-        type Url = S::Url;
-    }
     ///State transition - sets the `action` field to Set
-    pub struct SetAction<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAction<S> {}
-    impl<S: State> State for SetAction<S> {
-        type CreatedAt = S::CreatedAt;
-        type UpdatedAt = S::UpdatedAt;
-        type Pattern = S::Pattern;
+    pub struct SetAction<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAction<St> {}
+    impl<St: State> State for SetAction<St> {
         type Action = Set<members::action>;
-        type Reason = S::Reason;
-        type CreatedBy = S::CreatedBy;
-        type Url = S::Url;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type UpdatedAt = St::UpdatedAt;
+        type Url = St::Url;
     }
-    ///State transition - sets the `reason` field to Set
-    pub struct SetReason<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetReason<S> {}
-    impl<S: State> State for SetReason<S> {
-        type CreatedAt = S::CreatedAt;
-        type UpdatedAt = S::UpdatedAt;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Reason = Set<members::reason>;
-        type CreatedBy = S::CreatedBy;
-        type Url = S::Url;
+    ///State transition - sets the `created_at` field to Set
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
+        type Action = St::Action;
+        type CreatedAt = Set<members::created_at>;
+        type CreatedBy = St::CreatedBy;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type UpdatedAt = St::UpdatedAt;
+        type Url = St::Url;
     }
     ///State transition - sets the `created_by` field to Set
-    pub struct SetCreatedBy<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedBy<S> {}
-    impl<S: State> State for SetCreatedBy<S> {
-        type CreatedAt = S::CreatedAt;
-        type UpdatedAt = S::UpdatedAt;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Reason = S::Reason;
+    pub struct SetCreatedBy<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedBy<St> {}
+    impl<St: State> State for SetCreatedBy<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
         type CreatedBy = Set<members::created_by>;
-        type Url = S::Url;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type UpdatedAt = St::UpdatedAt;
+        type Url = St::Url;
+    }
+    ///State transition - sets the `pattern` field to Set
+    pub struct SetPattern<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetPattern<St> {}
+    impl<St: State> State for SetPattern<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Pattern = Set<members::pattern>;
+        type Reason = St::Reason;
+        type UpdatedAt = St::UpdatedAt;
+        type Url = St::Url;
+    }
+    ///State transition - sets the `reason` field to Set
+    pub struct SetReason<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetReason<St> {}
+    impl<St: State> State for SetReason<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Pattern = St::Pattern;
+        type Reason = Set<members::reason>;
+        type UpdatedAt = St::UpdatedAt;
+        type Url = St::Url;
+    }
+    ///State transition - sets the `updated_at` field to Set
+    pub struct SetUpdatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUpdatedAt<St> {}
+    impl<St: State> State for SetUpdatedAt<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type UpdatedAt = Set<members::updated_at>;
+        type Url = St::Url;
     }
     ///State transition - sets the `url` field to Set
-    pub struct SetUrl<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUrl<S> {}
-    impl<S: State> State for SetUrl<S> {
-        type CreatedAt = S::CreatedAt;
-        type UpdatedAt = S::UpdatedAt;
-        type Pattern = S::Pattern;
-        type Action = S::Action;
-        type Reason = S::Reason;
-        type CreatedBy = S::CreatedBy;
+    pub struct SetUrl<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUrl<St> {}
+    impl<St: State> State for SetUrl<St> {
+        type Action = St::Action;
+        type CreatedAt = St::CreatedAt;
+        type CreatedBy = St::CreatedBy;
+        type Pattern = St::Pattern;
+        type Reason = St::Reason;
+        type UpdatedAt = St::UpdatedAt;
         type Url = Set<members::url>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `created_at` field
-        pub struct created_at(());
-        ///Marker type for the `updated_at` field
-        pub struct updated_at(());
-        ///Marker type for the `pattern` field
-        pub struct pattern(());
         ///Marker type for the `action` field
         pub struct action(());
-        ///Marker type for the `reason` field
-        pub struct reason(());
+        ///Marker type for the `created_at` field
+        pub struct created_at(());
         ///Marker type for the `created_by` field
         pub struct created_by(());
+        ///Marker type for the `pattern` field
+        pub struct pattern(());
+        ///Marker type for the `reason` field
+        pub struct reason(());
+        ///Marker type for the `updated_at` field
+        pub struct updated_at(());
         ///Marker type for the `url` field
         pub struct url(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct UrlRuleBuilder<'a, S: url_rule_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct UrlRuleBuilder<St: url_rule_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<safelink::ActionType<'a>>,
-        Option<CowStr<'a>>,
+        Option<safelink::ActionType<S>>,
+        Option<S>,
         Option<Datetime>,
-        Option<Did<'a>>,
-        Option<safelink::PatternType<'a>>,
-        Option<safelink::ReasonType<'a>>,
+        Option<Did<S>>,
+        Option<safelink::PatternType<S>>,
+        Option<safelink::ReasonType<S>>,
         Option<Datetime>,
-        Option<CowStr<'a>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> UrlRule<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> UrlRuleBuilder<'a, url_rule_state::Empty> {
+impl UrlRule<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> UrlRuleBuilder<url_rule_state::Empty, DefaultStr> {
         UrlRuleBuilder::new()
     }
 }
 
-impl<'a> UrlRuleBuilder<'a, url_rule_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> UrlRule<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> UrlRuleBuilder<url_rule_state::Empty, S> {
+        UrlRuleBuilder::builder()
+    }
+}
+
+impl UrlRuleBuilder<url_rule_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         UrlRuleBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UrlRuleBuilder<'a, S>
+impl<S: BosStr> UrlRuleBuilder<url_rule_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        UrlRuleBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> UrlRuleBuilder<St, S>
 where
-    S: url_rule_state::State,
-    S::Action: url_rule_state::IsUnset,
+    St: url_rule_state::State,
+    St::Action: url_rule_state::IsUnset,
 {
     /// Set the `action` field (required)
     pub fn action(
         mut self,
-        value: impl Into<safelink::ActionType<'a>>,
-    ) -> UrlRuleBuilder<'a, url_rule_state::SetAction<S>> {
+        value: impl Into<safelink::ActionType<S>>,
+    ) -> UrlRuleBuilder<url_rule_state::SetAction<St>, S> {
         self._fields.0 = Option::Some(value.into());
         UrlRuleBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: url_rule_state::State> UrlRuleBuilder<'a, S> {
+impl<St: url_rule_state::State, S: BosStr> UrlRuleBuilder<St, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn comment(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `comment` field to an Option value (optional)
-    pub fn maybe_comment(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_comment(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> UrlRuleBuilder<'a, S>
+impl<St, S: BosStr> UrlRuleBuilder<St, S>
 where
-    S: url_rule_state::State,
-    S::CreatedAt: url_rule_state::IsUnset,
+    St: url_rule_state::State,
+    St::CreatedAt: url_rule_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> UrlRuleBuilder<'a, url_rule_state::SetCreatedAt<S>> {
+    ) -> UrlRuleBuilder<url_rule_state::SetCreatedAt<St>, S> {
         self._fields.2 = Option::Some(value.into());
         UrlRuleBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UrlRuleBuilder<'a, S>
+impl<St, S: BosStr> UrlRuleBuilder<St, S>
 where
-    S: url_rule_state::State,
-    S::CreatedBy: url_rule_state::IsUnset,
+    St: url_rule_state::State,
+    St::CreatedBy: url_rule_state::IsUnset,
 {
     /// Set the `createdBy` field (required)
     pub fn created_by(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> UrlRuleBuilder<'a, url_rule_state::SetCreatedBy<S>> {
+        value: impl Into<Did<S>>,
+    ) -> UrlRuleBuilder<url_rule_state::SetCreatedBy<St>, S> {
         self._fields.3 = Option::Some(value.into());
         UrlRuleBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UrlRuleBuilder<'a, S>
+impl<St, S: BosStr> UrlRuleBuilder<St, S>
 where
-    S: url_rule_state::State,
-    S::Pattern: url_rule_state::IsUnset,
+    St: url_rule_state::State,
+    St::Pattern: url_rule_state::IsUnset,
 {
     /// Set the `pattern` field (required)
     pub fn pattern(
         mut self,
-        value: impl Into<safelink::PatternType<'a>>,
-    ) -> UrlRuleBuilder<'a, url_rule_state::SetPattern<S>> {
+        value: impl Into<safelink::PatternType<S>>,
+    ) -> UrlRuleBuilder<url_rule_state::SetPattern<St>, S> {
         self._fields.4 = Option::Some(value.into());
         UrlRuleBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UrlRuleBuilder<'a, S>
+impl<St, S: BosStr> UrlRuleBuilder<St, S>
 where
-    S: url_rule_state::State,
-    S::Reason: url_rule_state::IsUnset,
+    St: url_rule_state::State,
+    St::Reason: url_rule_state::IsUnset,
 {
     /// Set the `reason` field (required)
     pub fn reason(
         mut self,
-        value: impl Into<safelink::ReasonType<'a>>,
-    ) -> UrlRuleBuilder<'a, url_rule_state::SetReason<S>> {
+        value: impl Into<safelink::ReasonType<S>>,
+    ) -> UrlRuleBuilder<url_rule_state::SetReason<St>, S> {
         self._fields.5 = Option::Some(value.into());
         UrlRuleBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UrlRuleBuilder<'a, S>
+impl<St, S: BosStr> UrlRuleBuilder<St, S>
 where
-    S: url_rule_state::State,
-    S::UpdatedAt: url_rule_state::IsUnset,
+    St: url_rule_state::State,
+    St::UpdatedAt: url_rule_state::IsUnset,
 {
     /// Set the `updatedAt` field (required)
     pub fn updated_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> UrlRuleBuilder<'a, url_rule_state::SetUpdatedAt<S>> {
+    ) -> UrlRuleBuilder<url_rule_state::SetUpdatedAt<St>, S> {
         self._fields.6 = Option::Some(value.into());
         UrlRuleBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UrlRuleBuilder<'a, S>
+impl<St, S: BosStr> UrlRuleBuilder<St, S>
 where
-    S: url_rule_state::State,
-    S::Url: url_rule_state::IsUnset,
+    St: url_rule_state::State,
+    St::Url: url_rule_state::IsUnset,
 {
     /// Set the `url` field (required)
     pub fn url(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> UrlRuleBuilder<'a, url_rule_state::SetUrl<S>> {
+        value: impl Into<S>,
+    ) -> UrlRuleBuilder<url_rule_state::SetUrl<St>, S> {
         self._fields.7 = Option::Some(value.into());
         UrlRuleBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> UrlRuleBuilder<'a, S>
+impl<St, S: BosStr> UrlRuleBuilder<St, S>
 where
-    S: url_rule_state::State,
-    S::CreatedAt: url_rule_state::IsSet,
-    S::UpdatedAt: url_rule_state::IsSet,
-    S::Pattern: url_rule_state::IsSet,
-    S::Action: url_rule_state::IsSet,
-    S::Reason: url_rule_state::IsSet,
-    S::CreatedBy: url_rule_state::IsSet,
-    S::Url: url_rule_state::IsSet,
+    St: url_rule_state::State,
+    St::Action: url_rule_state::IsSet,
+    St::CreatedAt: url_rule_state::IsSet,
+    St::CreatedBy: url_rule_state::IsSet,
+    St::Pattern: url_rule_state::IsSet,
+    St::Reason: url_rule_state::IsSet,
+    St::UpdatedAt: url_rule_state::IsSet,
+    St::Url: url_rule_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> UrlRule<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> UrlRule<S> {
         UrlRule {
             action: self._fields.0.unwrap(),
             comment: self._fields.1,
@@ -1434,14 +1408,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> UrlRule<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> UrlRule<S> {
         UrlRule {
             action: self._fields.0.unwrap(),
             comment: self._fields.1,

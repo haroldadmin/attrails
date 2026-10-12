@@ -10,28 +10,32 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct RequestPasswordReset<'a> {
-    #[serde(borrow)]
-    pub email: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct RequestPasswordReset<S: BosStr = DefaultStr> {
+    pub email: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for com.atproto.server.requestPasswordReset
+/** Response marker for the `com.atproto.server.requestPasswordReset` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `()` for this endpoint.*/
 pub struct RequestPasswordResetResponse;
 impl jacquard_common::xrpc::XrpcResp for RequestPasswordResetResponse {
     const NSID: &'static str = "com.atproto.server.requestPasswordReset";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = ();
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = ();
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for RequestPasswordReset<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for RequestPasswordReset<S> {
     const NSID: &'static str = "com.atproto.server.requestPasswordReset";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -39,13 +43,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for RequestPasswordReset<'a> {
     type Response = RequestPasswordResetResponse;
 }
 
-/// Endpoint type for com.atproto.server.requestPasswordReset
+/** Endpoint marker for the `com.atproto.server.requestPasswordReset` procedure.
+
+Path: `/xrpc/com.atproto.server.requestPasswordReset`. The request payload type is `RequestPasswordReset<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct RequestPasswordResetRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for RequestPasswordResetRequest {
     const PATH: &'static str = "/xrpc/com.atproto.server.requestPasswordReset";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = RequestPasswordReset<'de>;
+    type Request<S: BosStr> = RequestPasswordReset<S>;
     type Response = RequestPasswordResetResponse;
 }

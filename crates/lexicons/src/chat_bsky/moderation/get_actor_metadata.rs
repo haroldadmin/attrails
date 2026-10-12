@@ -10,11 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -24,61 +27,63 @@ use serde::{Serialize, Deserialize};
 use crate::chat_bsky::moderation::get_actor_metadata;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetActorMetadata<'a> {
-    #[serde(borrow)]
-    pub actor: Did<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetActorMetadata<S: BosStr = DefaultStr> {
+    pub actor: Did<S>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetActorMetadataOutput<'a> {
-    #[serde(borrow)]
-    pub all: get_actor_metadata::Metadata<'a>,
-    #[serde(borrow)]
-    pub day: get_actor_metadata::Metadata<'a>,
-    #[serde(borrow)]
-    pub month: get_actor_metadata::Metadata<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetActorMetadataOutput<S: BosStr = DefaultStr> {
+    pub all: get_actor_metadata::Metadata<S>,
+    pub day: get_actor_metadata::Metadata<S>,
+    pub month: get_actor_metadata::Metadata<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct Metadata<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct Metadata<S: BosStr = DefaultStr> {
     pub convos: i64,
     pub convos_started: i64,
     pub messages_received: i64,
     pub messages_sent: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for chat.bsky.moderation.getActorMetadata
+/** Response marker for the `chat.bsky.moderation.getActorMetadata` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetActorMetadataOutput<S>` for this endpoint.*/
 pub struct GetActorMetadataResponse;
 impl jacquard_common::xrpc::XrpcResp for GetActorMetadataResponse {
     const NSID: &'static str = "chat.bsky.moderation.getActorMetadata";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetActorMetadataOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetActorMetadataOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetActorMetadata<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetActorMetadata<S> {
     const NSID: &'static str = "chat.bsky.moderation.getActorMetadata";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetActorMetadataResponse;
 }
 
-/// Endpoint type for chat.bsky.moderation.getActorMetadata
+/** Endpoint marker for the `chat.bsky.moderation.getActorMetadata` query.
+
+Path: `/xrpc/chat.bsky.moderation.getActorMetadata`. The request payload type is `GetActorMetadata<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetActorMetadataRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetActorMetadataRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.moderation.getActorMetadata";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetActorMetadata<'de>;
+    type Request<S: BosStr> = GetActorMetadata<S>;
     type Response = GetActorMetadataResponse;
 }
 
-impl<'a> LexiconSchema for Metadata<'a> {
+impl<S: BosStr> LexiconSchema for Metadata<S> {
     fn nsid() -> &'static str {
         "chat.bsky.moderation.getActorMetadata"
     }
@@ -112,9 +117,9 @@ pub mod get_actor_metadata_state {
         type Actor = Unset;
     }
     ///State transition - sets the `actor` field to Set
-    pub struct SetActor<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetActor<S> {}
-    impl<S: State> State for SetActor<S> {
+    pub struct SetActor<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetActor<St> {}
+    impl<St: State> State for SetActor<St> {
         type Actor = Set<members::actor>;
     }
     /// Marker types for field names
@@ -125,57 +130,81 @@ pub mod get_actor_metadata_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetActorMetadataBuilder<'a, S: get_actor_metadata_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Did<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetActorMetadataBuilder<
+    St: get_actor_metadata_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Did<S>>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetActorMetadata<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetActorMetadataBuilder<'a, get_actor_metadata_state::Empty> {
+impl GetActorMetadata<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetActorMetadataBuilder<
+        get_actor_metadata_state::Empty,
+        DefaultStr,
+    > {
         GetActorMetadataBuilder::new()
     }
 }
 
-impl<'a> GetActorMetadataBuilder<'a, get_actor_metadata_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetActorMetadata<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetActorMetadataBuilder<get_actor_metadata_state::Empty, S> {
+        GetActorMetadataBuilder::builder()
+    }
+}
+
+impl GetActorMetadataBuilder<get_actor_metadata_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetActorMetadataBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetActorMetadataBuilder<'a, S>
+impl<S: BosStr> GetActorMetadataBuilder<get_actor_metadata_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetActorMetadataBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetActorMetadataBuilder<St, S>
 where
-    S: get_actor_metadata_state::State,
-    S::Actor: get_actor_metadata_state::IsUnset,
+    St: get_actor_metadata_state::State,
+    St::Actor: get_actor_metadata_state::IsUnset,
 {
     /// Set the `actor` field (required)
     pub fn actor(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> GetActorMetadataBuilder<'a, get_actor_metadata_state::SetActor<S>> {
+        value: impl Into<Did<S>>,
+    ) -> GetActorMetadataBuilder<get_actor_metadata_state::SetActor<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetActorMetadataBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetActorMetadataBuilder<'a, S>
+impl<St, S: BosStr> GetActorMetadataBuilder<St, S>
 where
-    S: get_actor_metadata_state::State,
-    S::Actor: get_actor_metadata_state::IsSet,
+    St: get_actor_metadata_state::State,
+    St::Actor: get_actor_metadata_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetActorMetadata<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetActorMetadata<S> {
         GetActorMetadata {
             actor: self._fields.0.unwrap(),
         }
@@ -192,181 +221,199 @@ pub mod metadata_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type MessagesReceived;
         type Convos;
         type ConvosStarted;
+        type MessagesReceived;
         type MessagesSent;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type MessagesReceived = Unset;
         type Convos = Unset;
         type ConvosStarted = Unset;
+        type MessagesReceived = Unset;
         type MessagesSent = Unset;
     }
-    ///State transition - sets the `messages_received` field to Set
-    pub struct SetMessagesReceived<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessagesReceived<S> {}
-    impl<S: State> State for SetMessagesReceived<S> {
-        type MessagesReceived = Set<members::messages_received>;
-        type Convos = S::Convos;
-        type ConvosStarted = S::ConvosStarted;
-        type MessagesSent = S::MessagesSent;
-    }
     ///State transition - sets the `convos` field to Set
-    pub struct SetConvos<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvos<S> {}
-    impl<S: State> State for SetConvos<S> {
-        type MessagesReceived = S::MessagesReceived;
+    pub struct SetConvos<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvos<St> {}
+    impl<St: State> State for SetConvos<St> {
         type Convos = Set<members::convos>;
-        type ConvosStarted = S::ConvosStarted;
-        type MessagesSent = S::MessagesSent;
+        type ConvosStarted = St::ConvosStarted;
+        type MessagesReceived = St::MessagesReceived;
+        type MessagesSent = St::MessagesSent;
     }
     ///State transition - sets the `convos_started` field to Set
-    pub struct SetConvosStarted<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetConvosStarted<S> {}
-    impl<S: State> State for SetConvosStarted<S> {
-        type MessagesReceived = S::MessagesReceived;
-        type Convos = S::Convos;
+    pub struct SetConvosStarted<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetConvosStarted<St> {}
+    impl<St: State> State for SetConvosStarted<St> {
+        type Convos = St::Convos;
         type ConvosStarted = Set<members::convos_started>;
-        type MessagesSent = S::MessagesSent;
+        type MessagesReceived = St::MessagesReceived;
+        type MessagesSent = St::MessagesSent;
+    }
+    ///State transition - sets the `messages_received` field to Set
+    pub struct SetMessagesReceived<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessagesReceived<St> {}
+    impl<St: State> State for SetMessagesReceived<St> {
+        type Convos = St::Convos;
+        type ConvosStarted = St::ConvosStarted;
+        type MessagesReceived = Set<members::messages_received>;
+        type MessagesSent = St::MessagesSent;
     }
     ///State transition - sets the `messages_sent` field to Set
-    pub struct SetMessagesSent<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetMessagesSent<S> {}
-    impl<S: State> State for SetMessagesSent<S> {
-        type MessagesReceived = S::MessagesReceived;
-        type Convos = S::Convos;
-        type ConvosStarted = S::ConvosStarted;
+    pub struct SetMessagesSent<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetMessagesSent<St> {}
+    impl<St: State> State for SetMessagesSent<St> {
+        type Convos = St::Convos;
+        type ConvosStarted = St::ConvosStarted;
+        type MessagesReceived = St::MessagesReceived;
         type MessagesSent = Set<members::messages_sent>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `messages_received` field
-        pub struct messages_received(());
         ///Marker type for the `convos` field
         pub struct convos(());
         ///Marker type for the `convos_started` field
         pub struct convos_started(());
+        ///Marker type for the `messages_received` field
+        pub struct messages_received(());
         ///Marker type for the `messages_sent` field
         pub struct messages_sent(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct MetadataBuilder<'a, S: metadata_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct MetadataBuilder<St: metadata_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
     _fields: (Option<i64>, Option<i64>, Option<i64>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Metadata<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> MetadataBuilder<'a, metadata_state::Empty> {
+impl Metadata<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> MetadataBuilder<metadata_state::Empty, DefaultStr> {
         MetadataBuilder::new()
     }
 }
 
-impl<'a> MetadataBuilder<'a, metadata_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> Metadata<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> MetadataBuilder<metadata_state::Empty, S> {
+        MetadataBuilder::builder()
+    }
+}
+
+impl MetadataBuilder<metadata_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         MetadataBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MetadataBuilder<'a, S>
+impl<S: BosStr> MetadataBuilder<metadata_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        MetadataBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> MetadataBuilder<St, S>
 where
-    S: metadata_state::State,
-    S::Convos: metadata_state::IsUnset,
+    St: metadata_state::State,
+    St::Convos: metadata_state::IsUnset,
 {
     /// Set the `convos` field (required)
     pub fn convos(
         mut self,
         value: impl Into<i64>,
-    ) -> MetadataBuilder<'a, metadata_state::SetConvos<S>> {
+    ) -> MetadataBuilder<metadata_state::SetConvos<St>, S> {
         self._fields.0 = Option::Some(value.into());
         MetadataBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MetadataBuilder<'a, S>
+impl<St, S: BosStr> MetadataBuilder<St, S>
 where
-    S: metadata_state::State,
-    S::ConvosStarted: metadata_state::IsUnset,
+    St: metadata_state::State,
+    St::ConvosStarted: metadata_state::IsUnset,
 {
     /// Set the `convosStarted` field (required)
     pub fn convos_started(
         mut self,
         value: impl Into<i64>,
-    ) -> MetadataBuilder<'a, metadata_state::SetConvosStarted<S>> {
+    ) -> MetadataBuilder<metadata_state::SetConvosStarted<St>, S> {
         self._fields.1 = Option::Some(value.into());
         MetadataBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MetadataBuilder<'a, S>
+impl<St, S: BosStr> MetadataBuilder<St, S>
 where
-    S: metadata_state::State,
-    S::MessagesReceived: metadata_state::IsUnset,
+    St: metadata_state::State,
+    St::MessagesReceived: metadata_state::IsUnset,
 {
     /// Set the `messagesReceived` field (required)
     pub fn messages_received(
         mut self,
         value: impl Into<i64>,
-    ) -> MetadataBuilder<'a, metadata_state::SetMessagesReceived<S>> {
+    ) -> MetadataBuilder<metadata_state::SetMessagesReceived<St>, S> {
         self._fields.2 = Option::Some(value.into());
         MetadataBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MetadataBuilder<'a, S>
+impl<St, S: BosStr> MetadataBuilder<St, S>
 where
-    S: metadata_state::State,
-    S::MessagesSent: metadata_state::IsUnset,
+    St: metadata_state::State,
+    St::MessagesSent: metadata_state::IsUnset,
 {
     /// Set the `messagesSent` field (required)
     pub fn messages_sent(
         mut self,
         value: impl Into<i64>,
-    ) -> MetadataBuilder<'a, metadata_state::SetMessagesSent<S>> {
+    ) -> MetadataBuilder<metadata_state::SetMessagesSent<St>, S> {
         self._fields.3 = Option::Some(value.into());
         MetadataBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> MetadataBuilder<'a, S>
+impl<St, S: BosStr> MetadataBuilder<St, S>
 where
-    S: metadata_state::State,
-    S::MessagesReceived: metadata_state::IsSet,
-    S::Convos: metadata_state::IsSet,
-    S::ConvosStarted: metadata_state::IsSet,
-    S::MessagesSent: metadata_state::IsSet,
+    St: metadata_state::State,
+    St::Convos: metadata_state::IsSet,
+    St::ConvosStarted: metadata_state::IsSet,
+    St::MessagesReceived: metadata_state::IsSet,
+    St::MessagesSent: metadata_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Metadata<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Metadata<S> {
         Metadata {
             convos: self._fields.0.unwrap(),
             convos_started: self._fields.1.unwrap(),
@@ -375,14 +422,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Metadata<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Metadata<S> {
         Metadata {
             convos: self._fields.0.unwrap(),
             convos_started: self._fields.1.unwrap(),

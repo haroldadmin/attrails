@@ -10,31 +10,31 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LeaveConvo<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LeaveConvo<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct LeaveConvoOutput<'a> {
-    #[serde(borrow)]
-    pub convo_id: CowStr<'a>,
-    #[serde(borrow)]
-    pub rev: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct LeaveConvoOutput<S: BosStr = DefaultStr> {
+    pub convo_id: S,
+    pub rev: S,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -43,21 +43,22 @@ pub struct LeaveConvoOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum LeaveConvoError<'a> {
+pub enum LeaveConvoError {
     #[serde(rename = "InvalidConvo")]
-    InvalidConvo(Option<CowStr<'a>>),
+    InvalidConvo(Option<SmolStr>),
     /// The owner of a group conversation cannot leave before locking the group.
     #[serde(rename = "OwnerCannotLeave")]
-    OwnerCannotLeave(Option<CowStr<'a>>),
+    OwnerCannotLeave(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for LeaveConvoError<'_> {
+impl core::fmt::Display for LeaveConvoError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidConvo(msg) => {
@@ -74,21 +75,29 @@ impl core::fmt::Display for LeaveConvoError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for chat.bsky.convo.leaveConvo
+/** Response marker for the `chat.bsky.convo.leaveConvo` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `LeaveConvoOutput<S>` for this endpoint.*/
 pub struct LeaveConvoResponse;
 impl jacquard_common::xrpc::XrpcResp for LeaveConvoResponse {
     const NSID: &'static str = "chat.bsky.convo.leaveConvo";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = LeaveConvoOutput<'de>;
-    type Err<'de> = LeaveConvoError<'de>;
+    type Output<S: BosStr> = LeaveConvoOutput<S>;
+    type Err = LeaveConvoError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for LeaveConvo<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for LeaveConvo<S> {
     const NSID: &'static str = "chat.bsky.convo.leaveConvo";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -96,13 +105,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for LeaveConvo<'a> {
     type Response = LeaveConvoResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.leaveConvo
+/** Endpoint marker for the `chat.bsky.convo.leaveConvo` procedure.
+
+Path: `/xrpc/chat.bsky.convo.leaveConvo`. The request payload type is `LeaveConvo<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct LeaveConvoRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for LeaveConvoRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.leaveConvo";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = LeaveConvo<'de>;
+    type Request<S: BosStr> = LeaveConvo<S>;
     type Response = LeaveConvoResponse;
 }

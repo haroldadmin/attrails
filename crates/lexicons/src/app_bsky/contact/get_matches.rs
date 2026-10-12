@@ -10,37 +10,36 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::actor::ProfileView;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetMatches<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetMatches<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetMatchesOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetMatchesOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub matches: Vec<ProfileView<'a>>,
+    pub cursor: Option<S>,
+    pub matches: Vec<ProfileView<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -49,24 +48,25 @@ pub struct GetMatchesOutput<'a> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetMatchesError<'a> {
+pub enum GetMatchesError {
     #[serde(rename = "InvalidDid")]
-    InvalidDid(Option<CowStr<'a>>),
+    InvalidDid(Option<SmolStr>),
     #[serde(rename = "InvalidLimit")]
-    InvalidLimit(Option<CowStr<'a>>),
+    InvalidLimit(Option<SmolStr>),
     #[serde(rename = "InvalidCursor")]
-    InvalidCursor(Option<CowStr<'a>>),
+    InvalidCursor(Option<SmolStr>),
     #[serde(rename = "InternalError")]
-    InternalError(Option<CowStr<'a>>),
+    InternalError(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetMatchesError<'_> {
+impl core::fmt::Display for GetMatchesError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidDid(msg) => {
@@ -97,32 +97,42 @@ impl core::fmt::Display for GetMatchesError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.contact.getMatches
+/** Response marker for the `app.bsky.contact.getMatches` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetMatchesOutput<S>` for this endpoint.*/
 pub struct GetMatchesResponse;
 impl jacquard_common::xrpc::XrpcResp for GetMatchesResponse {
     const NSID: &'static str = "app.bsky.contact.getMatches";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetMatchesOutput<'de>;
-    type Err<'de> = GetMatchesError<'de>;
+    type Output<S: BosStr> = GetMatchesOutput<S>;
+    type Err = GetMatchesError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetMatches<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetMatches<S> {
     const NSID: &'static str = "app.bsky.contact.getMatches";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetMatchesResponse;
 }
 
-/// Endpoint type for app.bsky.contact.getMatches
+/** Endpoint marker for the `app.bsky.contact.getMatches` query.
+
+Path: `/xrpc/app.bsky.contact.getMatches`. The request payload type is `GetMatches<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetMatchesRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetMatchesRequest {
     const PATH: &'static str = "/xrpc/app.bsky.contact.getMatches";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetMatches<'de>;
+    type Request<S: BosStr> = GetMatches<S>;
     type Response = GetMatchesResponse;
 }
 
@@ -149,45 +159,63 @@ pub mod get_matches_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetMatchesBuilder<'a, S: get_matches_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetMatchesBuilder<St: get_matches_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetMatches<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetMatchesBuilder<'a, get_matches_state::Empty> {
+impl GetMatches<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetMatchesBuilder<get_matches_state::Empty, DefaultStr> {
         GetMatchesBuilder::new()
     }
 }
 
-impl<'a> GetMatchesBuilder<'a, get_matches_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetMatches<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetMatchesBuilder<get_matches_state::Empty, S> {
+        GetMatchesBuilder::builder()
+    }
+}
+
+impl GetMatchesBuilder<get_matches_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetMatchesBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: get_matches_state::State> GetMatchesBuilder<'a, S> {
+impl<S: BosStr> GetMatchesBuilder<get_matches_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetMatchesBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: get_matches_state::State, S: BosStr> GetMatchesBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: get_matches_state::State> GetMatchesBuilder<'a, S> {
+impl<St: get_matches_state::State, S: BosStr> GetMatchesBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -200,12 +228,12 @@ impl<'a, S: get_matches_state::State> GetMatchesBuilder<'a, S> {
     }
 }
 
-impl<'a, S> GetMatchesBuilder<'a, S>
+impl<St, S: BosStr> GetMatchesBuilder<St, S>
 where
-    S: get_matches_state::State,
+    St: get_matches_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetMatches<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetMatches<S> {
         GetMatches {
             cursor: self._fields.0,
             limit: self._fields.1,

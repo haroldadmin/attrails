@@ -10,36 +10,42 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
 pub struct GetUnreadCounts {
-    /// Defaults to `true`.
+    ///  Defaults to `true`.
     #[serde(default = "_default_include_group_chats")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_group_chats: Option<bool>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetUnreadCountsOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetUnreadCountsOutput<S: BosStr = DefaultStr> {
     ///Number of unread, unlocked accepted convos. Counts convos with unread messages and unread join requests. Capped at 100, where 100 means more than 99.
     pub unread_accepted_convos: i64,
     ///Number of unread, unlocked request convos. Includes convos with unread messages, but not with unread join request, since only the owner of a group has join requests to read, and the group would necessarily be accepted. Capped at 100, where 100 means more than 99.
     pub unread_request_convos: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for chat.bsky.convo.getUnreadCounts
+/** Response marker for the `chat.bsky.convo.getUnreadCounts` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetUnreadCountsOutput<S>` for this endpoint.*/
 pub struct GetUnreadCountsResponse;
 impl jacquard_common::xrpc::XrpcResp for GetUnreadCountsResponse {
     const NSID: &'static str = "chat.bsky.convo.getUnreadCounts";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetUnreadCountsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = GetUnreadCountsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
 impl jacquard_common::xrpc::XrpcRequest for GetUnreadCounts {
@@ -48,12 +54,14 @@ impl jacquard_common::xrpc::XrpcRequest for GetUnreadCounts {
     type Response = GetUnreadCountsResponse;
 }
 
-/// Endpoint type for chat.bsky.convo.getUnreadCounts
+/** Endpoint marker for the `chat.bsky.convo.getUnreadCounts` query.
+
+Path: `/xrpc/chat.bsky.convo.getUnreadCounts`. The request payload type is `GetUnreadCounts`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetUnreadCountsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetUnreadCountsRequest {
     const PATH: &'static str = "/xrpc/chat.bsky.convo.getUnreadCounts";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetUnreadCounts;
+    type Request<S: BosStr> = GetUnreadCounts;
     type Response = GetUnreadCountsResponse;
 }
 
@@ -80,21 +88,21 @@ pub mod get_unread_counts_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetUnreadCountsBuilder<S: get_unread_counts_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct GetUnreadCountsBuilder<St: get_unread_counts_state::State> {
+    _state: PhantomData<fn() -> St>,
     _fields: (Option<bool>,),
 }
 
 impl GetUnreadCounts {
-    /// Create a new builder for this type
+    /// Create a new builder for this type.
     pub fn new() -> GetUnreadCountsBuilder<get_unread_counts_state::Empty> {
         GetUnreadCountsBuilder::new()
     }
 }
 
 impl GetUnreadCountsBuilder<get_unread_counts_state::Empty> {
-    /// Create a new builder with all fields unset
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetUnreadCountsBuilder {
             _state: PhantomData,
@@ -103,7 +111,17 @@ impl GetUnreadCountsBuilder<get_unread_counts_state::Empty> {
     }
 }
 
-impl<S: get_unread_counts_state::State> GetUnreadCountsBuilder<S> {
+impl GetUnreadCountsBuilder<get_unread_counts_state::Empty> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetUnreadCountsBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+        }
+    }
+}
+
+impl<St: get_unread_counts_state::State> GetUnreadCountsBuilder<St> {
     /// Set the `includeGroupChats` field (optional)
     pub fn include_group_chats(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.0 = value.into();
@@ -116,11 +134,11 @@ impl<S: get_unread_counts_state::State> GetUnreadCountsBuilder<S> {
     }
 }
 
-impl<S> GetUnreadCountsBuilder<S>
+impl<St> GetUnreadCountsBuilder<St>
 where
-    S: get_unread_counts_state::State,
+    St: get_unread_counts_state::State,
 {
-    /// Build the final struct
+    /// Build the final struct.
     pub fn build(self) -> GetUnreadCounts {
         GetUnreadCounts {
             include_group_chats: self._fields.0,

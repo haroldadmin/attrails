@@ -10,12 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Did;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -27,68 +29,68 @@ use crate::tools_ozone::signature::SigDetail;
 use crate::tools_ozone::signature::find_related_accounts;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct FindRelatedAccounts<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct FindRelatedAccounts<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub did: Did<'a>,
-    ///Defaults to `50`. Min: 1. Max: 100.
+    pub cursor: Option<S>,
+    pub did: Did<S>,
+    /// Defaults to `50`. Min: 1. Max: 100.
     #[serde(default = "_default_limit")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct FindRelatedAccountsOutput<'a> {
-    #[serde(borrow)]
-    pub accounts: Vec<find_related_accounts::RelatedAccount<'a>>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct FindRelatedAccountsOutput<S: BosStr = DefaultStr> {
+    pub accounts: Vec<find_related_accounts::RelatedAccount<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cursor: Option<CowStr<'a>>,
+    pub cursor: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct RelatedAccount<'a> {
-    #[serde(borrow)]
-    pub account: AccountView<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct RelatedAccount<S: BosStr = DefaultStr> {
+    pub account: AccountView<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub similarities: Option<Vec<SigDetail<'a>>>,
+    pub similarities: Option<Vec<SigDetail<S>>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.signature.findRelatedAccounts
+/** Response marker for the `tools.ozone.signature.findRelatedAccounts` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `FindRelatedAccountsOutput<S>` for this endpoint.*/
 pub struct FindRelatedAccountsResponse;
 impl jacquard_common::xrpc::XrpcResp for FindRelatedAccountsResponse {
     const NSID: &'static str = "tools.ozone.signature.findRelatedAccounts";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = FindRelatedAccountsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = FindRelatedAccountsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for FindRelatedAccounts<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for FindRelatedAccounts<S> {
     const NSID: &'static str = "tools.ozone.signature.findRelatedAccounts";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = FindRelatedAccountsResponse;
 }
 
-/// Endpoint type for tools.ozone.signature.findRelatedAccounts
+/** Endpoint marker for the `tools.ozone.signature.findRelatedAccounts` query.
+
+Path: `/xrpc/tools.ozone.signature.findRelatedAccounts`. The request payload type is `FindRelatedAccounts<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct FindRelatedAccountsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for FindRelatedAccountsRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.signature.findRelatedAccounts";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = FindRelatedAccounts<'de>;
+    type Request<S: BosStr> = FindRelatedAccounts<S>;
     type Response = FindRelatedAccountsResponse;
 }
 
-impl<'a> LexiconSchema for RelatedAccount<'a> {
+impl<S: BosStr> LexiconSchema for RelatedAccount<S> {
     fn nsid() -> &'static str {
         "tools.ozone.signature.findRelatedAccounts"
     }
@@ -126,9 +128,9 @@ pub mod find_related_accounts_state {
         type Did = Unset;
     }
     ///State transition - sets the `did` field to Set
-    pub struct SetDid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDid<S> {}
-    impl<S: State> State for SetDid<S> {
+    pub struct SetDid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDid<St> {}
+    impl<St: State> State for SetDid<St> {
         type Did = Set<members::did>;
     }
     /// Marker types for field names
@@ -139,64 +141,97 @@ pub mod find_related_accounts_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct FindRelatedAccountsBuilder<'a, S: find_related_accounts_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>, Option<Did<'a>>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct FindRelatedAccountsBuilder<
+    St: find_related_accounts_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<Did<S>>, Option<i64>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> FindRelatedAccounts<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> FindRelatedAccountsBuilder<'a, find_related_accounts_state::Empty> {
+impl FindRelatedAccounts<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> FindRelatedAccountsBuilder<
+        find_related_accounts_state::Empty,
+        DefaultStr,
+    > {
         FindRelatedAccountsBuilder::new()
     }
 }
 
-impl<'a> FindRelatedAccountsBuilder<'a, find_related_accounts_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> FindRelatedAccounts<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> FindRelatedAccountsBuilder<
+        find_related_accounts_state::Empty,
+        S,
+    > {
+        FindRelatedAccountsBuilder::builder()
+    }
+}
+
+impl FindRelatedAccountsBuilder<find_related_accounts_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         FindRelatedAccountsBuilder {
             _state: PhantomData,
             _fields: (None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: find_related_accounts_state::State> FindRelatedAccountsBuilder<'a, S> {
+impl<S: BosStr> FindRelatedAccountsBuilder<find_related_accounts_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        FindRelatedAccountsBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<
+    St: find_related_accounts_state::State,
+    S: BosStr,
+> FindRelatedAccountsBuilder<St, S> {
     /// Set the `cursor` field (optional)
-    pub fn cursor(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn cursor(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `cursor` field to an Option value (optional)
-    pub fn maybe_cursor(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_cursor(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> FindRelatedAccountsBuilder<'a, S>
+impl<St, S: BosStr> FindRelatedAccountsBuilder<St, S>
 where
-    S: find_related_accounts_state::State,
-    S::Did: find_related_accounts_state::IsUnset,
+    St: find_related_accounts_state::State,
+    St::Did: find_related_accounts_state::IsUnset,
 {
     /// Set the `did` field (required)
     pub fn did(
         mut self,
-        value: impl Into<Did<'a>>,
-    ) -> FindRelatedAccountsBuilder<'a, find_related_accounts_state::SetDid<S>> {
+        value: impl Into<Did<S>>,
+    ) -> FindRelatedAccountsBuilder<find_related_accounts_state::SetDid<St>, S> {
         self._fields.1 = Option::Some(value.into());
         FindRelatedAccountsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: find_related_accounts_state::State> FindRelatedAccountsBuilder<'a, S> {
+impl<
+    St: find_related_accounts_state::State,
+    S: BosStr,
+> FindRelatedAccountsBuilder<St, S> {
     /// Set the `limit` field (optional)
     pub fn limit(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.2 = value.into();
@@ -209,13 +244,13 @@ impl<'a, S: find_related_accounts_state::State> FindRelatedAccountsBuilder<'a, S
     }
 }
 
-impl<'a, S> FindRelatedAccountsBuilder<'a, S>
+impl<St, S: BosStr> FindRelatedAccountsBuilder<St, S>
 where
-    S: find_related_accounts_state::State,
-    S::Did: find_related_accounts_state::IsSet,
+    St: find_related_accounts_state::State,
+    St::Did: find_related_accounts_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> FindRelatedAccounts<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> FindRelatedAccounts<S> {
         FindRelatedAccounts {
             cursor: self._fields.0,
             did: self._fields.1.unwrap(),
@@ -243,9 +278,9 @@ pub mod related_account_state {
         type Account = Unset;
     }
     ///State transition - sets the `account` field to Set
-    pub struct SetAccount<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAccount<S> {}
-    impl<S: State> State for SetAccount<S> {
+    pub struct SetAccount<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetAccount<St> {}
+    impl<St: State> State for SetAccount<St> {
         type Account = Set<members::account>;
     }
     /// Marker types for field names
@@ -256,84 +291,102 @@ pub mod related_account_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct RelatedAccountBuilder<'a, S: related_account_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<AccountView<'a>>, Option<Vec<SigDetail<'a>>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct RelatedAccountBuilder<
+    St: related_account_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<AccountView<S>>, Option<Vec<SigDetail<S>>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> RelatedAccount<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> RelatedAccountBuilder<'a, related_account_state::Empty> {
+impl RelatedAccount<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> RelatedAccountBuilder<related_account_state::Empty, DefaultStr> {
         RelatedAccountBuilder::new()
     }
 }
 
-impl<'a> RelatedAccountBuilder<'a, related_account_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> RelatedAccount<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> RelatedAccountBuilder<related_account_state::Empty, S> {
+        RelatedAccountBuilder::builder()
+    }
+}
+
+impl RelatedAccountBuilder<related_account_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         RelatedAccountBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> RelatedAccountBuilder<'a, S>
+impl<S: BosStr> RelatedAccountBuilder<related_account_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        RelatedAccountBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> RelatedAccountBuilder<St, S>
 where
-    S: related_account_state::State,
-    S::Account: related_account_state::IsUnset,
+    St: related_account_state::State,
+    St::Account: related_account_state::IsUnset,
 {
     /// Set the `account` field (required)
     pub fn account(
         mut self,
-        value: impl Into<AccountView<'a>>,
-    ) -> RelatedAccountBuilder<'a, related_account_state::SetAccount<S>> {
+        value: impl Into<AccountView<S>>,
+    ) -> RelatedAccountBuilder<related_account_state::SetAccount<St>, S> {
         self._fields.0 = Option::Some(value.into());
         RelatedAccountBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: related_account_state::State> RelatedAccountBuilder<'a, S> {
+impl<St: related_account_state::State, S: BosStr> RelatedAccountBuilder<St, S> {
     /// Set the `similarities` field (optional)
-    pub fn similarities(mut self, value: impl Into<Option<Vec<SigDetail<'a>>>>) -> Self {
+    pub fn similarities(mut self, value: impl Into<Option<Vec<SigDetail<S>>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `similarities` field to an Option value (optional)
-    pub fn maybe_similarities(mut self, value: Option<Vec<SigDetail<'a>>>) -> Self {
+    pub fn maybe_similarities(mut self, value: Option<Vec<SigDetail<S>>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> RelatedAccountBuilder<'a, S>
+impl<St, S: BosStr> RelatedAccountBuilder<St, S>
 where
-    S: related_account_state::State,
-    S::Account: related_account_state::IsSet,
+    St: related_account_state::State,
+    St::Account: related_account_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> RelatedAccount<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> RelatedAccount<S> {
         RelatedAccount {
             account: self._fields.0.unwrap(),
             similarities: self._fields.1,
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> RelatedAccount<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> RelatedAccount<S> {
         RelatedAccount {
             account: self._fields.0.unwrap(),
             similarities: self._fields.1,

@@ -10,59 +10,56 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::Datetime;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 use crate::app_bsky::video::JobStatus;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetUploadStatus<'a> {
-    #[serde(borrow)]
-    pub job_id: CowStr<'a>,
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetUploadStatus<S: BosStr = DefaultStr> {
+    pub job_id: S,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct GetUploadStatusOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct GetUploadStatusOutput<S: BosStr = DefaultStr> {
     ///Present only when state is completed; may differ from jobId on deduplication.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub completed_job_id: Option<CowStr<'a>>,
+    pub completed_job_id: Option<S>,
     pub expires_at: Datetime,
     ///Present only when state is failed.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub failure_reason: Option<CowStr<'a>>,
-    #[serde(borrow)]
-    pub job_id: CowStr<'a>,
+    pub failure_reason: Option<S>,
+    pub job_id: S,
     ///Present only when state is completed.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub job_status: Option<JobStatus<'a>>,
+    pub job_status: Option<JobStatus<S>>,
     pub part_count: i64,
     pub part_size_bytes: i64,
     pub received_parts: Vec<i64>,
-    #[serde(borrow)]
-    pub state: GetUploadStatusOutputState<'a>,
+    pub state: GetUploadStatusOutputState<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GetUploadStatusOutputState<'a> {
+pub enum GetUploadStatusOutputState<S: BosStr = DefaultStr> {
     Created,
     Finishing,
     Completed,
     Failed,
     Aborted,
     Expired,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> GetUploadStatusOutputState<'a> {
+impl<S: BosStr> GetUploadStatusOutputState<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Created => "created",
@@ -74,78 +71,64 @@ impl<'a> GetUploadStatusOutputState<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for GetUploadStatusOutputState<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "created" => Self::Created,
             "finishing" => Self::Finishing,
             "completed" => Self::Completed,
             "failed" => Self::Failed,
             "aborted" => Self::Aborted,
             "expired" => Self::Expired,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for GetUploadStatusOutputState<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "created" => Self::Created,
-            "finishing" => Self::Finishing,
-            "completed" => Self::Completed,
-            "failed" => Self::Failed,
-            "aborted" => Self::Aborted,
-            "expired" => Self::Expired,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for GetUploadStatusOutputState<'a> {
+impl<S: BosStr> core::fmt::Display for GetUploadStatusOutputState<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for GetUploadStatusOutputState<'a> {
+impl<S: BosStr> AsRef<str> for GetUploadStatusOutputState<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for GetUploadStatusOutputState<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for GetUploadStatusOutputState<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for GetUploadStatusOutputState<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de>
+for GetUploadStatusOutputState<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for GetUploadStatusOutputState<'a> {
+impl<S: BosStr + Default> Default for GetUploadStatusOutputState<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for GetUploadStatusOutputState<'_> {
-    type Output = GetUploadStatusOutputState<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for GetUploadStatusOutputState<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = GetUploadStatusOutputState<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             GetUploadStatusOutputState::Created => GetUploadStatusOutputState::Created,
@@ -166,7 +149,6 @@ impl jacquard_common::IntoStatic for GetUploadStatusOutputState<'_> {
 }
 
 
-#[open_union]
 #[derive(
     Serialize,
     Deserialize,
@@ -175,19 +157,20 @@ impl jacquard_common::IntoStatic for GetUploadStatusOutputState<'_> {
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum GetUploadStatusError<'a> {
+pub enum GetUploadStatusError {
     /// The job ID is unknown or aged out of retention; known terminal sessions remain readable and are never reported as not found.
     #[serde(rename = "UploadNotFound")]
-    UploadNotFound(Option<CowStr<'a>>),
+    UploadNotFound(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for GetUploadStatusError<'_> {
+impl core::fmt::Display for GetUploadStatusError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::UploadNotFound(msg) => {
@@ -197,32 +180,42 @@ impl core::fmt::Display for GetUploadStatusError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.video.getUploadStatus
+/** Response marker for the `app.bsky.video.getUploadStatus` query.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `GetUploadStatusOutput<S>` for this endpoint.*/
 pub struct GetUploadStatusResponse;
 impl jacquard_common::xrpc::XrpcResp for GetUploadStatusResponse {
     const NSID: &'static str = "app.bsky.video.getUploadStatus";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = GetUploadStatusOutput<'de>;
-    type Err<'de> = GetUploadStatusError<'de>;
+    type Output<S: BosStr> = GetUploadStatusOutput<S>;
+    type Err = GetUploadStatusError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for GetUploadStatus<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for GetUploadStatus<S> {
     const NSID: &'static str = "app.bsky.video.getUploadStatus";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
     type Response = GetUploadStatusResponse;
 }
 
-/// Endpoint type for app.bsky.video.getUploadStatus
+/** Endpoint marker for the `app.bsky.video.getUploadStatus` query.
+
+Path: `/xrpc/app.bsky.video.getUploadStatus`. The request payload type is `GetUploadStatus<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct GetUploadStatusRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for GetUploadStatusRequest {
     const PATH: &'static str = "/xrpc/app.bsky.video.getUploadStatus";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Query;
-    type Request<'de> = GetUploadStatus<'de>;
+    type Request<S: BosStr> = GetUploadStatus<S>;
     type Response = GetUploadStatusResponse;
 }
 
@@ -245,9 +238,9 @@ pub mod get_upload_status_state {
         type JobId = Unset;
     }
     ///State transition - sets the `job_id` field to Set
-    pub struct SetJobId<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetJobId<S> {}
-    impl<S: State> State for SetJobId<S> {
+    pub struct SetJobId<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetJobId<St> {}
+    impl<St: State> State for SetJobId<St> {
         type JobId = Set<members::job_id>;
     }
     /// Marker types for field names
@@ -258,57 +251,78 @@ pub mod get_upload_status_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct GetUploadStatusBuilder<'a, S: get_upload_status_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<CowStr<'a>>,),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct GetUploadStatusBuilder<
+    St: get_upload_status_state::State,
+    S: BosStr = DefaultStr,
+> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>,),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> GetUploadStatus<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> GetUploadStatusBuilder<'a, get_upload_status_state::Empty> {
+impl GetUploadStatus<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> GetUploadStatusBuilder<get_upload_status_state::Empty, DefaultStr> {
         GetUploadStatusBuilder::new()
     }
 }
 
-impl<'a> GetUploadStatusBuilder<'a, get_upload_status_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> GetUploadStatus<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> GetUploadStatusBuilder<get_upload_status_state::Empty, S> {
+        GetUploadStatusBuilder::builder()
+    }
+}
+
+impl GetUploadStatusBuilder<get_upload_status_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         GetUploadStatusBuilder {
             _state: PhantomData,
             _fields: (None,),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetUploadStatusBuilder<'a, S>
+impl<S: BosStr> GetUploadStatusBuilder<get_upload_status_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        GetUploadStatusBuilder {
+            _state: PhantomData,
+            _fields: (None,),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> GetUploadStatusBuilder<St, S>
 where
-    S: get_upload_status_state::State,
-    S::JobId: get_upload_status_state::IsUnset,
+    St: get_upload_status_state::State,
+    St::JobId: get_upload_status_state::IsUnset,
 {
     /// Set the `jobId` field (required)
     pub fn job_id(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> GetUploadStatusBuilder<'a, get_upload_status_state::SetJobId<S>> {
+        value: impl Into<S>,
+    ) -> GetUploadStatusBuilder<get_upload_status_state::SetJobId<St>, S> {
         self._fields.0 = Option::Some(value.into());
         GetUploadStatusBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> GetUploadStatusBuilder<'a, S>
+impl<St, S: BosStr> GetUploadStatusBuilder<St, S>
 where
-    S: get_upload_status_state::State,
-    S::JobId: get_upload_status_state::IsSet,
+    St: get_upload_status_state::State,
+    St::JobId: get_upload_status_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> GetUploadStatus<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> GetUploadStatus<S> {
         GetUploadStatus {
             job_id: self._fields.0.unwrap(),
         }

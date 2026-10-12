@@ -10,53 +10,56 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::UriValue;
-use jacquard_derive::{IntoStatic, lexicon};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct CloseReports<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CloseReports<S: BosStr = DefaultStr> {
     ///Optional moderator-only note recorded on each close activity. Not visible to reporters.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub internal_note: Option<CowStr<'a>>,
+    pub internal_note: Option<S>,
     ///Set true when this action is triggered by an automated process. Defaults to false.  Defaults to `false`.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default = "_default_close_reports_is_automated")]
     pub is_automated: Option<bool>,
     ///If specified, only reports of the given report types (fully qualified reason NSIDs) are closed. When omitted, all non-closed reports on the subject are targeted.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub report_types: Option<Vec<CowStr<'a>>>,
+    pub report_types: Option<Vec<S>>,
     ///Subject DID (account-level reports) or AT-URI (record-level reports) whose reports should be closed.
-    #[serde(borrow)]
-    pub subject: UriValue<'a>,
+    pub subject: UriValue<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct CloseReportsOutput<'a> {
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct CloseReportsOutput<S: BosStr = DefaultStr> {
     ///Number of reports that were transitioned to closed.
     pub closed_count: i64,
     ///IDs of the reports that were closed.
     pub report_ids: Vec<i64>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// Response type for tools.ozone.report.closeReports
+/** Response marker for the `tools.ozone.report.closeReports` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `CloseReportsOutput<S>` for this endpoint.*/
 pub struct CloseReportsResponse;
 impl jacquard_common::xrpc::XrpcResp for CloseReportsResponse {
     const NSID: &'static str = "tools.ozone.report.closeReports";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = CloseReportsOutput<'de>;
-    type Err<'de> = jacquard_common::xrpc::GenericError<'de>;
+    type Output<S: BosStr> = CloseReportsOutput<S>;
+    type Err = jacquard_common::xrpc::GenericError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for CloseReports<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for CloseReports<S> {
     const NSID: &'static str = "tools.ozone.report.closeReports";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -64,14 +67,16 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for CloseReports<'a> {
     type Response = CloseReportsResponse;
 }
 
-/// Endpoint type for tools.ozone.report.closeReports
+/** Endpoint marker for the `tools.ozone.report.closeReports` procedure.
+
+Path: `/xrpc/tools.ozone.report.closeReports`. The request payload type is `CloseReports<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct CloseReportsRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for CloseReportsRequest {
     const PATH: &'static str = "/xrpc/tools.ozone.report.closeReports";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = CloseReports<'de>;
+    type Request<S: BosStr> = CloseReports<S>;
     type Response = CloseReportsResponse;
 }
 
@@ -98,9 +103,9 @@ pub mod close_reports_state {
         type Subject = Unset;
     }
     ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
         type Subject = Set<members::subject>;
     }
     /// Marker types for field names
@@ -111,50 +116,63 @@ pub mod close_reports_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct CloseReportsBuilder<'a, S: close_reports_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<bool>,
-        Option<Vec<CowStr<'a>>>,
-        Option<UriValue<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct CloseReportsBuilder<St: close_reports_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<S>, Option<bool>, Option<Vec<S>>, Option<UriValue<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> CloseReports<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> CloseReportsBuilder<'a, close_reports_state::Empty> {
+impl CloseReports<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> CloseReportsBuilder<close_reports_state::Empty, DefaultStr> {
         CloseReportsBuilder::new()
     }
 }
 
-impl<'a> CloseReportsBuilder<'a, close_reports_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> CloseReports<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> CloseReportsBuilder<close_reports_state::Empty, S> {
+        CloseReportsBuilder::builder()
+    }
+}
+
+impl CloseReportsBuilder<close_reports_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         CloseReportsBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: close_reports_state::State> CloseReportsBuilder<'a, S> {
+impl<S: BosStr> CloseReportsBuilder<close_reports_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        CloseReportsBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: close_reports_state::State, S: BosStr> CloseReportsBuilder<St, S> {
     /// Set the `internalNote` field (optional)
-    pub fn internal_note(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn internal_note(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `internalNote` field to an Option value (optional)
-    pub fn maybe_internal_note(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_internal_note(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: close_reports_state::State> CloseReportsBuilder<'a, S> {
+impl<St: close_reports_state::State, S: BosStr> CloseReportsBuilder<St, S> {
     /// Set the `isAutomated` field (optional)
     pub fn is_automated(mut self, value: impl Into<Option<bool>>) -> Self {
         self._fields.1 = value.into();
@@ -167,45 +185,45 @@ impl<'a, S: close_reports_state::State> CloseReportsBuilder<'a, S> {
     }
 }
 
-impl<'a, S: close_reports_state::State> CloseReportsBuilder<'a, S> {
+impl<St: close_reports_state::State, S: BosStr> CloseReportsBuilder<St, S> {
     /// Set the `reportTypes` field (optional)
-    pub fn report_types(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+    pub fn report_types(mut self, value: impl Into<Option<Vec<S>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `reportTypes` field to an Option value (optional)
-    pub fn maybe_report_types(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+    pub fn maybe_report_types(mut self, value: Option<Vec<S>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> CloseReportsBuilder<'a, S>
+impl<St, S: BosStr> CloseReportsBuilder<St, S>
 where
-    S: close_reports_state::State,
-    S::Subject: close_reports_state::IsUnset,
+    St: close_reports_state::State,
+    St::Subject: close_reports_state::IsUnset,
 {
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<UriValue<'a>>,
-    ) -> CloseReportsBuilder<'a, close_reports_state::SetSubject<S>> {
+        value: impl Into<UriValue<S>>,
+    ) -> CloseReportsBuilder<close_reports_state::SetSubject<St>, S> {
         self._fields.3 = Option::Some(value.into());
         CloseReportsBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> CloseReportsBuilder<'a, S>
+impl<St, S: BosStr> CloseReportsBuilder<St, S>
 where
-    S: close_reports_state::State,
-    S::Subject: close_reports_state::IsSet,
+    St: close_reports_state::State,
+    St::Subject: close_reports_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> CloseReports<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> CloseReports<S> {
         CloseReports {
             internal_note: self._fields.0,
             is_automated: self._fields.1.or_else(|| Some(false)),
@@ -214,14 +232,11 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
+    /// Build the final struct with custom extra_data.
     pub fn build_with_data(
         self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> CloseReports<'a> {
+        extra_data: BTreeMap<SmolStr, Data<S>>,
+    ) -> CloseReports<S> {
         CloseReports {
             internal_note: self._fields.0,
             is_automated: self._fields.1.or_else(|| Some(false)),

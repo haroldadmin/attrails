@@ -10,21 +10,28 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
-use jacquard_derive::{IntoStatic, lexicon, open_union};
+use jacquard_common::{CowStr, BosStr, DefaultStr, FromStaticStr};
+use jacquard_common::deps::smol_str::SmolStr;
+use jacquard_common::types::value::Data;
+use jacquard_derive::{IntoStatic, open_union};
 use serde::{Serialize, Deserialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoveData<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct RemoveData<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
 
-#[lexicon]
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoveDataOutput<'a> {}
+#[serde(rename_all = "camelCase", bound(deserialize = "S: Deserialize<'de> + BosStr"))]
+pub struct RemoveDataOutput<S: BosStr = DefaultStr> {
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
 
-#[open_union]
+
 #[derive(
     Serialize,
     Deserialize,
@@ -33,20 +40,21 @@ pub struct RemoveDataOutput<'a> {}
     PartialEq,
     Eq,
     thiserror::Error,
-    miette::Diagnostic,
-    IntoStatic
+    miette::Diagnostic
 )]
 
 #[serde(tag = "error", content = "message")]
-#[serde(bound(deserialize = "'de: 'a"))]
-pub enum RemoveDataError<'a> {
+pub enum RemoveDataError {
     #[serde(rename = "InvalidDid")]
-    InvalidDid(Option<CowStr<'a>>),
+    InvalidDid(Option<SmolStr>),
     #[serde(rename = "InternalError")]
-    InternalError(Option<CowStr<'a>>),
+    InternalError(Option<SmolStr>),
+    /// Catch-all for unknown error codes.
+    #[serde(untagged)]
+    Other { error: SmolStr, message: Option<SmolStr> },
 }
 
-impl core::fmt::Display for RemoveDataError<'_> {
+impl core::fmt::Display for RemoveDataError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidDid(msg) => {
@@ -63,21 +71,29 @@ impl core::fmt::Display for RemoveDataError<'_> {
                 }
                 Ok(())
             }
-            Self::Unknown(err) => write!(f, "Unknown error: {:?}", err),
+            Self::Other { error, message } => {
+                write!(f, "{}", error)?;
+                if let Some(msg) = message {
+                    write!(f, ": {}", msg)?;
+                }
+                Ok(())
+            }
         }
     }
 }
 
-/// Response type for app.bsky.contact.removeData
+/** Response marker for the `app.bsky.contact.removeData` procedure.
+
+Implements `jacquard_common::xrpc::XrpcResp`; successful bodies decode as `Self::Output<S>`, which is `RemoveDataOutput<S>` for this endpoint.*/
 pub struct RemoveDataResponse;
 impl jacquard_common::xrpc::XrpcResp for RemoveDataResponse {
     const NSID: &'static str = "app.bsky.contact.removeData";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = RemoveDataOutput<'de>;
-    type Err<'de> = RemoveDataError<'de>;
+    type Output<S: BosStr> = RemoveDataOutput<S>;
+    type Err = RemoveDataError;
 }
 
-impl<'a> jacquard_common::xrpc::XrpcRequest for RemoveData<'a> {
+impl<S: BosStr> jacquard_common::xrpc::XrpcRequest for RemoveData<S> {
     const NSID: &'static str = "app.bsky.contact.removeData";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
@@ -85,13 +101,15 @@ impl<'a> jacquard_common::xrpc::XrpcRequest for RemoveData<'a> {
     type Response = RemoveDataResponse;
 }
 
-/// Endpoint type for app.bsky.contact.removeData
+/** Endpoint marker for the `app.bsky.contact.removeData` procedure.
+
+Path: `/xrpc/app.bsky.contact.removeData`. The request payload type is `RemoveData<S>`; send that request with `jacquard::Client` or use this marker through lower-level `XrpcEndpoint` APIs.*/
 pub struct RemoveDataRequest;
 impl jacquard_common::xrpc::XrpcEndpoint for RemoveDataRequest {
     const PATH: &'static str = "/xrpc/app.bsky.contact.removeData";
     const METHOD: jacquard_common::xrpc::XrpcMethod = jacquard_common::xrpc::XrpcMethod::Procedure(
         "application/json",
     );
-    type Request<'de> = RemoveData<'de>;
+    type Request<S: BosStr> = RemoveData<S>;
     type Response = RemoveDataResponse;
 }
