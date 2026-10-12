@@ -1,0 +1,65 @@
+{
+  "lexicon": 1,
+  "id": "tools.ozone.queue.updateQueue",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Update queue properties.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "queueId"
+          ],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Optional description of the queue"
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable or disable the queue"
+            },
+            "name": {
+              "type": "string",
+              "description": "New display name for the queue"
+            },
+            "queueId": {
+              "type": "integer",
+              "description": "ID of the queue to update"
+            },
+            "recommendedPolicies": {
+              "type": "array",
+              "description": "Policy keys to recommend when actioning reports in this queue",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "queue"
+          ],
+          "properties": {
+            "queue": {
+              "type": "ref",
+              "ref": "tools.ozone.queue.defs#queueView"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "description": "One or more recommended policy keys do not exist in the configured policy list",
+          "name": "InvalidRecommendedPolicies"
+        }
+      ]
+    }
+  }
+}

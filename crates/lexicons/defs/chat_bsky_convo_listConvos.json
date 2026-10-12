@@ -1,0 +1,76 @@
+{
+  "lexicon": 1,
+  "id": "chat.bsky.convo.listConvos",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Returns a page of conversations (direct or group) for the user.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "Filter by conversation kind.",
+            "knownValues": [
+              "direct",
+              "group"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "default": 50,
+            "minimum": 1,
+            "maximum": 100
+          },
+          "lockStatus": {
+            "type": "string",
+            "description": "Filter by conversation lock status. Values follow chat.bsky.convo.defs#convoLockStatus.",
+            "knownValues": [
+              "unlocked",
+              "locked",
+              "locked-permanently"
+            ]
+          },
+          "readState": {
+            "type": "string",
+            "knownValues": [
+              "unread"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter convos by their status. It is discouraged to call with \"request\" and preferred to call chat.bsky.convo.listConvoRequests, which also includes group join requests made by the user.",
+            "knownValues": [
+              "request",
+              "accepted"
+            ]
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "convos"
+          ],
+          "properties": {
+            "convos": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "chat.bsky.convo.defs#convoView"
+              }
+            },
+            "cursor": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

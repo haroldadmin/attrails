@@ -1,0 +1,72 @@
+{
+  "lexicon": 1,
+  "id": "site.standard.publication",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A publication record representing a blog, website, or content platform. Publications serve as containers for documents and define the overall branding and settings.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "url",
+          "name"
+        ],
+        "properties": {
+          "basicTheme": {
+            "type": "ref",
+            "description": "Simplified publication theme for tools and apps to utilize when displaying content.",
+            "ref": "site.standard.theme.basic"
+          },
+          "description": {
+            "type": "string",
+            "description": "Brief description of the publication.",
+            "maxLength": 30000,
+            "maxGraphemes": 3000
+          },
+          "icon": {
+            "type": "blob",
+            "description": "Square image to identify the publication. Should be at least 256x256.",
+            "accept": [
+              "image/*"
+            ],
+            "maxSize": 1000000
+          },
+          "labels": {
+            "type": "union",
+            "description": "Self-label values for this publication. Effectively content warnings.",
+            "refs": [
+              "com.atproto.label.defs#selfLabels"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the publication.",
+            "maxLength": 5000,
+            "maxGraphemes": 500
+          },
+          "preferences": {
+            "type": "ref",
+            "description": "Object containing platform specific preferences (with a few shared properties).",
+            "ref": "#preferences"
+          },
+          "url": {
+            "type": "string",
+            "description": "Base publication url (ex: https://standard.site). The canonical document URL is formed by combining this value with the document path.",
+            "format": "uri"
+          }
+        }
+      }
+    },
+    "preferences": {
+      "type": "object",
+      "properties": {
+        "showInDiscover": {
+          "type": "boolean",
+          "description": "Boolean which decides whether the publication should appear in discovery feeds.",
+          "default": true
+        }
+      }
+    }
+  }
+}

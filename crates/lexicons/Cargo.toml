@@ -1,0 +1,31 @@
+[package]
+name = "lexicons"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Keep in sync with the installed jacquard-lexgen (lex-fetch) version.
+jacquard-common = "0.11"
+jacquard-derive = "0.11"
+jacquard-lexicon = { version = "0.11", default-features = false }
+miette = "7"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[lints.rust]
+non_snake_case = "allow"
+unused_imports = "allow"
+
+[features]
+default = ["com_atproto"]
+streaming = ["jacquard-common/websocket"]
+
+# --- generated ---
+# Generated namespace features
+app_bsky = ["com_atproto"]
+chat_bsky = ["app_bsky"]
+com_atproto = []
+com_germnetwork = []
+internal_bsky = []
+site_standard = ["com_atproto"]
+tools_ozone = ["app_bsky", "chat_bsky", "com_atproto"]
