@@ -1,0 +1,12 @@
+output {
+    lexicons "crates/lexicons/defs"
+    codegen "crates/lexicons/src"
+    cargo-toml "crates/lexicons/Cargo.toml"
+}
+
+source bluesky type=git priority=101 {
+    repo "https://github.com/bluesky-social/atproto"
+    ref permissioned-data
+    pattern "lexicons/**/*.json"
+}
+
