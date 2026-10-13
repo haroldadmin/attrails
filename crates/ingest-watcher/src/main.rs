@@ -1,10 +1,9 @@
 use amqp::Queue::{Profiles, Reviews, Routes};
-use atproto_tap::{RecordAction, TapEvent};
+use atproto_tap::TapEvent;
 use tokio_stream::StreamExt;
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
-mod amqp;
 mod config;
 mod tap;
 

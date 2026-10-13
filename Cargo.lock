@@ -100,6 +100,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "amqp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "lapin",
+ "serde",
+ "serde_json",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2173,15 +2185,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "ingest-consumer"
+version = "0.1.0"
+dependencies = [
+ "amqp",
+ "anyhow",
+ "dotenvy",
+ "envy",
+ "lapin",
+ "lexicons",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "ingest-watcher"
 version = "0.1.0"
 dependencies = [
+ "amqp",
  "anyhow",
  "atproto-tap",
  "dotenvy",
  "envy",
  "lapin",
- "lexicons",
  "serde",
  "serde_json",
  "tokio",

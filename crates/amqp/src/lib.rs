@@ -1,13 +1,18 @@
+use serde::Deserialize;
 use std::{collections::BTreeMap, fmt::Display};
+use tokio_stream::StreamExt;
 
 use anyhow::Result;
 use lapin::{
     Channel, Connection, ConnectionProperties, ExchangeKind,
-    options::{BasicPublishOptions, ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions},
+    options::{
+        BasicAckOptions, BasicConsumeOptions, BasicNackOptions, BasicPublishOptions,
+        ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions,
+    },
     protocol::basic::AMQPProperties,
     types::{AMQPValue, FieldTable, ShortString},
 };
-use tracing::info;
+use tracing::{debug, error, info, warn};
 
 pub const EXCHANGE: &str = "tap-events-dlx";
 
@@ -24,6 +29,7 @@ pub enum Queue {
 }
 
 impl Queue {
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Queue::Routes => "tap-events-routes",
@@ -37,11 +43,18 @@ impl Queue {
         }
     }
 
+    /// Publish a durable message to this queue with a JSON payload over
+    /// `EXCHANGE`.
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if the payload can not be serialised to bytes, or
+    /// if publishing the message fails
     pub async fn publish(&self, value: &serde_json::Value, channel: &Channel) -> Result<()> {
         let payload = serde_json::to_vec(value)?;
         channel
             .basic_publish(
-                EXCHANGE.into(),
+                "".into(),
                 self.name().into(),
                 BasicPublishOptions::default(),
                 &payload,
@@ -52,6 +65,79 @@ impl Queue {
             .await?;
         Ok(())
     }
+
+    /// consumer for the queue
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if the message fails to be processed
+    pub async fn consume<T, F>(&self, channel: &Channel, mut callback: F) -> Result<()>
+    where
+        F: AsyncFnMut(T) -> Result<()>,
+        T: for<'a> Deserialize<'a>,
+    {
+        let queue_name = self.name();
+        let consumer_name = format!("{}-consumer", self.name());
+
+        let mut consumer = channel
+            .basic_consume(
+                queue_name.into(),
+                consumer_name.into(),
+                BasicConsumeOptions::default(),
+                FieldTable::default(),
+            )
+            .await?;
+
+        while let Some(delivery_attempt) = consumer.next().await {
+            let delivery = match delivery_attempt {
+                Ok(delivery) => delivery,
+                Err(error) => {
+                    warn!(%error, "ignoring consumer stream error");
+                    continue;
+                }
+            };
+
+            if delivery.data.is_empty() {
+                info!("discarding empty message");
+                let _ = delivery.ack(BasicAckOptions::default()).await;
+                continue;
+            }
+
+            let Some(content_type) = delivery.properties.content_type() else {
+                error!("no content_type header in message");
+                let _ = delivery.nack(BasicNackOptions::default()).await;
+                continue;
+            };
+
+            if content_type.as_str() != "application/json" {
+                error!("non-json messages are not supported");
+                let _ = delivery.nack(BasicNackOptions::default()).await;
+                continue;
+            }
+
+            let payload = match serde_json::from_slice::<T>(&delivery.data) {
+                Ok(payload) => payload,
+                Err(error) => {
+                    error!(%error, "failed to deserialize payload");
+                    let _ = delivery.nack(BasicNackOptions::default()).await;
+                    continue;
+                }
+            };
+
+            match callback(payload).await {
+                Ok(_) => {
+                    debug!("message processed");
+                    let _ = delivery.ack(BasicAckOptions::default()).await;
+                }
+                Err(error) => {
+                    error!(%error,"failed to process message");
+                    let _ = delivery.nack(BasicNackOptions::default()).await;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Display for Queue {
@@ -60,6 +146,13 @@ impl Display for Queue {
     }
 }
 
+/// Establish a connection to a Rabbit MQ instance using the given
+/// connection uri.
+///
+/// # Errors
+///
+/// Will return an `Err` if the connection fails, or if a channel
+/// can not be opened over the connection.
 pub async fn amqp_connect(rabbitmq_uri: &str) -> Result<Channel> {
     let conn = Connection::connect(
         rabbitmq_uri,
@@ -71,6 +164,12 @@ pub async fn amqp_connect(rabbitmq_uri: &str) -> Result<Channel> {
     Ok(channel)
 }
 
+/// Verify that the Rabbit MQ instance contains the topology
+/// we expect in this application.
+///
+/// # Errors
+///
+/// Will return an `Err` if declaring any topology element fails
 pub async fn declare_topology(channel: &Channel) -> Result<()> {
     let exchange_name: ShortString = EXCHANGE.into();
 
