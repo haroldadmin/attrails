@@ -1,11 +1,13 @@
 use amqp::{Queue, amqp_connect, declare_topology};
 use anyhow::Result;
-use atproto_tap::RecordEvent;
+use atproto_tap::{RecordAction, RecordEvent};
+use database::PgPool;
 use lapin::Channel;
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 mod config;
+mod routes;
 
 #[tokio::main]
 async fn main() {
@@ -25,8 +27,12 @@ async fn main() {
         .await
         .expect("failed to declare rabbitmq topology");
 
+    let pool = database::connect(&conf.postgres_uri)
+        .await
+        .expect("failed to connect to postgres");
+
     tokio::try_join!(
-        consume_routes(&channel),
+        consume_routes(&channel, &pool),
         consume_reviews(&channel),
         consume_profiles(&channel),
         consume_blobs(&channel),
@@ -34,17 +40,37 @@ async fn main() {
     .expect("a consumer failed");
 }
 
-async fn consume_routes(channel: &Channel) -> Result<()> {
+async fn consume_routes(channel: &Channel, pool: &PgPool) -> Result<()> {
     Queue::Routes
         .consume::<RecordEvent, _>(channel, async |event| {
-            match event.parse_record::<lexicons::app_attrails::v0::route::Route>() {
-                Ok(route) => {
-                    info!(?route, "parsed route successfully");
+            let uri = event.at_uri();
+
+            match event.action {
+                RecordAction::Create | RecordAction::Update => {
+                    let parsed = event
+                        .parse_record::<lexicons::app_attrails::v0::route::Route>()
+                        .map_err(anyhow::Error::from)
+                        .and_then(|route| routes::from_event(&event, &route));
+
+                    // Invalid records will never succeed, so drop them
+                    // instead of returning an error and retrying.
+                    let route = match parsed {
+                        Ok(route) => route,
+                        Err(error) => {
+                            error!(%error, uri, "discarding invalid route record");
+                            return Ok(());
+                        }
+                    };
+
+                    database::routes::upsert_route(pool, &route).await?;
+                    info!(uri, "route upserted");
                 }
-                Err(error) => {
-                    error!(%error, ?event, "failed to parse route from record");
+                RecordAction::Delete => {
+                    database::routes::tombstone_route(pool, &uri).await?;
+                    info!(uri, "route tombstoned");
                 }
             }
+
             Ok(())
         })
         .await

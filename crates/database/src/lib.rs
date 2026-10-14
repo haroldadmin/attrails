@@ -1,6 +1,8 @@
 use anyhow::Result;
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
 use tracing::info;
+
+pub use sqlx::PgPool;
 
 pub mod reviews;
 pub mod routes;

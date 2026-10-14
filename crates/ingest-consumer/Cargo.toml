@@ -17,6 +17,8 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 tracing = "0.1.44"
 lexicons = { path = "../lexicons" }
 atproto-tap = "0.14.5"
+database = { path = "../database" }
+jiff = "0.2"
 
 [lints]
 workspace = true

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO routes (\n            uri, cid, did, rkey, name, description, activity, surface,\n            difficulty, tags, images, details, sort_at, created_at,\n            ingested_at, gpx_cid, tombstoned\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, FALSE)\n        ON CONFLICT (uri) DO UPDATE SET\n            cid = excluded.cid,\n            did = excluded.did,\n            rkey = excluded.rkey,\n            name = excluded.name,\n            description = excluded.description,\n            activity = excluded.activity,\n            surface = excluded.surface,\n            difficulty = excluded.difficulty,\n            tags = excluded.tags,\n            images = excluded.images,\n            details = excluded.details,\n            sort_at = excluded.sort_at,\n            created_at = excluded.created_at,\n            ingested_at = excluded.ingested_at,\n            gpx_cid = excluded.gpx_cid,\n            tombstoned = FALSE\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "TextArray",
+        "Jsonb",
+        "Jsonb",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1a738eb6631a3ef047ca070645dc1b1b2647d27ac490cd3bb98ca2dab5ae900e"
+}

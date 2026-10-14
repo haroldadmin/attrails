@@ -5,6 +5,8 @@ use serde::Deserialize;
 pub struct Config {
     #[serde(rename = "attrails_rabbitmq_host")]
     pub rabbitmq_host: String,
+    #[serde(rename = "attrails_postgres_connection_uri")]
+    pub postgres_uri: String,
 }
 
 impl Config {
