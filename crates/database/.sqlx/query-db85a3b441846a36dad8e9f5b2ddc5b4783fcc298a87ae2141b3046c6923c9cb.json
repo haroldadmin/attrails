@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO users (\n            uri, did, cid, name, bio, profile_picture_uri, sort_at,\n            created_at, ingested_at, tombstoned\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)\n        ON CONFLICT (uri) DO UPDATE SET\n            did = excluded.did,\n            cid = excluded.cid,\n            name = excluded.name,\n            bio = excluded.bio,\n            profile_picture_uri = excluded.profile_picture_uri,\n            sort_at = excluded.sort_at,\n            created_at = excluded.created_at,\n            ingested_at = excluded.ingested_at,\n            tombstoned = FALSE\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "db85a3b441846a36dad8e9f5b2ddc5b4783fcc298a87ae2141b3046c6923c9cb"
+}

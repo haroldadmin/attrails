@@ -7,6 +7,8 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 mod config;
+mod profiles;
+mod reviews;
 mod routes;
 
 #[tokio::main]
@@ -33,8 +35,8 @@ async fn main() {
 
     tokio::try_join!(
         consume_routes(&channel, &pool),
-        consume_reviews(&channel),
-        consume_profiles(&channel),
+        consume_reviews(&channel, &pool),
+        consume_profiles(&channel, &pool),
         consume_blobs(&channel),
     )
     .expect("a consumer failed");
@@ -76,33 +78,73 @@ async fn consume_routes(channel: &Channel, pool: &PgPool) -> Result<()> {
         .await
 }
 
-async fn consume_reviews(channel: &Channel) -> Result<()> {
+async fn consume_reviews(channel: &Channel, pool: &PgPool) -> Result<()> {
     Queue::Reviews
         .consume::<RecordEvent, _>(channel, async |event| {
-            match event.parse_record::<lexicons::app_attrails::v0::review::Review>() {
-                Ok(review) => {
-                    info!(?review, "parsed review successfully");
+            let uri = event.at_uri();
+
+            match event.action {
+                RecordAction::Create | RecordAction::Update => {
+                    let parsed = event
+                        .parse_record::<lexicons::app_attrails::v0::review::Review>()
+                        .map_err(anyhow::Error::from)
+                        .and_then(|review| reviews::from_event(&event, &review));
+
+                    // Invalid records will never succeed, so drop them
+                    // instead of returning an error and retrying.
+                    let review = match parsed {
+                        Ok(review) => review,
+                        Err(error) => {
+                            error!(%error, uri, "discarding invalid review record");
+                            return Ok(());
+                        }
+                    };
+
+                    database::reviews::upsert_review(pool, &review).await?;
+                    info!(uri, "review upserted");
                 }
-                Err(error) => {
-                    error!(%error, ?event, "failed to parse review from record");
+                RecordAction::Delete => {
+                    database::reviews::tombstone_review(pool, &uri).await?;
+                    info!(uri, "review tombstoned");
                 }
             }
+
             Ok(())
         })
         .await
 }
 
-async fn consume_profiles(channel: &Channel) -> Result<()> {
+async fn consume_profiles(channel: &Channel, pool: &PgPool) -> Result<()> {
     Queue::Profiles
         .consume::<RecordEvent, _>(channel, async |event| {
-            match event.parse_record::<lexicons::app_attrails::actor::profile::Profile>() {
-                Ok(profile) => {
-                    info!(?profile, "parsed profile successfully");
+            let uri = event.at_uri();
+
+            match event.action {
+                RecordAction::Create | RecordAction::Update => {
+                    let parsed = event
+                        .parse_record::<lexicons::app_attrails::actor::profile::Profile>()
+                        .map_err(anyhow::Error::from)
+                        .and_then(|profile| profiles::from_event(&event, &profile));
+
+                    // Invalid records will never succeed, so drop them
+                    // instead of returning an error and retrying.
+                    let user = match parsed {
+                        Ok(user) => user,
+                        Err(error) => {
+                            error!(%error, uri, "discarding invalid profile record");
+                            return Ok(());
+                        }
+                    };
+
+                    database::users::upsert_user(pool, &user).await?;
+                    info!(uri, "profile upserted");
                 }
-                Err(error) => {
-                    error!(%error, ?event, "failed to parse profile from record");
+                RecordAction::Delete => {
+                    database::users::tombstone_user(pool, &uri).await?;
+                    info!(uri, "profile tombstoned");
                 }
             }
+
             Ok(())
         })
         .await
