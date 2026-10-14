@@ -1,6 +1,8 @@
 use amqp::{Queue, amqp_connect, declare_topology};
 use anyhow::Result;
+use atproto_tap::RecordEvent;
 use lapin::Channel;
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 mod config;
@@ -34,8 +36,15 @@ async fn main() {
 
 async fn consume_routes(channel: &Channel) -> Result<()> {
     Queue::Routes
-        .consume::<lexicons::app_attrails::v0::route::Route, _>(channel, async |route| {
-            dbg!(route);
+        .consume::<RecordEvent, _>(channel, async |event| {
+            match event.parse_record::<lexicons::app_attrails::v0::route::Route>() {
+                Ok(route) => {
+                    info!(?route, "parsed route successfully");
+                }
+                Err(error) => {
+                    error!(%error, ?event, "failed to parse route from record");
+                }
+            }
             Ok(())
         })
         .await
@@ -43,8 +52,15 @@ async fn consume_routes(channel: &Channel) -> Result<()> {
 
 async fn consume_reviews(channel: &Channel) -> Result<()> {
     Queue::Reviews
-        .consume::<lexicons::app_attrails::v0::review::Review, _>(channel, async |review| {
-            dbg!(review);
+        .consume::<RecordEvent, _>(channel, async |event| {
+            match event.parse_record::<lexicons::app_attrails::v0::review::Review>() {
+                Ok(review) => {
+                    info!(?review, "parsed review successfully");
+                }
+                Err(error) => {
+                    error!(%error, ?event, "failed to parse review from record");
+                }
+            }
             Ok(())
         })
         .await
@@ -52,8 +68,15 @@ async fn consume_reviews(channel: &Channel) -> Result<()> {
 
 async fn consume_profiles(channel: &Channel) -> Result<()> {
     Queue::Profiles
-        .consume::<lexicons::app_attrails::actor::profile::Profile, _>(channel, async |profile| {
-            dbg!(profile);
+        .consume::<RecordEvent, _>(channel, async |event| {
+            match event.parse_record::<lexicons::app_attrails::actor::profile::Profile>() {
+                Ok(profile) => {
+                    info!(?profile, "parsed profile successfully");
+                }
+                Err(error) => {
+                    error!(%error, ?event, "failed to parse profile from record");
+                }
+            }
             Ok(())
         })
         .await
@@ -61,8 +84,8 @@ async fn consume_profiles(channel: &Channel) -> Result<()> {
 
 async fn consume_blobs(channel: &Channel) -> Result<()> {
     Queue::Blobs
-        .consume::<serde_json::Value, _>(&channel, async |blob| {
-            dbg!(blob);
+        .consume::<RecordEvent, _>(channel, async |event| {
+            dbg!(event);
             Ok(())
         })
         .await

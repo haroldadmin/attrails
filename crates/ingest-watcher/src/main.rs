@@ -30,52 +30,40 @@ async fn main() {
         match msg {
             Ok(msg) => match msg.as_ref() {
                 TapEvent::Record { id, record } => {
-                    let coll = record.collection.as_ref();
-                    let rkey = record.rkey.as_str();
-                    let action = record.action.to_string();
+                    info!(id, "processing tap event");
 
-                    info!(
-                        id = id,
-                        action = action,
-                        collection = coll,
-                        rkey = rkey,
-                        "received record event"
-                    );
-
-                    let Some(record) = record.record_value() else {
-                        error!("failed to parse record value from tap event");
-                        continue;
-                    };
-
-                    let queue = match coll {
+                    let queue = match record.collection.as_ref() {
                         "app.attrails.v0.route" => Routes,
                         "app.attrails.v0.review" => Reviews,
                         "app.attrails.actor.profile" => Profiles,
                         _ => {
-                            warn!(collection = coll, "ignoring event from unknown collection");
+                            warn!("ignoring event from unknown collection");
                             continue;
                         }
                     };
 
-                    match queue.publish(record, &channel).await {
-                        Ok(_) => info!(queue = queue.name(), "message published"),
+                    let payload = match serde_json::to_vec(record) {
+                        Ok(payload) => payload,
+                        Err(error) => {
+                            error!(%error, "failed to serialise tap event");
+                            continue;
+                        }
+                    };
+
+                    match queue.publish(&payload, &channel).await {
+                        Ok(()) => info!(queue = queue.name(), "message published"),
                         Err(e) => {
                             error!(
                                 error = e.to_string(),
                                 queue = queue.name(),
                                 "failed to publish message"
                             );
-                            continue;
                         }
                     }
                 }
-                TapEvent::Identity { id: _, identity: _ } => {
-                    info!("ignoring identity event")
-                }
+                TapEvent::Identity { id: _, identity: _ } => info!("ignoring identity event"),
             },
-            Err(e) => {
-                eprintln!("Failed to parse Tap event: {e}")
-            }
+            Err(e) => eprintln!("Failed to parse Tap event: {e}"),
         }
     }
 }

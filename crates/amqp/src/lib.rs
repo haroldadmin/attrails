@@ -50,14 +50,13 @@ impl Queue {
     ///
     /// Will return `Err` if the payload can not be serialised to bytes, or
     /// if publishing the message fails
-    pub async fn publish(&self, value: &serde_json::Value, channel: &Channel) -> Result<()> {
-        let payload = serde_json::to_vec(value)?;
+    pub async fn publish(&self, payload: &[u8], channel: &Channel) -> Result<()> {
         channel
             .basic_publish(
                 "".into(),
                 self.name().into(),
                 BasicPublishOptions::default(),
-                &payload,
+                payload,
                 AMQPProperties::default()
                     .with_content_type("application/json".into())
                     .with_delivery_mode(2),

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/amqp","crates/ingest-consumer","crates/ingest-watcher", "crates/lexicons"]
+members = ["crates/amqp","crates/ingest-consumer","crates/ingest-watcher", "crates/lexicons", "crates/routes"]
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
