@@ -78,15 +78,13 @@ CREATE TABLE IF NOT EXISTS tracks (
     start_point GEOGRAPHY (POINT, 4326) NOT NULL,
     end_point GEOGRAPHY (POINT, 4326) NOT NULL,
     path GEOGRAPHY (MULTILINESTRING, 4326),
-    elevation_profile JSONB,
+    elevation_profile JSONB CHECK (
+        elevation_profile IS NULL OR jsonb_typeof(elevation_profile) = 'array'
+    ),
     waypoints JSONB NOT NULL DEFAULT '[]'::JSONB CHECK (
         jsonb_typeof(waypoints) = 'array'
     ),
-    -- Attached to processed_at but checks elevation_profile, as in the
-    -- original migration; Postgres names it tracks_elevation_profile_check.
-    processed_at TIMESTAMP WITH TIME ZONE NOT NULL CHECK (
-        elevation_profile IS NULL OR jsonb_typeof(elevation_profile) = 'array'
-    )
+    processed_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS tracks_path_gix ON tracks USING gist (path);
