@@ -2,6 +2,11 @@ use anyhow::Result;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tracing::info;
 
+pub mod reviews;
+pub mod routes;
+pub mod tracks;
+pub mod users;
+
 /// Open a connection pool to the Postgres instance at the given
 /// connection uri.
 ///

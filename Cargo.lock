@@ -1142,6 +1142,7 @@ dependencies = [
  "anyhow",
  "jiff",
  "jiff-sqlx",
+ "serde_json",
  "sqlx",
  "tracing",
 ]

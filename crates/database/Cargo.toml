@@ -16,6 +16,7 @@ sqlx = { version = "0.9", default-features = false, features = [
     "json",
     "sqlx-toml",
 ] }
+serde_json = "1.0.154"
 tracing = "0.1.44"
 
 [lints]
