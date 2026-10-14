@@ -1,0 +1,8 @@
+[common]
+# Read the connection string from the same variable the services use,
+# instead of sqlx's default `DATABASE_URL`.
+database-url-var = "ATTRAILS_POSTGRES_CONNECTION_URI"
+
+[macros.type-overrides]
+# sqlx has no built-in jiff support; map timestamps to jiff-sqlx's wrapper.
+'TIMESTAMPTZ' = "jiff_sqlx::Timestamp"

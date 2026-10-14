@@ -1,0 +1,22 @@
+[package]
+name = "database"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.104"
+jiff = "0.2"
+jiff-sqlx = { version = "0.2", features = ["postgres"] }
+sqlx = { version = "0.9", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "macros",
+    "migrate",
+    "json",
+    "sqlx-toml",
+] }
+tracing = "0.1.44"
+
+[lints]
+workspace = true
