@@ -1,3 +1,15 @@
 [tools]
 "cargo:jacquard-lexgen" = "0.12.2"
 "cargo:kdlfmt" = "latest"
+# Keep in sync with the sqlx version in crates/database.
+"cargo:sqlx-cli" = { version = "0.9.0", default-features = false, features = "postgres,rustls,sqlx-toml" }
+
+[tasks."db:migrate"]
+description = "Apply pending Postgres migrations"
+dir = "{{config_root}}/crates/database"
+run = "sqlx migrate run"
+
+[tasks."db:migrate:check"]
+description = "List pending Postgres migrations without applying them"
+dir = "{{config_root}}/crates/database"
+run = "sqlx migrate run --dry-run"

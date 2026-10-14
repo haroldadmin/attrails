@@ -21,3 +21,13 @@ ATTrails is an ATProto app for sharing cycling, running, and hiking routes. It h
 - Postgres + PostGIS for persistence
 - RabbitMQ for messaging and job queues
 - ATProto Tap for watching the Firehose
+
+## Migrations
+
+Migrations live in `crates/database/migrations` and run with [sqlx-cli](https://github.com/launchbadge/sqlx/tree/main/sqlx-cli), installed via `mise install`. The target database is `ATTRAILS_POSTGRES_CONNECTION_URI` from `.env`.
+
+- `mise run db:migrate:check`: List pending migrations without applying them
+- `mise run db:migrate`: Apply pending migrations
+- `sqlx migrate add <name>` (from `crates/database`): Create a new migration
+
+Never edit a migration after it has been applied; add a new one instead.
