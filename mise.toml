@@ -1,4 +1,5 @@
 [tools]
+rust = "1.98.0"
 "cargo:jacquard-lexgen" = "0.12.2"
 "cargo:kdlfmt" = "latest"
 # Keep in sync with the sqlx version in crates/database.
