@@ -1,11 +1,19 @@
+use std::time::Duration;
+
 use amqp::{BlobMsg, Queue, amqp_connect, declare_topology};
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use atproto_tap::{RecordAction, RecordEvent};
 use database::{PgPool, tracks::NewTrack};
 use jacquard::client::BasicClient;
 use jiff::Timestamp;
-use lapin::Channel;
-use tracing::{error, info};
+use lapin::{Channel, protocol::constants::REPLY_SUCCESS};
+use lifecycle::{
+    health::{Readiness, Server, check},
+    shutdown::Shutdown,
+};
+use tokio::time::timeout;
+use tokio_util::sync::CancellationToken;
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 use tracks::TrackData;
 
@@ -21,42 +29,113 @@ const MAX_GPX_BYTES: usize = 976_563;
 
 const ACCEPTED_GPX_MIME_TYPES: [&str; 3] = ["application/gpx+xml", "application/xml", "text/xml"];
 
+/// Maximum time spent letting consumers finish in-flight work at shutdown.
+const CONSUMER_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
+
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
 
-    let conf = config::Config::from_env().expect("failed to parse application config");
+    let conf = config::Config::from_env()?;
 
-    let channel = amqp_connect(&conf.rabbitmq_host)
-        .await
-        .expect("failed to connect to rabbitmq");
+    // Register the signal handlers before any slow startup work, so that a
+    // signal received during startup is queued instead of using the default
+    // disposition.
+    let mut shutdown = Shutdown::new()?;
 
-    declare_topology(&channel)
-        .await
-        .expect("failed to declare rabbitmq topology");
+    // Start serving probes before connecting to dependencies. Liveness is OK
+    // as soon as the server is listening, while readiness reports 503 until
+    // startup completes.
+    let readiness = Readiness::new();
+    let health = Server::bind(conf.health_port, readiness.clone()).await?;
 
-    let pool = database::connect(&conf.postgres_uri)
-        .await
-        .expect("failed to connect to postgres");
+    let channel = amqp_connect(&conf.rabbitmq_host).await?;
+    declare_topology(&channel).await?;
 
+    let pool = database::connect(&conf.postgres_uri).await?;
     let agent = BasicClient::unauthenticated();
 
-    tokio::try_join!(
-        consume_routes(&channel, &pool),
-        consume_reviews(&channel, &pool),
-        consume_profiles(&channel, &pool),
-        consume_blobs(&channel, &pool, &agent),
-    )
-    .expect("a consumer failed");
+    readiness.mark_started(vec![
+        check("rabbitmq", amqp::health_check(&channel)),
+        check("postgres", {
+            let pool = pool.clone();
+            move || database::ping(pool.clone())
+        }),
+    ]);
+
+    let shutdown_token = CancellationToken::new();
+    let consumers = async {
+        tokio::try_join!(
+            consume_routes(&channel, &pool, &shutdown_token),
+            consume_reviews(&channel, &pool, &shutdown_token),
+            consume_profiles(&channel, &pool, &shutdown_token),
+            consume_blobs(&channel, &pool, &shutdown_token, &agent),
+        )
+    };
+    tokio::pin!(consumers);
+
+    // Either a shutdown signal was received, or the consumers exited on their
+    // own.
+    let mut consumers_done = false;
+    let failure = tokio::select! {
+        biased;
+
+        signal = shutdown.recv() => {
+            info!(?signal, "shutdown signal received");
+            None
+        }
+        result = &mut consumers => {
+            consumers_done = true;
+            Some(match result {
+                Ok(_) => anyhow!("all consumers exited without a shutdown signal"),
+                Err(error) => error.context("a consumer failed"),
+            })
+        }
+    };
+
+    readiness.mark_draining();
+    shutdown_token.cancel();
+
+    let cleanup = async {
+        if !consumers_done && let Err(error) = (&mut consumers).await {
+            error!(%error, "consumer failed during shutdown");
+        }
+
+        if channel.status().connected() {
+            channel.close(REPLY_SUCCESS, "shutting down".into()).await?;
+        }
+
+        pool.close().await;
+
+        Ok::<(), anyhow::Error>(())
+    };
+
+    match timeout(CONSUMER_SHUTDOWN_TIMEOUT, cleanup).await {
+        Ok(Ok(())) => info!("graceful shutdown complete"),
+        Ok(Err(error)) => error!(%error, "error during shutdown"),
+        Err(_) => warn!("graceful shutdown timed out"),
+    }
+
+    health.shutdown().await?;
+
+    if let Some(error) = failure {
+        return Err(error);
+    }
+
+    Ok(())
 }
 
-async fn consume_routes(channel: &Channel, pool: &PgPool) -> Result<()> {
+async fn consume_routes(
+    channel: &Channel,
+    pool: &PgPool,
+    shutdown: &CancellationToken,
+) -> Result<()> {
     Queue::Routes
-        .consume::<RecordEvent, _>(channel, async |event| {
+        .consume::<RecordEvent, _>(channel, shutdown, async |event| {
             let uri = event.at_uri();
 
             match event.action {
@@ -100,9 +179,13 @@ async fn consume_routes(channel: &Channel, pool: &PgPool) -> Result<()> {
         .await
 }
 
-async fn consume_reviews(channel: &Channel, pool: &PgPool) -> Result<()> {
+async fn consume_reviews(
+    channel: &Channel,
+    pool: &PgPool,
+    shutdown: &CancellationToken,
+) -> Result<()> {
     Queue::Reviews
-        .consume::<RecordEvent, _>(channel, async |event| {
+        .consume::<RecordEvent, _>(channel, shutdown, async |event| {
             let uri = event.at_uri();
 
             match event.action {
@@ -136,9 +219,13 @@ async fn consume_reviews(channel: &Channel, pool: &PgPool) -> Result<()> {
         .await
 }
 
-async fn consume_profiles(channel: &Channel, pool: &PgPool) -> Result<()> {
+async fn consume_profiles(
+    channel: &Channel,
+    pool: &PgPool,
+    shutdown: &CancellationToken,
+) -> Result<()> {
     Queue::Profiles
-        .consume::<RecordEvent, _>(channel, async |event| {
+        .consume::<RecordEvent, _>(channel, shutdown, async |event| {
             let uri = event.at_uri();
 
             match event.action {
@@ -172,9 +259,14 @@ async fn consume_profiles(channel: &Channel, pool: &PgPool) -> Result<()> {
         .await
 }
 
-async fn consume_blobs(channel: &Channel, pool: &PgPool, agent: &BasicClient) -> Result<()> {
+async fn consume_blobs(
+    channel: &Channel,
+    pool: &PgPool,
+    shutdown: &CancellationToken,
+    agent: &BasicClient,
+) -> Result<()> {
     Queue::Blobs
-        .consume::<BlobMsg, _>(channel, async |msg| {
+        .consume::<BlobMsg, _>(channel, shutdown, async |msg| {
             if msg.size > MAX_GPX_BYTES {
                 let err_msg = format!("blob is {} bytes, over the limit", msg.size);
                 return Err(anyhow::Error::msg(err_msg));

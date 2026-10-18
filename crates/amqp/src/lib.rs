@@ -1,17 +1,17 @@
-use serde::Deserialize;
-use std::{collections::BTreeMap, fmt::Display};
-use tokio_stream::StreamExt;
-
 use anyhow::Result;
 use lapin::{
     Channel, Connection, ConnectionProperties, ExchangeKind,
     options::{
-        BasicAckOptions, BasicConsumeOptions, BasicNackOptions, BasicPublishOptions,
-        ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions,
+        BasicAckOptions, BasicCancelOptions, BasicConsumeOptions, BasicNackOptions,
+        BasicPublishOptions, ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions,
     },
     protocol::basic::AMQPProperties,
     types::{AMQPValue, FieldTable, ShortString},
 };
+use serde::Deserialize;
+use std::{collections::BTreeMap, fmt::Display, future::Ready};
+use tokio_stream::StreamExt;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 
 mod messages;
@@ -69,29 +69,38 @@ impl Queue {
         Ok(())
     }
 
-    /// consumer for the queue
+    /// Consume messages from the queue until `shutdown` is cancelled.
     ///
+    /// Cancellation stops new deliveries. A callback that is already running
+    /// is allowed to finish, after which the consumer is cancelled.
+    /// 
     /// # Errors
     ///
-    /// Will return an error if the message fails to be processed
-    pub async fn consume<T, F>(&self, channel: &Channel, mut callback: F) -> Result<()>
+    /// Returns an error if the consumer can not be started.
+    pub async fn consume<T, F>(
+        &self,
+        channel: &Channel,
+        shutdown: &CancellationToken,
+        mut callback: F,
+    ) -> Result<()>
     where
         F: AsyncFnMut(T) -> Result<()>,
         T: for<'a> Deserialize<'a>,
     {
         let queue_name = self.name();
-        let consumer_name = format!("{}-consumer", self.name());
+        let consumer_tag: ShortString = format!("{}-consumer", self.name()).into();
 
         let mut consumer = channel
             .basic_consume(
                 queue_name.into(),
-                consumer_name.into(),
+                consumer_tag.clone(),
                 BasicConsumeOptions::default(),
                 FieldTable::default(),
             )
             .await?;
 
-        while let Some(delivery_attempt) = consumer.next().await {
+        while let Some(Some(delivery_attempt)) = shutdown.run_until_cancelled(consumer.next()).await
+        {
             let delivery = match delivery_attempt {
                 Ok(delivery) => delivery,
                 Err(error) => {
@@ -139,6 +148,14 @@ impl Queue {
             }
         }
 
+        if channel.status().connected()
+            && let Err(error) = channel
+                .basic_cancel(consumer_tag, BasicCancelOptions::default())
+                .await
+        {
+            warn!(%error, queue = queue_name, "failed to cancel consumer");
+        }
+
         Ok(())
     }
 }
@@ -146,6 +163,23 @@ impl Queue {
 impl Display for Queue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.name())
+    }
+}
+
+/// Return a readiness check for the channel.
+///
+/// The check is synchronous and only inspects the channel's current status.
+pub fn health_check(channel: &Channel) -> impl Fn() -> Ready<Result<()>> + Send + Sync + 'static {
+    let channel = channel.clone();
+
+    move || {
+        let result = if channel.status().connected() {
+            Ok(())
+        } else {
+            Err(anyhow::Error::msg("amqp channel is not connected"))
+        };
+
+        std::future::ready(result)
     }
 }
 

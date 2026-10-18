@@ -12,6 +12,7 @@ ATTrails is an ATProto app for sharing cycling, running, and hiking routes. It h
 
 - `ingest-watcher`: Watches relevant collections from an ATProto [Tap](https://github.com/bluesky-social/indigo/blob/main/cmd/tap/README.md) instance and enqueues any new events for processing.
 - `ingest-consumer`: Processes events produced by `ingest-watcher` to transform and index routes, reviews, profiles, and GPX files.
+- `lifecycle`: Shared liveness/readiness probes and graceful shutdown signal handling.
 - `amqp`: Manages RabbitMQ connection and queues.
 - `database`: Manages the Postgres connection pool and schema migrations.
 - `lexicons`: Generated code for lexicons relevant to this app.

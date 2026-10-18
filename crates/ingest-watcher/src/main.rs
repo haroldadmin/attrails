@@ -2,20 +2,18 @@ use std::time::Duration;
 
 use amqp::Queue::{Profiles, Reviews, Routes};
 use atproto_tap::{TapEvent, TapStream};
-use ingest_watcher::{
-    config,
-    health::{self, Readiness},
-    shutdown::Shutdown,
-    tap,
-};
 use lapin::{Channel, protocol::constants::REPLY_SUCCESS};
-use tokio::{
-    net::TcpListener,
-    time::{Instant, timeout, timeout_at},
+use lifecycle::{
+    health::{Readiness, Server, check},
+    shutdown::Shutdown,
 };
+use tokio::time::{Instant, timeout, timeout_at};
 use tokio_stream::StreamExt;
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
+
+mod config;
+mod tap;
 
 /// Maximum number of buffered events processed after a shutdown signal.
 const DRAIN_MAX_EVENTS: usize = tap::CHANNEL_BUFFER_SIZE;
@@ -45,36 +43,26 @@ async fn main() -> anyhow::Result<()> {
     // as soon as the server is listening, while readiness reports 503 until
     // startup completes.
     let readiness = Readiness::new();
-    let listener = TcpListener::bind(conf.health_addr()).await?;
-    info!(address = %listener.local_addr()?, "health probe server listening");
-    let health = health::spawn(listener, readiness.clone());
+    let health = Server::bind(conf.health_port, readiness.clone()).await?;
 
     let channel = amqp::amqp_connect(&conf.rabbitmq_host).await?;
     amqp::declare_topology(&channel).await?;
 
-    readiness.set_check({
-        let channel = channel.clone();
-        move || channel.status().connected()
-    });
-    readiness.mark_started();
+    readiness.mark_started(vec![check("rabbitmq", amqp::health_check(&channel))]);
 
     let mut stream = tap::listen(&conf.tap_hostname, &conf.tap_admin_password);
 
-    run(&mut stream, &channel, &mut shutdown, &readiness).await;
-    shutdown_gracefully(&mut stream, &channel, &readiness).await;
+    run(&mut stream, &channel, &mut shutdown).await;
+    readiness.mark_draining();
+    shutdown_gracefully(&mut stream, &channel).await;
 
-    health.shutdown().await;
+    health.shutdown().await?;
 
     Ok(())
 }
 
 /// Process Tap events until a shutdown signal is received or the stream ends.
-async fn run(
-    stream: &mut TapStream,
-    channel: &Channel,
-    shutdown: &mut Shutdown,
-    readiness: &Readiness,
-) {
+async fn run(stream: &mut TapStream, channel: &Channel, shutdown: &mut Shutdown) {
     loop {
         tokio::select! {
             biased;
@@ -95,8 +83,6 @@ async fn run(
             }
         }
     }
-
-    readiness.mark_draining();
 }
 
 /// Publish a single Tap event to the queue for its collection.
@@ -165,9 +151,7 @@ async fn drain(stream: &mut TapStream, channel: &Channel) {
 
 /// Drain, then close the Tap stream and `RabbitMQ` channel within a bounded
 /// amount of time.
-async fn shutdown_gracefully(stream: &mut TapStream, channel: &Channel, readiness: &Readiness) {
-    readiness.mark_draining();
-
+async fn shutdown_gracefully(stream: &mut TapStream, channel: &Channel) {
     let graceful = async {
         drain(stream, channel).await;
         stream.close().await;

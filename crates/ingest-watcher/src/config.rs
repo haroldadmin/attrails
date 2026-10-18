@@ -1,7 +1,9 @@
-use std::net::SocketAddr;
-
 use anyhow::Result;
 use serde::Deserialize;
+
+const fn default_health_port() -> u16 {
+    8080
+}
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -18,10 +20,6 @@ pub struct Config {
     pub health_port: u16,
 }
 
-const fn default_health_port() -> u16 {
-    8080
-}
-
 impl Config {
     /// Read configuration from the environment.
     ///
@@ -32,10 +30,5 @@ impl Config {
     pub fn from_env() -> Result<Config> {
         dotenvy::dotenv().ok();
         envy::from_env::<Config>().map_err(anyhow::Error::new)
-    }
-
-    #[must_use]
-    pub fn health_addr(&self) -> SocketAddr {
-        SocketAddr::from(([0, 0, 0, 0], self.health_port))
     }
 }

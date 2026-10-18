@@ -25,6 +25,16 @@ pub async fn connect(postgres_uri: &str) -> Result<PgPool> {
     Ok(pool)
 }
 
+/// Verify that the pool can execute a trivial query.
+///
+/// # Errors
+///
+/// Returns an error if a connection can not be acquired or the query fails.
+pub async fn ping(pool: PgPool) -> Result<()> {
+    sqlx::query("SELECT 1").execute(&pool).await?;
+    Ok(())
+}
+
 /// Apply any pending migrations from this crate's `migrations` directory.
 ///
 /// # Errors
