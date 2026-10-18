@@ -1,0 +1,10 @@
+.env
+.git
+.DS_Store
+target
+**/*.rs.bk
+**/mutants.out*/
+rustc-ice-*.txt
+**/Dockerfile
+.dockerignore
+compose.yaml
