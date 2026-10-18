@@ -24,6 +24,17 @@ ATTrails is an ATProto app for sharing cycling, running, and hiking routes. It h
 - RabbitMQ for messaging and job queues
 - ATProto Tap for watching the Firehose
 
+## Local Development
+
+`compose.yaml` runs RabbitMQ and Tap. The `watcher` and `consumer` profiles add a containerised `ingest-watcher` or `ingest-consumer`, so the service being worked on can run with `cargo run` while compose provides the rest. Postgres is not included; the containers read `ATTRAILS_POSTGRES_CONNECTION_URI` from `.env`.
+
+- `docker compose --profile consumer up`: Work on `ingest-watcher` (compose runs RabbitMQ, Tap, and `ingest-consumer`)
+- `docker compose --profile watcher up`: Work on `ingest-consumer` (compose runs RabbitMQ, Tap, and `ingest-watcher`)
+- `docker compose up`: Run only RabbitMQ and Tap
+- `docker compose --profile watcher --profile consumer up`: Run everything in containers
+
+Add `--build` to rebuild the service images after code changes.
+
 ## Migrations
 
 Migrations live in `crates/database/migrations` and run with [sqlx-cli](https://github.com/launchbadge/sqlx/tree/main/sqlx-cli), installed via `mise install`. The target database is `ATTRAILS_POSTGRES_CONNECTION_URI` from `.env`.
