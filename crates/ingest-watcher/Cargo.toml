@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.104"
 atproto-tap = "0.14.5"
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
 dotenvy = "0.15.7"
 envy = "0.4.2"
 lapin = "4.12.1"
