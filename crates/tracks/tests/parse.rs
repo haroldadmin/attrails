@@ -1,4 +1,4 @@
-use tracks::parse_gpx;
+use tracks::TrackData;
 
 fn read(file_name: &str) -> Vec<u8> {
     let path = format!("{}/tests/data/{file_name}", env!("CARGO_MANIFEST_DIR"));
@@ -19,7 +19,10 @@ fn rejects_malformed_xml() {
         r#"<?xml version="1.0"?>"#,
         r#"<?xml version="1.0"?><gpx>"#,
     ] {
-        assert!(parse_gpx(xml.as_bytes()).is_err(), "parsed {xml:?}");
+        assert!(
+            TrackData::from_bytes(xml.as_bytes()).is_err(),
+            "parsed {xml:?}"
+        );
     }
 }
 
@@ -33,7 +36,10 @@ fn rejects_files_without_usable_points() {
         r#"<gpx version="1.1"><trk><trkseg><trkpt lat="1000" lon="1000"/><trkpt lat="1" lon="1"/></trkseg></trk></gpx>"#,
         "<kml></kml>",
     ] {
-        assert!(parse_gpx(xml.as_bytes()).is_err(), "parsed {xml:?}");
+        assert!(
+            TrackData::from_bytes(xml.as_bytes()).is_err(),
+            "parsed {xml:?}"
+        );
     }
 }
 
@@ -44,7 +50,7 @@ fn reads_routes_after_tracks() {
         <rte><rtept lat="10" lon="10"/><rtept lat="11" lon="11"/></rte>
     </gpx>"#;
 
-    let track = parse_gpx(xml.as_bytes()).unwrap();
+    let track = TrackData::from_bytes(xml.as_bytes()).unwrap();
     assert_eq!(track.point_count, 4);
     assert_eq!(track.start_point.x_y(), (1.0, 1.0));
     assert_eq!(track.end_point.x_y(), (11.0, 11.0));
@@ -59,7 +65,7 @@ fn reads_waypoints() {
         <trk><name>Not a waypoint</name><trkseg><trkpt lat="1" lon="1"/><trkpt lat="2" lon="2"/></trkseg></trk>
     </gpx>"#;
 
-    let track = parse_gpx(xml.as_bytes()).unwrap();
+    let track = TrackData::from_bytes(xml.as_bytes()).unwrap();
     let waypoints: Vec<_> = track
         .waypoints
         .iter()
@@ -77,7 +83,7 @@ fn reads_waypoints() {
 // Reference values for distance and elevation are from https://gpx.studio
 #[test]
 fn parses_cotswolds() {
-    let track = parse_gpx(&read("cotswolds-classic-middle-2023.gpx")).unwrap();
+    let track = TrackData::from_bytes(&read("cotswolds-classic-middle-2023.gpx")).unwrap();
 
     assert!(track.is_loop);
     assert_close(track.distance_m, 81270.0, 10.0);
@@ -92,7 +98,7 @@ fn parses_cotswolds() {
 
 #[test]
 fn parses_lejog() {
-    let track = parse_gpx(&read("lejog.gpx")).unwrap();
+    let track = TrackData::from_bytes(&read("lejog.gpx")).unwrap();
 
     assert!(!track.is_loop);
     assert_close(track.distance_m, 1_753_540.0, 10.0);
@@ -102,7 +108,7 @@ fn parses_lejog() {
 
 #[test]
 fn parses_london_to_brighton() {
-    let track = parse_gpx(&read("london-to-brighton.gpx")).unwrap();
+    let track = TrackData::from_bytes(&read("london-to-brighton.gpx")).unwrap();
 
     assert!(!track.is_loop);
     assert_close(track.distance_m, 97580.0, 10.0);
@@ -111,7 +117,7 @@ fn parses_london_to_brighton() {
 
 #[test]
 fn parses_london_to_hastings() {
-    let track = parse_gpx(&read("london-to-hastings.gpx")).unwrap();
+    let track = TrackData::from_bytes(&read("london-to-hastings.gpx")).unwrap();
 
     assert!(!track.is_loop);
     assert_close(track.distance_m, 91730.0, 10.0);

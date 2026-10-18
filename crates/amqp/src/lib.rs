@@ -73,7 +73,7 @@ impl Queue {
     ///
     /// Cancellation stops new deliveries. A callback that is already running
     /// is allowed to finish, after which the consumer is cancelled.
-    /// 
+    ///
     /// # Errors
     ///
     /// Returns an error if the consumer can not be started.
