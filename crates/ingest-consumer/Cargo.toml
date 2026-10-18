@@ -19,6 +19,12 @@ lexicons = { path = "../lexicons" }
 atproto-tap = "0.14.5"
 database = { path = "../database" }
 jiff = "0.2"
+tracks = { path = "../tracks" }
+jacquard = { version = "0.12.2", default-features = false, features = ["api"] }
+reqwest = { version = "0.12.28", default-features = false, features = ["rustls-tls"] }
+thiserror = "2.0.21"
+geojson = "1.0.0"
+sha2 = "0.11.0"
 
 [lints]
 workspace = true

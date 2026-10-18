@@ -14,6 +14,10 @@ use lapin::{
 };
 use tracing::{debug, error, info, warn};
 
+mod messages;
+
+pub use messages::BlobMsg;
+
 pub const EXCHANGE: &str = "tap-events-dlx";
 
 #[derive(Debug)]
@@ -124,7 +128,7 @@ impl Queue {
             };
 
             match callback(payload).await {
-                Ok(_) => {
+                Ok(()) => {
                     debug!("message processed");
                     let _ = delivery.ack(BasicAckOptions::default()).await;
                 }

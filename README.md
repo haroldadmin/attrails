@@ -15,6 +15,7 @@ ATTrails is an ATProto app for sharing cycling, running, and hiking routes. It h
 - `amqp`: Manages RabbitMQ connection and queues.
 - `database`: Manages the Postgres connection pool and schema migrations.
 - `lexicons`: Generated code for lexicons relevant to this app.
+- `tracks`: Parses GPX files into track summaries, paths, and elevation profiles.
 
 ## Infrastructure
 

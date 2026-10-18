@@ -1,3 +1,4 @@
+use amqp::BlobMsg;
 use anyhow::{Context, Result};
 use atproto_tap::RecordEvent;
 use database::routes::NewRoute;
@@ -54,4 +55,15 @@ pub fn from_event(event: &RecordEvent, route: &Route) -> Result<NewRoute> {
         ingested_at,
         gpx_cid: route.gpx.blob().cid().as_str().to_string(),
     })
+}
+
+/// Build a message asking for the route's GPX blob to be parsed.
+pub fn blob_msg(event: &RecordEvent, route: &Route) -> BlobMsg {
+    let blob = route.gpx.blob();
+    BlobMsg {
+        did: event.did.to_string(),
+        cid: blob.cid().as_str().to_string(),
+        mime_type: blob.mime_type.as_str().to_string(),
+        size: blob.size,
+    }
 }

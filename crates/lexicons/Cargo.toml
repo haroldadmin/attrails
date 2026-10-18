@@ -16,6 +16,10 @@ thiserror = "2"
 non_snake_case = "allow"
 unused_imports = "allow"
 
+[lints.clippy]
+all = { level = "allow", priority = -1 }
+pedantic = { level = "allow", priority = -1 }
+
 [features]
 default = ["com_atproto", "app_attrails"]
 streaming = ["jacquard-common/websocket"]

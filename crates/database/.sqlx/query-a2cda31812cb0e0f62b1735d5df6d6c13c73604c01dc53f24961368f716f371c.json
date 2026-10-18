@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO tracks (\n            cid, parser_version, distance_m, point_count, elevation_gain_m,\n            elevation_loss_m, min_elevation_m, max_elevation_m, duration_sec,\n            moving_time_sec, is_loop, start_point, end_point, path,\n            elevation_profile, waypoints, processed_at\n        )\n        VALUES (\n            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,\n            ST_SetSRID(ST_Force2D(ST_GeomFromGeoJSON($12::jsonb)), 4326)::geography,\n            ST_SetSRID(ST_Force2D(ST_GeomFromGeoJSON($13::jsonb)), 4326)::geography,\n            ST_SetSRID(ST_Force2D(ST_GeomFromGeoJSON($14::jsonb)), 4326)::geography,\n            $15, $16, $17\n        )\n        ON CONFLICT (cid) DO UPDATE SET\n            parser_version = excluded.parser_version,\n            distance_m = excluded.distance_m,\n            point_count = excluded.point_count,\n            elevation_gain_m = excluded.elevation_gain_m,\n            elevation_loss_m = excluded.elevation_loss_m,\n            min_elevation_m = excluded.min_elevation_m,\n            max_elevation_m = excluded.max_elevation_m,\n            duration_sec = excluded.duration_sec,\n            moving_time_sec = excluded.moving_time_sec,\n            is_loop = excluded.is_loop,\n            start_point = excluded.start_point,\n            end_point = excluded.end_point,\n            path = excluded.path,\n            elevation_profile = excluded.elevation_profile,\n            waypoints = excluded.waypoints,\n            processed_at = excluded.processed_at\n        WHERE tracks.parser_version <= excluded.parser_version\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4",
+        "Float8",
+        "Int4",
+        "Float4",
+        "Float4",
+        "Float4",
+        "Float4",
+        "Int4",
+        "Int4",
+        "Bool",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a2cda31812cb0e0f62b1735d5df6d6c13c73604c01dc53f24961368f716f371c"
+}
