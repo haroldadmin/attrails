@@ -10,10 +10,12 @@
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:codegen": "kysely-codegen"
+    "db:codegen": "kysely-codegen",
+    "lex:codegen": "lex build --lexicons ../crates/lexicons/defs --out src/lexicons --clear --index-file --import-ext '' --include 'app.attrails.*' 'com.atproto.repo.strongRef'"
   },
   "dependencies": {
     "@atproto/api": "0.29.1",
+    "@atproto/lex": "0.3.14",
     "@atproto/oauth-client-node": "0.5.11",
     "clsx": "2.1.1",
     "convert": "8.0.2",

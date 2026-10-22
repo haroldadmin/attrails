@@ -1,2 +1,3 @@
 pnpm-lock.yaml
 src/db/types.ts
+src/lexicons/
