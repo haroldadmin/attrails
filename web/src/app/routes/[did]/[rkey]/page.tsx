@@ -1,17 +1,29 @@
 import convert from "convert";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFormatter, getLocale } from "next-intl/server";
 import { type ReactNode, Suspense } from "react";
 import { Author } from "@/components/author";
 import { ElevationProfile } from "@/components/elevation-profile";
+import { LoginLink } from "@/components/login-link";
 import { Notice } from "@/components/notice";
 import { RouteMap } from "@/components/route-map";
+import { getSession } from "@/auth/session";
 import { ShareButton } from "@/components/share-button";
-import { fetchRoute } from "@/data/routes";
+import {
+  fetchUserReview,
+  fetchReviewSummary,
+  fetchReviews,
+} from "@/data/reviews";
+import { fetchRoute, type Route } from "@/data/routes";
 import { unitsForLocale } from "@/i18n/units";
 import { activityLabel, difficultyLabel, surfaceLabel } from "@/lib/labels";
-import { getAuthorProfile } from "@/lib/profiles";
+import {
+  batchFetchAuthorProfiles,
+  fetchAuthorProfile,
+  unresolvedProfile,
+} from "@/lib/profiles";
 
 type RoutePageProps = PageProps<"/routes/[did]/[rkey]">;
 
@@ -29,7 +41,7 @@ export async function generateMetadata({
 
 export default function RoutePage({ params }: RoutePageProps) {
   return (
-    <main className="px-4 py-8 sm:p-16">
+    <main className="flex flex-col gap-8 px-4 py-8 sm:p-16">
       <Suspense>
         <Notice
           messages={{
@@ -56,8 +68,9 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
     notFound();
   }
 
-  const [author, format, locale] = await Promise.all([
-    getAuthorProfile(route.did),
+  const [author, reviewSummary, format, locale] = await Promise.all([
+    fetchAuthorProfile(route.did),
+    fetchReviewSummary(route.uri),
     getFormatter(),
     getLocale(),
   ]);
@@ -79,10 +92,32 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
             </time>
           </Author>
           <div className="flex flex-row flex-wrap gap-2">
-            <p className="flex items-center h-10 px-4 rounded-full border border-base-300 text-sm font-semibold">
-              {format.number(route.reviewCount)}{" "}
-              {route.reviewCount === 1 ? "review" : "reviews"}
-            </p>
+            <a
+              href="#reviews"
+              className="btn btn-ghost rounded-full border-base-300"
+            >
+              {reviewSummary.averageRating !== null && (
+                <>
+                  <span aria-hidden="true" className="text-warning">
+                    ★
+                  </span>
+                  {format.number(reviewSummary.averageRating, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })}
+                  <span className="sr-only"> out of 5, </span>
+                  <span aria-hidden="true">·</span>
+                </>
+              )}
+              {reviewSummary.count === 0 ? (
+                "No reviews yet"
+              ) : (
+                <>
+                  {format.number(reviewSummary.count)}{" "}
+                  {reviewSummary.count === 1 ? "review" : "reviews"}
+                </>
+              )}
+            </a>
             <ShareButton
               title={route.name}
               className="btn btn-ghost rounded-full border-base-300"
@@ -154,7 +189,117 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
           ))}
         </ul>
       )}
+
+      <Suspense fallback={<RouteReviewsSkeleton />}>
+        <RouteReviews route={route} />
+      </Suspense>
     </article>
+  );
+}
+
+const RATINGS = [1, 2, 3, 4, 5];
+
+async function RouteReviews({ route }: { route: Route }) {
+  const session = await getSession();
+  const viewerDid = session?.did;
+
+  const [reviews, viewerReview, format] = await Promise.all([
+    fetchReviews(route.uri, { limit: viewerDid === undefined ? 1 : 10 }),
+    viewerDid ? fetchUserReview(route.uri, viewerDid) : null,
+    getFormatter(),
+  ]);
+
+  const profilesByDid = await batchFetchAuthorProfiles(
+    reviews.map((review) => review.did),
+  );
+
+  return (
+    <section
+      id="reviews"
+      aria-labelledby="reviews-heading"
+      className="flex flex-col gap-6"
+    >
+      <div className="flex flex-row flex-wrap items-center justify-between gap-4 max-w-prose">
+        <h2 id="reviews-heading" className="font-serif text-3xl">
+          Reviews
+        </h2>
+        {viewerDid && viewerDid !== route.did && !viewerReview && (
+          <Link
+            href={`/routes/${route.did}/${route.rkey}/review`}
+            className="btn btn-neutral rounded-full"
+          >
+            Write a review
+          </Link>
+        )}
+      </div>
+
+      {!viewerDid && (
+        <p>
+          <LoginLink className="link">Log in</LoginLink> to review this route
+          and to read all reviews.
+        </p>
+      )}
+
+      {reviews.length === 0 ? (
+        <p className="text-base-content/70">No reviews yet.</p>
+      ) : (
+        <ol className="flex flex-col gap-6 max-w-prose">
+          {reviews.map((review) => (
+            <li key={`${review.did}/${review.rkey}`}>
+              <article className="flex flex-col gap-2">
+                <div className="flex flex-row items-center justify-between gap-4">
+                  <Author
+                    profile={
+                      profilesByDid.get(review.did) ??
+                      unresolvedProfile(review.did)
+                    }
+                  >
+                    <time dateTime={review.createdAt.toString()}>
+                      {format.dateTime(review.createdAt.epochMilliseconds, {
+                        dateStyle: "long",
+                      })}
+                    </time>
+                  </Author>
+                  {review.did === viewerDid && (
+                    <Link
+                      href={`/routes/${route.did}/${route.rkey}/review`}
+                      className="btn btn-ghost btn-sm rounded-full border-base-300"
+                    >
+                      Edit<span className="sr-only"> your review</span>
+                    </Link>
+                  )}
+                </div>
+                <div
+                  role="img"
+                  aria-label={`Rated ${review.rating} out of 5`}
+                  className="rating rating-sm"
+                >
+                  {RATINGS.map((rating) => (
+                    <div
+                      key={rating}
+                      className="mask mask-star-2 bg-warning"
+                      aria-current={rating === review.rating}
+                    />
+                  ))}
+                </div>
+                {review.text && (
+                  <p className="whitespace-pre-line">{review.text}</p>
+                )}
+              </article>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function RouteReviewsSkeleton() {
+  return (
+    <div className="flex flex-col gap-6" aria-hidden="true">
+      <div className="skeleton h-9 w-40" />
+      <div className="skeleton h-64 w-full max-w-prose" />
+    </div>
   );
 }
 

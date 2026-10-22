@@ -3,7 +3,7 @@ import "server-only";
 import { Client, currentDatetimeString, XrpcResponseError } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app } from "@/lexicons";
-import { getAuthorProfile } from "@/lib/profiles";
+import { fetchAuthorProfile } from "@/lib/profiles";
 
 /**
  * Makes sure the signed-in account has an `app.attrails.actor.profile`
@@ -26,7 +26,7 @@ export async function ensureProfileDeclaration(
     }
   }
 
-  const profile = await getAuthorProfile(session.did);
+  const profile = await fetchAuthorProfile(session.did);
   await client.create(app.attrails.actor.profile, {
     name: profile.displayName ?? profile.handle ?? session.did,
     createdAt: currentDatetimeString(),

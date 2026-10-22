@@ -66,6 +66,8 @@ export async function fetchRecentRoutes(
 }
 
 export type Route = {
+  uri: string;
+  cid: string;
   did: string;
   rkey: string;
   name: string;
@@ -82,7 +84,6 @@ export type Route = {
   path: MultiLineString;
   /** Empty if the track has no elevation data. */
   elevationProfile: ElevationSample[];
-  reviewCount: number;
 };
 
 export type ElevationSample = [distanceM: number, elevationM: number];
@@ -99,6 +100,8 @@ export const fetchRoute = cache(
       .selectFrom("routes")
       .innerJoin("tracks", "tracks.cid", "routes.gpx_cid")
       .select([
+        "routes.uri",
+        "routes.cid",
         "routes.did",
         "routes.rkey",
         "routes.name",
@@ -118,15 +121,6 @@ export const fetchRoute = cache(
         >`COALESCE(tracks.elevation_profile, '[]'::jsonb)`.as(
           "elevationProfile",
         ),
-        (eb) =>
-          eb
-            .selectFrom("reviews")
-            .select(sql<number>`COUNT(*)::int`.as("count"))
-            .whereRef("reviews.subject_uri", "=", "routes.uri")
-            .where("reviews.tombstoned", "=", false)
-            .$asScalar()
-            .$notNull()
-            .as("reviewCount"),
       ])
       .where("routes.did", "=", did)
       .where("routes.rkey", "=", rkey)

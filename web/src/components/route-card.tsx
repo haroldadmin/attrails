@@ -4,7 +4,7 @@ import { getFormatter, getLocale } from "next-intl/server";
 import type { RouteSummary } from "@/data/routes";
 import { unitsForLocale } from "@/i18n/units";
 import { activityLabel } from "@/lib/labels";
-import { getAuthorProfile } from "@/lib/profiles";
+import { fetchAuthorProfile } from "@/lib/profiles";
 import { Author } from "./author";
 import { RoutePreview } from "./route-preview";
 
@@ -16,7 +16,7 @@ export async function RouteCard({ route }: RouteCardProps) {
   const now = Temporal.Now.instant();
 
   const [author, format, locale] = await Promise.all([
-    getAuthorProfile(route.did),
+    fetchAuthorProfile(route.did),
     getFormatter(),
     getLocale(),
   ]);

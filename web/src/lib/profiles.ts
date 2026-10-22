@@ -19,30 +19,45 @@ const bskyAppView = new Agent({ service: "https://public.api.bsky.app" });
  * so the page still renders. Failed lookups aren't cached and are retried on
  * the next request.
  */
-export async function getAuthorProfile(did: string): Promise<AuthorProfile> {
+export async function fetchAuthorProfile(did: string): Promise<AuthorProfile> {
   try {
-    return await fetchAuthorProfile(did);
+    const profiles = await batchFetchAuthorProfiles([did]);
+    const profile = profiles.get(did);
+    return profile ?? unresolvedProfile(did);
   } catch (error) {
     console.warn(`profiles:fetch ${did}`, error);
     return unresolvedProfile(did);
   }
 }
 
-async function fetchAuthorProfile(did: string): Promise<AuthorProfile> {
+export async function batchFetchAuthorProfiles(
+  dids: string[],
+): Promise<Map<string, AuthorProfile>> {
   "use cache";
-  cacheLife("hours");
+  cacheLife("minutes");
+
+  if (!dids.length) {
+    return new Map();
+  }
 
   const { data } = await bskyAppView.app.bsky.actor.getProfiles(
-    { actors: [did] },
+    { actors: Array.from(new Set(dids)) },
     { signal: AbortSignal.timeout(1500) },
   );
 
-  // Accounts without a Bluesky profile are left out of the response.
-  const [profileView] = data.profiles;
-  return profileView ? toAuthorProfile(profileView) : unresolvedProfile(did);
+  const profilesByDid = new Map<string, AuthorProfile>();
+  for (let index = 0; index < dids.length; index++) {
+    const did = dids[index];
+    const profile = data.profiles[index];
+    if (did && profile) {
+      profilesByDid.set(did, toAuthorProfile(profile));
+    }
+  }
+
+  return profilesByDid;
 }
 
-function unresolvedProfile(did: string): AuthorProfile {
+export function unresolvedProfile(did: string): AuthorProfile {
   return { did, handle: null, displayName: null, avatarUrl: null };
 }
 
