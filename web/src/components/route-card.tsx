@@ -1,4 +1,5 @@
 import convert from "convert";
+import Link from "next/link";
 import { getFormatter, getLocale } from "next-intl/server";
 import type { RouteSummary } from "@/data/routes";
 import { unitsForLocale } from "@/i18n/units";
@@ -23,7 +24,7 @@ export async function RouteCard({ route }: RouteCardProps) {
   const units = unitsForLocale(locale);
 
   return (
-    <article className="card card-border bg-base-100 h-full">
+    <article className="card card-border bg-base-100 h-full relative hover:border-primary">
       <div className="card-body gap-4 p-4">
         <div className="flex flex-row gap-4">
           <RoutePreview
@@ -33,7 +34,12 @@ export async function RouteCard({ route }: RouteCardProps) {
           />
           <div className="flex flex-col items-start gap-2 min-w-0">
             <h3 className="card-title font-serif text-xl leading-tight">
-              {route.name}
+              <Link
+                href={`/routes/${route.did}/${route.rkey}`}
+                className="after:absolute after:inset-0"
+              >
+                {route.name}
+              </Link>
             </h3>
             <dl className="flex flex-row flex-wrap gap-x-4 gap-y-1">
               <div>

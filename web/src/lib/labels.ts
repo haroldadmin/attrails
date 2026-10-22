@@ -31,3 +31,15 @@ const ACTIVITY_LABELS: ReadonlyMap<string, string> = new Map(ACTIVITIES);
 export function activityLabel(activity: string): string {
   return ACTIVITY_LABELS.get(activity) ?? "Other";
 }
+
+const SURFACE_LABELS: ReadonlyMap<string, string> = new Map(SURFACES);
+
+export function surfaceLabel(surface: string): string | undefined {
+  return SURFACE_LABELS.get(surface);
+}
+
+const DIFFICULTY_LABELS: ReadonlyMap<string, string> = new Map(DIFFICULTIES);
+
+export function difficultyLabel(difficulty: string): string | undefined {
+  return DIFFICULTY_LABELS.get(difficulty);
+}
