@@ -10,13 +10,11 @@ export async function RecentRoutes() {
     return <p>No routes yet.</p>;
   }
 
-  const now = Temporal.Now.instant();
-
   return (
     <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {routes.map((route) => (
         <li key={`${route.did}/${route.rkey}`}>
-          <RouteCard route={route} now={now} />
+          <RouteCard route={route} />
         </li>
       ))}
     </ul>
