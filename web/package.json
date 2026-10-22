@@ -13,9 +13,11 @@
     "db:codegen": "kysely-codegen"
   },
   "dependencies": {
+    "@atproto/api": "0.29.1",
     "@atproto/oauth-client-node": "0.5.11",
     "clsx": "2.1.1",
     "convert": "8.0.2",
+    "d3-geo": "3.1.1",
     "kysely": "0.29.7",
     "negotiator": "1.1.0",
     "next": "16.4.2",
@@ -27,6 +29,8 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
+    "@types/d3-geo": "3.1.1",
+    "@types/geojson": "7946.0.16",
     "@types/negotiator": "0.6.5",
     "@types/node": "26.6.5",
     "@types/pg": "8.23.1",
