@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { RecentRoutes, RecentRoutesSkeleton } from "@/components/recent-routes";
+import { UploadedNotice } from "@/components/uploaded-notice";
 
 export default function Home() {
   return (
@@ -14,6 +15,9 @@ export default function Home() {
         <h2 id="recent-routes-heading" className="font-serif text-3xl">
           Recently added
         </h2>
+        <Suspense>
+          <UploadedNotice />
+        </Suspense>
         <Suspense fallback={<RecentRoutesSkeleton />}>
           <RecentRoutes />
         </Suspense>

@@ -17,6 +17,9 @@ export async function SessionState() {
 
   return (
     <form action={logout} className="flex flex-row gap-4">
+      <Link className="link-hover" href="/routes/new">
+        Upload
+      </Link>
       <span className="text-base-content/70">{handle ?? session.did}</span>
       <button className="link-hover cursor-pointer" type="submit">
         Log out

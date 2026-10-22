@@ -2,7 +2,7 @@ import convert from "convert";
 import { getFormatter, getLocale } from "next-intl/server";
 import type { RouteSummary } from "@/data/routes";
 import { unitsForLocale } from "@/i18n/units";
-import { activityLabel } from "@/lib/activities";
+import { activityLabel } from "@/lib/labels";
 import { getAuthorProfile } from "@/lib/profiles";
 import { Author } from "./author";
 import { RoutePreview } from "./route-preview";
