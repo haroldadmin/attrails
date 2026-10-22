@@ -6,6 +6,7 @@ import { type ReactNode, Suspense } from "react";
 import { Author } from "@/components/author";
 import { ElevationProfile } from "@/components/elevation-profile";
 import { RouteMap } from "@/components/route-map";
+import { ShareButton } from "@/components/share-button";
 import { fetchRoute } from "@/data/routes";
 import { unitsForLocale } from "@/i18n/units";
 import { activityLabel, difficultyLabel, surfaceLabel } from "@/lib/labels";
@@ -56,13 +57,32 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
     <article className="flex flex-col gap-8">
       <header className="flex flex-col gap-4">
         <h1 className="font-serif text-4xl sm:text-5xl">{route.name}</h1>
-        <Author profile={author}>
-          <time dateTime={route.createdAt.toString()}>
-            {format.dateTime(route.createdAt.epochMilliseconds, {
-              dateStyle: "long",
-            })}
-          </time>
-        </Author>
+        <div className="flex flex-row flex-wrap items-center justify-between gap-4">
+          <Author profile={author}>
+            <time dateTime={route.createdAt.toString()}>
+              {format.dateTime(route.createdAt.epochMilliseconds, {
+                dateStyle: "long",
+              })}
+            </time>
+          </Author>
+          <div className="flex flex-row flex-wrap gap-2">
+            <p className="flex items-center h-10 px-4 rounded-full border border-base-300 text-sm font-semibold">
+              {format.number(route.reviewCount)}{" "}
+              {route.reviewCount === 1 ? "review" : "reviews"}
+            </p>
+            <ShareButton
+              title={route.name}
+              className="btn btn-ghost rounded-full border-base-300"
+            />
+            <a
+              href={`/routes/${route.did}/${route.rkey}/gpx`}
+              download
+              className="btn btn-neutral rounded-full"
+            >
+              Download GPX
+            </a>
+          </div>
+        </div>
       </header>
 
       <RouteMap
@@ -139,9 +159,12 @@ function RouteDetailsSkeleton() {
     <div className="flex flex-col gap-8" aria-hidden="true">
       <div className="flex flex-col gap-4">
         <div className="skeleton h-12 w-2/3" />
-        <div className="flex flex-row items-center gap-3">
-          <div className="skeleton size-10 rounded-full shrink-0" />
-          <div className="skeleton h-4 w-48" />
+        <div className="flex flex-row flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-row items-center gap-3">
+            <div className="skeleton size-10 rounded-full shrink-0" />
+            <div className="skeleton h-4 w-48" />
+          </div>
+          <div className="skeleton h-10 w-80 rounded-full" />
         </div>
       </div>
       <div className="skeleton h-[60vh] min-h-80" />

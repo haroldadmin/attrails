@@ -82,6 +82,7 @@ export type Route = {
   path: MultiLineString;
   /** Empty if the track has no elevation data. */
   elevationProfile: ElevationSample[];
+  reviewCount: number;
 };
 
 export type ElevationSample = [distanceM: number, elevationM: number];
@@ -117,6 +118,15 @@ export const fetchRoute = cache(
         >`COALESCE(tracks.elevation_profile, '[]'::jsonb)`.as(
           "elevationProfile",
         ),
+        (eb) =>
+          eb
+            .selectFrom("reviews")
+            .select(sql<number>`COUNT(*)::int`.as("count"))
+            .whereRef("reviews.subject_uri", "=", "routes.uri")
+            .where("reviews.tombstoned", "=", false)
+            .$asScalar()
+            .$notNull()
+            .as("reviewCount"),
       ])
       .where("routes.did", "=", did)
       .where("routes.rkey", "=", rkey)
@@ -132,3 +142,31 @@ export const fetchRoute = cache(
     return { ...route, path: JSON.parse(pathGeoJson) };
   },
 );
+
+export type RouteGpx = {
+  did: string;
+  rkey: string;
+  name: string;
+  gpxCid: string;
+};
+
+/**
+ * Fetches what's needed to download a route's GPX file, or `null` if the
+ * route doesn't exist.
+ */
+export async function fetchRouteGpx(
+  did: string,
+  rkey: string,
+): Promise<RouteGpx | null> {
+  const db = await getDb();
+
+  const row = await db
+    .selectFrom("routes")
+    .select(["did", "rkey", "name", "gpx_cid as gpxCid"])
+    .where("did", "=", did)
+    .where("rkey", "=", rkey)
+    .where("tombstoned", "=", false)
+    .executeTakeFirst();
+
+  return row ?? null;
+}

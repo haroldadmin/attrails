@@ -166,6 +166,9 @@ importers:
 
   .:
     dependencies:
+      '@atproto-labs/did-resolver':
+        specifier: 0.3.11
+        version: 0.3.11
       '@atproto/api':
         specifier: 0.29.1
         version: 0.29.1
@@ -187,6 +190,9 @@ importers:
       clsx:
         specifier: 2.1.1
         version: 2.1.1
+      content-disposition:
+        specifier: 2.0.1
+        version: 2.0.1
       convert:
         specifier: 8.0.2
         version: 8.0.2
@@ -1565,6 +1571,10 @@ packages:
 
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
+
+  content-disposition@2.0.1:
+    resolution: {integrity: sha512-e+H0ZXHSWYrENhQzw1LPuP4oF5MzVKmDU6d3hxlvaPEYLLg62MxtQNPRx4SYSuYJSBUgnQIG4HIN2tEtNv7Dog==}
+    engines: {node: '>=18'}
 
   content-type@2.1.0:
     resolution: {integrity: sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==}
@@ -4491,6 +4501,8 @@ snapshots:
   commander@7.2.0: {}
 
   concat-map@0.0.1: {}
+
+  content-disposition@2.0.1: {}
 
   content-type@2.1.0: {}
 
