@@ -56,14 +56,23 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [ingest-watcher, ingest-consumer]
+        include:
+          - service: ingest-watcher
+            context: .
+            file: crates/ingest-watcher/Dockerfile
+          - service: ingest-consumer
+            context: .
+            file: crates/ingest-consumer/Dockerfile
+          - service: web
+            context: web
+            file: web/Dockerfile
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - uses: docker/build-push-action@v7
         with:
-          context: .
-          file: crates/${{ matrix.service }}/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           platforms: linux/amd64
           push: false
           cache-from: type=gha,scope=${{ matrix.service }}
@@ -77,7 +86,16 @@ jobs:
       packages: write
     strategy:
       matrix:
-        service: [ingest-watcher, ingest-consumer]
+        include:
+          - service: ingest-watcher
+            context: .
+            file: crates/ingest-watcher/Dockerfile
+          - service: ingest-consumer
+            context: .
+            file: crates/ingest-consumer/Dockerfile
+          - service: web
+            context: web
+            file: web/Dockerfile
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -98,8 +116,8 @@ jobs:
 
       - uses: docker/build-push-action@v7
         with:
-          context: .
-          file: crates/${{ matrix.service }}/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

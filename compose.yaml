@@ -63,3 +63,12 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+
+  web:
+    profiles: [web]
+    build:
+      context: web
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "3000:3000"

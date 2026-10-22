@@ -32,6 +32,7 @@ ATTrails is an ATProto app for sharing cycling, running, and hiking routes. It h
 - `docker compose --profile watcher up`: Work on `ingest-consumer` (compose runs RabbitMQ, Tap, and `ingest-watcher`)
 - `docker compose up`: Run only RabbitMQ and Tap
 - `docker compose --profile watcher --profile consumer up`: Run everything in containers
+- `docker compose --profile web up web`: Run the web frontend in a container on port 3000
 
 Add `--build` to rebuild the service images after code changes.
 
