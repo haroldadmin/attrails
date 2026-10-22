@@ -109,7 +109,7 @@ export async function uploadRoute(
     };
   }
 
-  redirect("/?uploaded=1");
+  redirect("/?notice=route-uploaded");
 }
 
 function text(formData: FormData, key: string): string {

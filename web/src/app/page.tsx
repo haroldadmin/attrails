@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { RecentRoutes, RecentRoutesSkeleton } from "@/components/recent-routes";
-import { UploadedNotice } from "@/components/uploaded-notice";
+import { Notice } from "@/components/notice";
 
 export default function Home() {
   return (
@@ -16,7 +16,12 @@ export default function Home() {
           Recently added
         </h2>
         <Suspense>
-          <UploadedNotice />
+          <Notice
+            messages={{
+              "route-uploaded":
+                "Route uploaded. It'll appear here once it has been processed.",
+            }}
+          />
         </Suspense>
         <Suspense fallback={<RecentRoutesSkeleton />}>
           <RecentRoutes />

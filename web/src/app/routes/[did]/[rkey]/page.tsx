@@ -5,6 +5,7 @@ import { getFormatter, getLocale } from "next-intl/server";
 import { type ReactNode, Suspense } from "react";
 import { Author } from "@/components/author";
 import { ElevationProfile } from "@/components/elevation-profile";
+import { Notice } from "@/components/notice";
 import { RouteMap } from "@/components/route-map";
 import { ShareButton } from "@/components/share-button";
 import { fetchRoute } from "@/data/routes";
@@ -29,6 +30,18 @@ export async function generateMetadata({
 export default function RoutePage({ params }: RoutePageProps) {
   return (
     <main className="px-4 py-8 sm:p-16">
+      <Suspense>
+        <Notice
+          messages={{
+            "review-posted":
+              "Review posted. It'll appear in the reviews once it has been processed.",
+            "review-updated":
+              "Review updated. Your changes will appear in the reviews once they've been processed.",
+            "review-deleted":
+              "Review deleted. It'll disappear from the reviews once that has been processed.",
+          }}
+        />
+      </Suspense>
       <Suspense fallback={<RouteDetailsSkeleton />}>
         <RouteDetails params={params} />
       </Suspense>
