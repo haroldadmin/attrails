@@ -17,7 +17,9 @@ export async function SessionState() {
       <Link className="link-hover" href="/routes/new">
         Upload
       </Link>
-      <span className="text-base-content/70">{handle ?? session.did}</span>
+      <Link className="link-hover text-base-content/70" href="/users/me">
+        {handle ?? session.did}
+      </Link>
       <button className="link-hover cursor-pointer" type="submit">
         Log out
       </button>

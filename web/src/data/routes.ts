@@ -4,6 +4,8 @@ import type { LineString, MultiLineString } from "geojson";
 import { sql } from "kysely";
 import { cache } from "react";
 import { getDb } from "@/db/client";
+import type { Page } from "@/lib/pages";
+import { after, decodeCursor, toPage } from "./pagination";
 
 export type RouteSummary = {
   did: string;
@@ -62,6 +64,56 @@ export async function fetchRecentRoutes(
   return rows.map(({ pathGeoJson, ...row }) => ({
     ...row,
     path: JSON.parse(pathGeoJson),
+  }));
+}
+
+export type RouteListing = {
+  did: string;
+  rkey: string;
+  name: string;
+  activity: string;
+  uploadedAt: Temporal.Instant;
+};
+
+/**
+ * Fetches a page of `did`'s routes with tracks, newest first.
+ */
+export async function fetchRoutesByAuthor(
+  did: string,
+  { cursor, limit }: { cursor?: string; limit: number },
+): Promise<Page<RouteListing>> {
+  const db = await getDb();
+  const position = cursor ? decodeCursor(cursor) : undefined;
+  if (position === null) {
+    return { items: [], nextCursor: null };
+  }
+
+  let query = db
+    .selectFrom("routes")
+    .innerJoin("tracks", "tracks.cid", "routes.gpx_cid")
+    .select([
+      "routes.did",
+      "routes.rkey",
+      "routes.name",
+      "routes.activity",
+      "routes.sort_at as uploadedAt",
+    ])
+    .where("routes.did", "=", did)
+    .where("routes.tombstoned", "=", false)
+    .where("tracks.path", "is not", null);
+  if (position) {
+    query = query.where(after("routes.sort_at", "routes.rkey", position));
+  }
+
+  const rows = await query
+    .orderBy("routes.sort_at", "desc")
+    .orderBy("routes.rkey", "desc")
+    .limit(limit + 1)
+    .execute();
+
+  return toPage(rows, limit, ({ uploadedAt, rkey }) => ({
+    sortAt: uploadedAt,
+    rkey,
   }));
 }
 

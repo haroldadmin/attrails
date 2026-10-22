@@ -3,6 +3,8 @@ import "server-only";
 import { sql } from "kysely";
 import { cache } from "react";
 import { type AttrailsDb, getDb } from "@/db/client";
+import type { Page } from "@/lib/pages";
+import { after, decodeCursor, toPage } from "./pagination";
 
 export type Review = {
   did: string;
@@ -99,4 +101,70 @@ export async function fetchUserReview(
     .executeTakeFirst();
 
   return row ?? null;
+}
+
+export type AuthoredReview = Review & {
+  route: { did: string; rkey: string; name: string };
+};
+
+/**
+ * Fetches a page of `did`'s reviews, newest first. Like on a route's page,
+ * only the newest review of each route counts.
+ */
+export async function fetchReviewsByAuthor(
+  did: string,
+  { cursor, limit }: { cursor?: string; limit: number },
+): Promise<Page<AuthoredReview>> {
+  const db = await getDb();
+  const position = cursor ? decodeCursor(cursor) : undefined;
+  if (position === null) {
+    return { items: [], nextCursor: null };
+  }
+
+  const latest = db
+    .selectFrom("reviews")
+    .innerJoin("routes", "routes.uri", "reviews.subject_uri")
+    .distinctOn("reviews.subject_uri")
+    .select([
+      "reviews.did",
+      "reviews.rkey",
+      "reviews.rating",
+      "reviews.body as text",
+      "reviews.created_at as createdAt",
+      "reviews.sort_at as sortAt",
+      "routes.did as routeDid",
+      "routes.rkey as routeRkey",
+      "routes.name as routeName",
+    ])
+    .where("reviews.did", "=", did)
+    .where("reviews.tombstoned", "=", false)
+    .where("routes.tombstoned", "=", false)
+    .where("routes.did", "<>", did)
+    .orderBy("reviews.subject_uri")
+    .orderBy("reviews.created_at", "desc")
+    .orderBy("reviews.rkey", "desc");
+
+  let query = db.selectFrom(latest.as("latest")).selectAll();
+  if (position) {
+    query = query.where(after("sortAt", "rkey", position));
+  }
+
+  const rows = await query
+    .orderBy("sortAt", "desc")
+    .orderBy("rkey", "desc")
+    .limit(limit + 1)
+    .execute();
+
+  const page = toPage(rows, limit, ({ sortAt, rkey }) => ({ sortAt, rkey }));
+  return {
+    ...page,
+    items: page.items.map((row) => ({
+      did: row.did,
+      rkey: row.rkey,
+      rating: row.rating,
+      text: row.text,
+      createdAt: row.createdAt,
+      route: { did: row.routeDid, rkey: row.routeRkey, name: row.routeName },
+    })),
+  };
 }

@@ -8,6 +8,7 @@ import { Author } from "@/components/author";
 import { ElevationProfile } from "@/components/elevation-profile";
 import { LoginLink } from "@/components/login-link";
 import { Notice } from "@/components/notice";
+import { ReviewRating } from "@/components/review-rating";
 import { RouteMap } from "@/components/route-map";
 import { getSession } from "@/auth/session";
 import { ShareButton } from "@/components/share-button";
@@ -197,8 +198,6 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
   );
 }
 
-const RATINGS = [1, 2, 3, 4, 5];
-
 async function RouteReviews({ route }: { route: Route }) {
   const session = await getSession();
   const viewerDid = session?.did;
@@ -269,19 +268,7 @@ async function RouteReviews({ route }: { route: Route }) {
                     </Link>
                   )}
                 </div>
-                <div
-                  role="img"
-                  aria-label={`Rated ${review.rating} out of 5`}
-                  className="rating rating-sm"
-                >
-                  {RATINGS.map((rating) => (
-                    <div
-                      key={rating}
-                      className="mask mask-star-2 bg-warning"
-                      aria-current={rating === review.rating}
-                    />
-                  ))}
-                </div>
+                <ReviewRating rating={review.rating} />
                 {review.text && (
                   <p className="whitespace-pre-line">{review.text}</p>
                 )}
