@@ -1,0 +1,23 @@
+{
+  "envFile": "../.env",
+  "url": "env(ATTRAILS_POSTGRES_CONNECTION_URI)",
+  "dialect": "postgres",
+  "outFile": "./src/db/types.ts",
+  "excludePattern": "{_sqlx_migrations,spatial_ref_sys,geography_columns,geometry_columns}",
+  "customImports": {
+    "RawBuilder": "kysely"
+  },
+  "typeMapping": {
+    "date": "Temporal.PlainDate",
+    "time": "Temporal.PlainTime",
+    "timestamp": "Temporal.PlainDateTime",
+    "timestamptz": "Temporal.Instant"
+  },
+  "overrides": {
+    "columns": {
+      "tracks.start_point": "ColumnType<string, RawBuilder<string>, RawBuilder<string>>",
+      "tracks.end_point": "ColumnType<string, RawBuilder<string>, RawBuilder<string>>",
+      "tracks.path": "ColumnType<string | null, RawBuilder<string> | null, RawBuilder<string> | null>"
+    }
+  }
+}

@@ -2,6 +2,8 @@
 rust = { version = "1.98.0", components = ["rust-analyzer", "rust-src"] }
 "cargo:jacquard-lexgen" = "0.12.2"
 "cargo:kdlfmt" = "latest"
+node = "26.12.1"
+pnpm = "12.14.0"
 # Keep in sync with the sqlx version in crates/database.
 "cargo:sqlx-cli" = { version = "0.9.0", default-features = false, features = "postgres,rustls,sqlx-toml" }
 
@@ -14,3 +16,8 @@ run = "sqlx migrate run"
 description = "List pending Postgres migrations without applying them"
 dir = "{{config_root}}/crates/database"
 run = "sqlx migrate run --dry-run"
+
+[tasks."web:db:codegen"]
+description = "Generate the frontend's Kysely types from the migrated Postgres schema"
+dir = "{{config_root}}/web"
+run = "pnpm db:codegen"

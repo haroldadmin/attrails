@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-sans: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@plugin "daisyui" {
+  themes: light --default;
+}
+
+@plugin "daisyui/theme" {
+  name: "attrails";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: rgb(245, 242, 235);
+  --color-base-200: oklch(92% 0.003 48.717);
+  --color-base-300: oklch(92% 0 0);
+  --color-base-content: rgb(30, 42, 35);
+  --color-primary: #4b7a5a;
+  --color-primary-content: rgb(245, 242, 235);
+  --color-secondary: #3e6d8c;
+  --color-secondary-content: oklch(98% 0.001 106.423);
+  --color-accent: rgb(140, 107, 69);
+  --color-accent-content: oklch(97% 0.014 343.198);
+  --color-neutral: oklch(14% 0.004 49.25);
+  --color-neutral-content: oklch(98% 0.001 106.423);
+  --color-info: oklch(97% 0.013 236.62);
+  --color-info-content: oklch(45% 0.085 224.283);
+  --color-success: oklch(59% 0.145 163.225);
+  --color-success-content: oklch(97% 0.021 166.113);
+  --color-warning: oklch(68% 0.162 75.834);
+  --color-warning-content: oklch(98% 0.026 102.212);
+  --color-error: oklch(39% 0.141 25.723);
+  --color-error-content: oklch(26% 0.079 36.259);
+  --radius-selector: 2rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.25rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 1;
+}
