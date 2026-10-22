@@ -3,6 +3,7 @@
 import { Client, currentDatetimeString } from "@atproto/lex";
 import { DOMParser, onErrorStopParsing } from "@xmldom/xmldom";
 import { redirect } from "next/navigation";
+import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
 import { app } from "@/lexicons";
 import { GPX_MAX_SIZE_BYTES, hasGpxTrack } from "@/lib/gpx";
@@ -31,7 +32,7 @@ export async function uploadRoute(
 ): Promise<UploadRouteState> {
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect(loginHref("/routes/new"));
   }
 
   const values: UploadRouteValues = {

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getOAuthClient, OAUTH_SCOPE } from "./client";
+import { safeReturnTo } from "./return-to";
 import { endWebSession } from "./session";
 
 export type LoginState = {
@@ -24,6 +25,7 @@ export async function login(
   try {
     authorizeUrl = await getOAuthClient().authorize(handle, {
       scope: OAUTH_SCOPE,
+      state: safeReturnTo(formData.get("returnTo")),
     });
   } catch (error) {
     console.warn(`auth:authorize ${handle}`, error);

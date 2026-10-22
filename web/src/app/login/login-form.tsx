@@ -13,11 +13,17 @@ export function LoginForm() {
     login,
     { handle: "" },
   );
-  const callbackError = callbackErrors[useSearchParams().get("error") ?? ""];
+  const searchParams = useSearchParams();
+  const callbackError = callbackErrors[searchParams.get("error") ?? ""];
   const error = state.error ?? callbackError;
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      <input
+        type="hidden"
+        name="returnTo"
+        value={searchParams.get("returnTo") ?? ""}
+      />
       <fieldset className="fieldset">
         <label className="fieldset-legend" htmlFor="handle">
           Handle

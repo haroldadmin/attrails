@@ -2,15 +2,12 @@ import Link from "next/link";
 import { logout } from "@/auth/actions";
 import { getOAuthClient } from "@/auth/client";
 import { getSession } from "@/auth/session";
+import { LoginLink } from "./login-link";
 
 export async function SessionState() {
   const session = await getSession();
   if (!session) {
-    return (
-      <Link className="link-hover" href="/login">
-        Log in
-      </Link>
-    );
+    return <LoginLink className="link-hover">Log in</LoginLink>;
   }
 
   const handle = await resolveHandle(session.did);

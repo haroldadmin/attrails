@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
 import { ACTIVITIES, DIFFICULTIES, SURFACES } from "@/lib/labels";
 import { UploadRouteForm } from "./upload-route-form";
@@ -27,7 +28,7 @@ export default function NewRoutePage() {
 async function SignedInUploadForm() {
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect(loginHref("/routes/new"));
   }
 
   return (
