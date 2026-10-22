@@ -13,6 +13,7 @@
     "db:codegen": "kysely-codegen"
   },
   "dependencies": {
+    "@atproto/oauth-client-node": "0.5.11",
     "clsx": "2.1.1",
     "kysely": "0.29.7",
     "next": "16.4.2",

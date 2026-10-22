@@ -21,6 +21,18 @@ export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
+export interface OauthSessions {
+  did: string;
+  updated_at: Generated<Temporal.Instant>;
+  value: Json;
+}
+
+export interface OauthStates {
+  created_at: Generated<Temporal.Instant>;
+  key: string;
+  value: Json;
+}
+
 export interface Reviews {
   body: string | null;
   cid: string;
@@ -90,9 +102,19 @@ export interface Users {
   uri: string;
 }
 
+export interface WebSessions {
+  created_at: Generated<Temporal.Instant>;
+  did: string;
+  expires_at: Temporal.Instant;
+  id_hash: string;
+}
+
 export interface DB {
+  oauth_sessions: OauthSessions;
+  oauth_states: OauthStates;
   reviews: Reviews;
   routes: Routes;
   tracks: Tracks;
   users: Users;
+  web_sessions: WebSessions;
 }
