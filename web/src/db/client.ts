@@ -1,5 +1,5 @@
 import "server-only";
-import { Kysely, PostgresDialect } from "kysely";
+import { Kysely, PostgresDialect, type LogEvent } from "kysely";
 import { connection } from "next/server";
 import { Pool, types, type CustomTypesConfig } from "pg";
 import type { DB } from "./types";
@@ -7,6 +7,19 @@ import { envOrThrow } from "@/env";
 
 export type { DB, Reviews, Routes, Tracks, Users } from "./types";
 export type AttrailsDb = Kysely<DB>;
+
+const SLOW_QUERY_MS = 250;
+
+// Logs query text without parameter values, which may contain user data.
+function logSlowQuery(event: LogEvent): void {
+  if (event.level !== "query" || event.queryDurationMillis < SLOW_QUERY_MS) {
+    return;
+  }
+
+  console.warn(
+    `db:slow ${event.queryDurationMillis.toFixed(1)}ms ${event.query.sql}`,
+  );
+}
 
 // Keep in sync with `typeMapping` in .kysely-codegenrc.json.
 const temporalParsers: Partial<Record<number, (value: string) => unknown>> = {
@@ -33,11 +46,20 @@ function createDb(): AttrailsDb {
   const pool = new Pool({
     connectionString,
     max: 10,
-    connectionTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 3_000,
+    idleTimeoutMillis: 30_000,
+    statement_timeout: 5_000,
+    query_timeout: 6_000,
+    lock_timeout: 2_000,
+    idle_in_transaction_session_timeout: 40_000,
+    application_name: "attrails-web",
     types: temporalTypes,
   });
 
-  return new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
+  return new Kysely<DB>({
+    dialect: new PostgresDialect({ pool }),
+    log: logSlowQuery,
+  });
 }
 
 /**
