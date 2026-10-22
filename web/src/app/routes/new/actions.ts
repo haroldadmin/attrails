@@ -7,22 +7,19 @@ import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
 import { app } from "@/lexicons";
 import { GPX_MAX_SIZE_BYTES, hasGpxTrack } from "@/lib/gpx";
+import {
+  checkRouteValues,
+  readRouteValues,
+  routeDetails,
+  type RouteValues,
+} from "@/lib/route-form";
 
 const { route } = app.attrails.v0;
 
 const GPX_ENCODING = "application/gpx+xml";
 
-export type UploadRouteValues = {
-  name: string;
-  description: string;
-  activity: string;
-  surface: string;
-  difficulty: string;
-  tags: string;
-};
-
 export type UploadRouteState = {
-  values: UploadRouteValues;
+  values: RouteValues;
   error?: string;
 };
 
@@ -35,21 +32,10 @@ export async function uploadRoute(
     redirect(loginHref("/routes/new"));
   }
 
-  const values: UploadRouteValues = {
-    name: text(formData, "name"),
-    description: text(formData, "description"),
-    activity: text(formData, "activity"),
-    surface: text(formData, "surface"),
-    difficulty: text(formData, "difficulty"),
-    tags: text(formData, "tags"),
-  };
-
-  if (!values.name) {
-    return { values, error: "Give the route a name." };
-  }
-
-  if (!values.activity) {
-    return { values, error: "Choose an activity." };
+  const values = readRouteValues(formData);
+  const error = checkRouteValues(values);
+  if (error) {
+    return { values, error };
   }
 
   const file = formData.get("gpx");
@@ -71,23 +57,13 @@ export async function uploadRoute(
     };
   }
 
-  const tags = values.tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-
   const client = new Client(session);
   try {
     const { body } = await client.uploadBlob(gpx, { encoding: GPX_ENCODING });
 
     const record = route.$safeValidate(
       route.$build({
-        name: values.name,
-        activity: values.activity,
-        description: values.description || undefined,
-        surface: values.surface || undefined,
-        difficulty: values.difficulty || undefined,
-        tags: tags.length > 0 ? tags : undefined,
+        ...routeDetails(values),
         gpx: body.blob,
         createdAt: currentDatetimeString(),
       }),
@@ -110,11 +86,6 @@ export async function uploadRoute(
   }
 
   redirect("/?notice=route-uploaded");
-}
-
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function isUsableGpx(gpx: Uint8Array): boolean {

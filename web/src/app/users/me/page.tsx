@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
 import { Avatar, profileName } from "@/components/author";
+import { Notice } from "@/components/notice";
 import { fetchAuthorProfile } from "@/lib/profiles";
 import { fetchReviewList, fetchRouteList } from "./listings";
 import { ReviewList } from "./review-list";
@@ -50,6 +51,14 @@ async function Profile() {
         <h2 id="routes-heading" className="font-serif text-3xl">
           Your routes
         </h2>
+        <Suspense>
+          <Notice
+            messages={{
+              "route-deleted":
+                "Route deleted. It'll disappear from your routes once that has been processed.",
+            }}
+          />
+        </Suspense>
         <Suspense fallback={<RoutesSkeleton />}>
           <YourRoutes did={session.did} />
         </Suspense>

@@ -46,6 +46,8 @@ export default function RoutePage({ params }: RoutePageProps) {
       <Suspense>
         <Notice
           messages={{
+            "route-updated":
+              "Route updated. Your changes will appear once they've been processed.",
             "review-posted":
               "Review posted. It'll appear in the reviews once it has been processed.",
             "review-updated":
@@ -69,7 +71,8 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
     notFound();
   }
 
-  const [author, reviewSummary, format, locale] = await Promise.all([
+  const [session, author, reviewSummary, format, locale] = await Promise.all([
+    getSession(),
     fetchAuthorProfile(route.did),
     fetchReviewSummary(route.uri),
     getFormatter(),
@@ -93,6 +96,14 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
             </time>
           </Author>
           <div className="flex flex-row flex-wrap gap-2">
+            {session?.did === route.did && (
+              <Link
+                href={`/routes/${route.did}/${route.rkey}/edit`}
+                className="btn btn-ghost rounded-full border-base-300"
+              >
+                Edit route
+              </Link>
+            )}
             <a
               href="#reviews"
               className="btn btn-ghost rounded-full border-base-300"

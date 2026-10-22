@@ -23,18 +23,26 @@ export function RouteList({ firstPage }: RouteListProps) {
         {routes.items.map((route) => (
           <li
             key={route.rkey}
-            className="flex flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3"
+            className="flex flex-row items-center justify-between gap-4 py-3"
           >
+            <div className="flex flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1 min-w-0 grow">
+              <Link
+                href={`/routes/${route.did}/${route.rkey}`}
+                className="font-semibold link-hover"
+              >
+                {route.name}
+              </Link>
+              <span className="text-sm text-base-content/70">
+                {route.activity} ·{" "}
+                <time dateTime={route.uploadedAt}>{route.uploadedOn}</time>
+              </span>
+            </div>
             <Link
-              href={`/routes/${route.did}/${route.rkey}`}
-              className="font-semibold link-hover"
+              href={`/routes/${route.did}/${route.rkey}/edit`}
+              className="btn btn-ghost btn-sm rounded-full border-base-300"
             >
-              {route.name}
+              Edit<span className="sr-only"> {route.name}</span>
             </Link>
-            <span className="text-sm text-base-content/70">
-              {route.activity} ·{" "}
-              <time dateTime={route.uploadedAt}>{route.uploadedOn}</time>
-            </span>
           </li>
         ))}
       </ul>
