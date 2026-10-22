@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getFormatter, getLocale } from "next-intl/server";
 import { type ReactNode, Suspense } from "react";
 import { Author } from "@/components/author";
+import { ElevationProfile } from "@/components/elevation-profile";
 import { RouteMap } from "@/components/route-map";
 import { fetchRoute } from "@/data/routes";
 import { unitsForLocale } from "@/i18n/units";
@@ -69,6 +70,14 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
         isLoop={route.isLoop}
         className="h-[60vh] min-h-80 rounded-box"
       />
+
+      {route.elevationProfile.length > 0 && (
+        <ElevationProfile
+          profile={route.elevationProfile}
+          locale={locale}
+          units={units}
+        />
+      )}
 
       <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-4">
         <Detail term="Distance">
@@ -136,6 +145,7 @@ function RouteDetailsSkeleton() {
         </div>
       </div>
       <div className="skeleton h-[60vh] min-h-80" />
+      <div className="skeleton h-50" />
       <div className="skeleton h-14 w-full" />
     </div>
   );

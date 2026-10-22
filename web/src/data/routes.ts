@@ -80,7 +80,11 @@ export type Route = {
   elevationLossM: number | null;
   isLoop: boolean;
   path: MultiLineString;
+  /** Empty if the track has no elevation data. */
+  elevationProfile: ElevationSample[];
 };
+
+export type ElevationSample = [distanceM: number, elevationM: number];
 
 /**
  * Fetches a route with its track, or `null` if it doesn't exist or hasn't
@@ -108,6 +112,11 @@ export const fetchRoute = cache(
         "tracks.elevation_loss_m as elevationLossM",
         "tracks.is_loop as isLoop",
         sql<string>`ST_AsGeoJSON(tracks.path, 6)`.as("pathGeoJson"),
+        sql<
+          ElevationSample[]
+        >`COALESCE(tracks.elevation_profile, '[]'::jsonb)`.as(
+          "elevationProfile",
+        ),
       ])
       .where("routes.did", "=", did)
       .where("routes.rkey", "=", rkey)
