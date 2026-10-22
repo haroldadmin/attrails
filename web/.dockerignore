@@ -1,0 +1,14 @@
+.env*
+.DS_Store
+.next
+node_modules
+coverage
+out
+build
+*.tsbuildinfo
+next-env.d.ts
+*.pem
+npm-debug.log*
+.pnpm-debug.log*
+Dockerfile
+.dockerignore

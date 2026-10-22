@@ -8,3 +8,4 @@ rustc-ice-*.txt
 **/Dockerfile
 .dockerignore
 compose.yaml
+web

@@ -10,6 +10,7 @@ if (existsSync(rootEnvFile)) {
 }
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
