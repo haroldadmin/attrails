@@ -1,4 +1,4 @@
-import { fetchRecentRoutes } from "@/data/routes";
+import { fetchRecentRoutes } from "@/lib/routes";
 import { RouteCard, RouteCardSkeleton } from "./route-card";
 
 // Divisible by both grid layouts (2 and 3 columns).

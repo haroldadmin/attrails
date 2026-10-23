@@ -1,8 +1,8 @@
 import "server-only";
 
 import { getFormatter } from "next-intl/server";
-import { fetchReviewsByAuthor } from "@/data/reviews";
-import { fetchRoutesByAuthor } from "@/data/routes";
+import { fetchReviewsByAuthor } from "@/lib/reviews";
+import { fetchRoutesByAuthor } from "@/lib/routes";
 import { activityLabel } from "@/lib/labels";
 import type { Page } from "@/lib/pages";
 

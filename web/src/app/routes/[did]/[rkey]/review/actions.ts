@@ -4,8 +4,8 @@ import { Client, currentDatetimeString } from "@atproto/lex";
 import { redirect } from "next/navigation";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
-import { fetchUserReview } from "@/data/reviews";
-import { fetchRoute } from "@/data/routes";
+import { fetchUserReview } from "@/lib/reviews";
+import { fetchRoute } from "@/lib/routes";
 import { app } from "@/lexicons";
 
 const { review } = app.attrails.v0;

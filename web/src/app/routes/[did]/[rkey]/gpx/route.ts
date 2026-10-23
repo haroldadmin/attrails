@@ -1,5 +1,5 @@
 import { create as contentDisposition } from "content-disposition";
-import { fetchRouteGpx } from "@/data/routes";
+import { fetchRouteGpx } from "@/lib/routes";
 import { fetchBlob } from "@/lib/blobs";
 
 export async function GET(

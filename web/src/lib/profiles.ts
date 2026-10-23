@@ -20,17 +20,28 @@ const bskyAppView = new Agent({ service: "https://public.api.bsky.app" });
  * the next request.
  */
 export async function fetchAuthorProfile(did: string): Promise<AuthorProfile> {
-  try {
-    const profiles = await batchFetchAuthorProfiles([did]);
-    const profile = profiles.get(did);
-    return profile ?? unresolvedProfile(did);
-  } catch (error) {
-    console.warn(`profiles:fetch ${did}`, error);
-    return unresolvedProfile(did);
-  }
+  const [profile] = await fetchAuthorProfiles([did]);
+  return profile ?? unresolvedProfile(did);
 }
 
-export async function batchFetchAuthorProfiles(
+/**
+ * Looks up several authors' Bluesky profiles, returned in the same order as
+ * `dids`. Best-effort, like `fetchAuthorProfile`.
+ */
+export async function fetchAuthorProfiles(
+  dids: string[],
+): Promise<AuthorProfile[]> {
+  let profilesByDid = new Map<string, AuthorProfile>();
+  try {
+    profilesByDid = await fetchBskyProfiles(Array.from(new Set(dids)));
+  } catch (error) {
+    console.warn(`profiles:fetch ${dids.join(" ")}`, error);
+  }
+
+  return dids.map((did) => profilesByDid.get(did) ?? unresolvedProfile(did));
+}
+
+async function fetchBskyProfiles(
   dids: string[],
 ): Promise<Map<string, AuthorProfile>> {
   "use cache";
@@ -41,23 +52,18 @@ export async function batchFetchAuthorProfiles(
   }
 
   const { data } = await bskyAppView.app.bsky.actor.getProfiles(
-    { actors: Array.from(new Set(dids)) },
+    { actors: dids },
     { signal: AbortSignal.timeout(1500) },
   );
 
-  const profilesByDid = new Map<string, AuthorProfile>();
-  for (let index = 0; index < dids.length; index++) {
-    const did = dids[index];
-    const profile = data.profiles[index];
-    if (did && profile) {
-      profilesByDid.set(did, toAuthorProfile(profile));
-    }
-  }
-
-  return profilesByDid;
+  // The AppView leaves out accounts it can't find, so match profiles by DID
+  // rather than by position.
+  return new Map(
+    data.profiles.map((profile) => [profile.did, toAuthorProfile(profile)]),
+  );
 }
 
-export function unresolvedProfile(did: string): AuthorProfile {
+function unresolvedProfile(did: string): AuthorProfile {
   return { did, handle: null, displayName: null, avatarUrl: null };
 }
 

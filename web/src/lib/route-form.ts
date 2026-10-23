@@ -45,7 +45,7 @@ export function routeDetails(values: RouteValues) {
   };
 }
 
-export function text(formData: FormData, key: string): string {
+function text(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
 }

@@ -3,7 +3,7 @@
 import * as Plot from "@observablehq/plot";
 import convert from "convert";
 import { useEffect, useMemo, useRef } from "react";
-import type { ElevationSample } from "@/data/routes";
+import type { ElevationSample } from "@/lib/routes";
 import { createFormats } from "@/i18n/formats";
 import type { Units } from "@/i18n/units";
 

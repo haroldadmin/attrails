@@ -16,15 +16,11 @@ import {
   fetchUserReview,
   fetchReviewSummary,
   fetchReviews,
-} from "@/data/reviews";
-import { fetchRoute, type Route } from "@/data/routes";
+} from "@/lib/reviews";
+import { fetchRoute, type Route } from "@/lib/routes";
 import { unitsForLocale } from "@/i18n/units";
 import { activityLabel, difficultyLabel, surfaceLabel } from "@/lib/labels";
-import {
-  batchFetchAuthorProfiles,
-  fetchAuthorProfile,
-  unresolvedProfile,
-} from "@/lib/profiles";
+import { fetchAuthorProfile, fetchAuthorProfiles } from "@/lib/profiles";
 
 type RoutePageProps = PageProps<"/routes/[did]/[rkey]">;
 
@@ -220,7 +216,7 @@ async function RouteReviews({ route }: { route: Route }) {
     getFormatter(),
   ]);
 
-  const profilesByDid = await batchFetchAuthorProfiles(
+  const authors = await fetchAuthorProfiles(
     reviews.map((review) => review.did),
   );
 
@@ -255,16 +251,11 @@ async function RouteReviews({ route }: { route: Route }) {
         <p className="text-base-content/70">No reviews yet.</p>
       ) : (
         <ol className="flex flex-col gap-6 max-w-prose">
-          {reviews.map((review) => (
+          {reviews.map((review, index) => (
             <li key={`${review.did}/${review.rkey}`}>
               <article className="flex flex-col gap-2">
                 <div className="flex flex-row items-center justify-between gap-4">
-                  <Author
-                    profile={
-                      profilesByDid.get(review.did) ??
-                      unresolvedProfile(review.did)
-                    }
-                  >
+                  <Author profile={authors[index]}>
                     <time dateTime={review.createdAt.toString()}>
                       {format.dateTime(review.createdAt.epochMilliseconds, {
                         dateStyle: "long",

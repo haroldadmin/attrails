@@ -12,7 +12,7 @@ type Position = {
  * Pages through one account's records, newest first. Within an account, the
  * record key breaks ties between records with the same timestamp.
  */
-export function encodeCursor({ sortAt, rkey }: Position): string {
+function encodeCursor({ sortAt, rkey }: Position): string {
   return `${sortAt.toString()}_${rkey}`;
 }
 

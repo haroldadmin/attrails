@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
-import { fetchRoute } from "@/data/routes";
+import { fetchRoute } from "@/lib/routes";
 import { ACTIVITIES, DIFFICULTIES, SURFACES } from "@/lib/labels";
 import { deleteRoute, saveRoute } from "./actions";
 import { DeleteRoute } from "./delete-route";
