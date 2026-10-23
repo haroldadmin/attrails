@@ -13,11 +13,11 @@ export async function SessionState() {
   const handle = await resolveHandle(session.did);
 
   return (
-    <form action={logout} className="flex flex-row gap-4">
-      <Link className="link-hover" href="/routes/new">
-        Upload
-      </Link>
-      <Link className="link-hover text-base-content/70" href="/users/me">
+    <form action={logout} className="flex flex-row items-center gap-6">
+      <Link
+        className="link-hover text-base-content/70 max-w-48 truncate"
+        href="/users/me"
+      >
         {handle ?? session.did}
       </Link>
       <button className="link-hover cursor-pointer" type="submit">

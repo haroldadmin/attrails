@@ -31,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-lvh flex flex-col font-sans">
         <header className="w-full max-w-7xl mx-auto px-4 sm:px-16">
-          <div className="flex flex-row justify-between items-baseline gap-8 border-b border-base-300">
+          <div className="flex flex-row flex-wrap items-center gap-x-8 gap-y-2 py-3 border-b border-base-300">
             <AtTrailsLogo size="large" />
             <TopNav />
           </div>
