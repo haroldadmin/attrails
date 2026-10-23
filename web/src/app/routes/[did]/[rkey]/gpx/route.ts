@@ -25,8 +25,10 @@ export async function GET(
   const headers = new Headers({
     "Content-Type": "application/gpx+xml",
     "Content-Disposition": contentDisposition(fileName(route.name)),
+    "Cache-Control": "public, max-age=31536000, immutable",
     "X-Content-Type-Options": "nosniff",
   });
+
   const length = blob.headers.get("Content-Length");
   if (length) {
     headers.set("Content-Length", length);
