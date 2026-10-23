@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:codegen": "kysely-codegen",
-    "lex:codegen": "lex build --lexicons ../crates/lexicons/defs --out src/lexicons --clear --index-file --import-ext '' --include 'app.attrails.*' 'com.atproto.repo.strongRef'"
+    "lex:codegen": "lex build --lexicons ../crates/lexicons/defs --out src/lexicons --clear --index-file --import-ext '' --include 'app.attrails.*' 'app.bsky.actor.profile' 'com.atproto.repo.strongRef'"
   },
   "dependencies": {
     "@atproto-labs/did-resolver": "0.3.11",

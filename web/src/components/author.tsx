@@ -47,13 +47,7 @@ export function Avatar({ profile, size = "sm" }: AvatarProps) {
   return profile.avatarUrl ? (
     <div className="avatar shrink-0">
       <div className={`${className} rounded-full bg-base-200`}>
-        <Image
-          src={profile.avatarUrl}
-          alt=""
-          width={pixels}
-          height={pixels}
-          unoptimized
-        />
+        <Image src={profile.avatarUrl} alt="" width={pixels} height={pixels} />
       </div>
     </div>
   ) : (

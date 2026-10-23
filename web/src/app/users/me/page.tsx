@@ -35,16 +35,21 @@ async function Profile() {
 
   return (
     <>
-      <header className="flex flex-row items-center gap-4">
-        <Avatar profile={profile} size="lg" />
-        <div className="flex flex-col min-w-0">
-          <h1 className="font-serif text-4xl truncate">
-            {profileName(profile)}
-          </h1>
-          {profile.displayName && profile.handle && (
-            <p className="text-base-content/70 truncate">@{profile.handle}</p>
-          )}
+      <header className="flex flex-col gap-4">
+        <div className="flex flex-row items-center gap-4">
+          <Avatar profile={profile} size="lg" />
+          <div className="flex flex-col min-w-0">
+            <h1 className="font-serif text-4xl truncate">
+              {profileName(profile)}
+            </h1>
+            {profile.displayName && profile.handle && (
+              <p className="text-base-content/70 truncate">@{profile.handle}</p>
+            )}
+          </div>
         </div>
+        {profile.bio && (
+          <p className="max-w-prose whitespace-pre-line">{profile.bio}</p>
+        )}
       </header>
 
       <section aria-labelledby="routes-heading" className="flex flex-col gap-6">

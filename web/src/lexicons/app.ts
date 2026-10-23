@@ -3,3 +3,4 @@
  */
 
 export * as attrails from './app/attrails'
+export * as bsky from './app/bsky'
