@@ -12,6 +12,11 @@ export function TopNav() {
               Discover
             </Link>
           </li>
+          <li>
+            <Link className="link-hover" href="/about">
+              About
+            </Link>
+          </li>
         </ul>
         <div>
           <Suspense>

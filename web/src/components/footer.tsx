@@ -1,12 +1,30 @@
-import { AtTrailsLogo } from "@/components/logo";
+import Link from "next/link";
 
 export function Footer() {
   return (
     <footer className="w-full max-w-7xl mx-auto px-4 sm:px-16">
-      <div className="footer sm:footer-horizontal py-4 border-t border-base-300 flex flex-row justify-between gap-2 items-baseline">
-        <AtTrailsLogo size="small" />
-        <p>Built on the open social web with ATProto</p>
-      </div>
+      <nav aria-label="Footer" className="py-4 border-t border-base-300">
+        <ul className="flex flex-row flex-wrap gap-x-6 gap-y-2 text-sm">
+          <li>
+            <Link className="link-hover" href="/">
+              Home
+            </Link>
+          </li>
+          <li>
+            <Link className="link-hover" href="/about">
+              About
+            </Link>
+          </li>
+          <li>
+            <a
+              className="link-hover"
+              href="https://bsky.app/profile/attrails.app"
+            >
+              @attrails.app on Bluesky
+            </a>
+          </li>
+        </ul>
+      </nav>
     </footer>
   );
 }
