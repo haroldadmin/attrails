@@ -138,6 +138,7 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
               href={`/routes/${route.did}/${route.rkey}/gpx`}
               download
               className="btn btn-neutral rounded-full"
+              rel="nofollow"
             >
               Download GPX
             </a>
