@@ -50,9 +50,41 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --locked
 
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      # Reads the pnpm version from packageManager in web/package.json.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v6
+        with:
+          # Keep in sync with the node version in mise.toml.
+          node-version: 26.12.1
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # No-op until the frontend has a test script.
+      - name: Test
+        run: pnpm run --if-present test
+
   build-images:
     if: github.event_name == 'pull_request'
-    needs: [lint, test]
+    needs: [lint, test, web]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -79,7 +111,7 @@ jobs:
 
   publish-images:
     if: github.event_name == 'push'
-    needs: [lint, test]
+    needs: [lint, test, web]
     runs-on: ubuntu-latest
     permissions:
       contents: read
