@@ -4,12 +4,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFormatter, getLocale } from "next-intl/server";
 import { type ReactNode, Suspense } from "react";
-import { Author } from "@/components/author";
+import { Author, profileName } from "@/components/author";
 import { ElevationProfile } from "@/components/elevation-profile";
 import { LoginLink } from "@/components/login-link";
 import { Notice } from "@/components/notice";
 import { ReviewRating } from "@/components/review-rating";
 import { RouteMap } from "@/components/route-map";
+import { getWebUrl } from "@/auth/client";
 import { getSession } from "@/auth/session";
 import { ShareButton } from "@/components/share-button";
 import {
@@ -21,6 +22,7 @@ import { fetchRoute, type Route } from "@/lib/routes";
 import { unitsForLocale } from "@/i18n/units";
 import { activityLabel, difficultyLabel, surfaceLabel } from "@/lib/labels";
 import { fetchAuthorProfile, fetchAuthorProfiles } from "@/lib/profiles";
+import { openGraphDefaults } from "@/app/shared-metadata";
 
 type RoutePageProps = PageProps<"/routes/[did]/[rkey]">;
 
@@ -33,7 +35,55 @@ export async function generateMetadata({
     notFound();
   }
 
-  return { title: `${route.name} · ATTrails` };
+  const [author, format, locale] = await Promise.all([
+    fetchAuthorProfile(route.did),
+    getFormatter(),
+    getLocale(),
+  ]);
+  const units = unitsForLocale(locale);
+
+  const summary = [
+    activityLabel(route.activity),
+    `${format.number(
+      convert(route.distanceM, "meters").to(units.distance),
+      "distance",
+    )} ${route.isLoop ? "loop" : "route"}`,
+    route.elevationGainM !== null &&
+      `${format.number(
+        convert(route.elevationGainM, "meters").to(units.elevation),
+        "elevation",
+      )} climbing`,
+    `Shared by ${profileName(author)}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const path = `/routes/${route.did}/${route.rkey}`;
+
+  return {
+    metadataBase: getWebUrl(),
+    title: route.name,
+    description: truncate(
+      route.description ? `${summary}. ${route.description}` : summary,
+      DESCRIPTION_LENGTH,
+    ),
+    alternates: { canonical: path },
+    openGraph: {
+      ...openGraphDefaults,
+      type: "article",
+      title: route.name,
+      url: path,
+      publishedTime: route.createdAt.toString(),
+    },
+  };
+}
+
+// Roughly what search results and link previews show before cutting off.
+const DESCRIPTION_LENGTH = 200;
+
+function truncate(text: string, length: number): string {
+  return text.length <= length
+    ? text
+    : `${text.slice(0, length - 1).trimEnd()}…`;
 }
 
 export default function RoutePage({ params }: RoutePageProps) {

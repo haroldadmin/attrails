@@ -13,7 +13,7 @@ import { EditRouteForm } from "./edit-route-form";
 type EditRoutePageProps = PageProps<"/routes/[did]/[rkey]/edit">;
 
 export const metadata: Metadata = {
-  title: "Edit route · ATTrails",
+  title: "Edit route",
 };
 
 export default function EditRoutePage({ params }: EditRoutePageProps) {

@@ -12,7 +12,7 @@ import { ReviewList } from "./review-list";
 import { RouteList } from "./route-list";
 
 export const metadata: Metadata = {
-  title: "Your profile · ATTrails",
+  title: "Your profile",
 };
 
 export default function ProfilePage() {

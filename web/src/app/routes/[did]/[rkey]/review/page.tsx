@@ -12,9 +12,13 @@ import { ReviewForm } from "./review-form";
 
 type ReviewPageProps = PageProps<"/routes/[did]/[rkey]/review">;
 
-export const metadata: Metadata = {
-  title: "Review a route · ATTrails",
-};
+export async function generateMetadata({
+  params,
+}: ReviewPageProps): Promise<Metadata> {
+  const { did, rkey } = await params;
+  const route = await fetchRoute(decodeURIComponent(did), rkey);
+  return { title: route ? `Review ${route.name}` : "Review a route" };
+}
 
 export default function ReviewPage({ params }: ReviewPageProps) {
   return (

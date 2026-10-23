@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Log in · ATTrails",
+  title: "Log in",
+  robots: { index: false },
 };
 
 export default function LoginPage() {

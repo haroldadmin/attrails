@@ -3,6 +3,7 @@ import { Newsreader, Source_Sans_3 } from "next/font/google";
 import { Footer } from "@/components/footer";
 import { AtTrailsLogo } from "@/components/logo";
 import { TopNav } from "@/components/top-nav";
+import { openGraphDefaults } from "./shared-metadata";
 import "./globals.css";
 
 const newsreader = Newsreader({
@@ -17,9 +18,10 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "ATTrails",
+  title: { default: "ATTrails", template: "%s · ATTrails" },
   description:
     "Discover and share cycling, running, and hiking routes on the open social web.",
+  openGraph: openGraphDefaults,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

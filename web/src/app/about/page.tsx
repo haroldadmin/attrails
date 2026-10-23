@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "About · ATTrails",
+  title: "About",
   description:
     "ATTrails is a place to discover and share cycling, running, and hiking routes on the open social web.",
 };
@@ -77,7 +77,7 @@ export default function AboutPage() {
           Discover routes
         </Link>
         <Link className="btn btn-outline" href="/routes/new">
-          Upload a route
+          Share a route
         </Link>
       </p>
     </main>
