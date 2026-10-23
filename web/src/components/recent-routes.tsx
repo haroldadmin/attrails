@@ -1,15 +1,12 @@
+import Link from "next/link";
 import { fetchRecentRoutes } from "@/lib/routes";
 import { RouteCard, RouteCardSkeleton } from "./route-card";
 
-// Divisible by both grid layouts (2 and 3 columns).
-const RECENT_ROUTES_LIMIT = 12;
+// With the invitation card, fills both grid layouts (2 and 3 columns).
+const RECENT_ROUTES_LIMIT = 11;
 
 export async function RecentRoutes() {
   const routes = await fetchRecentRoutes(RECENT_ROUTES_LIMIT);
-  if (routes.length === 0) {
-    return <p>No routes yet.</p>;
-  }
-
   return (
     <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {routes.map((route) => (
@@ -17,7 +14,32 @@ export async function RecentRoutes() {
           <RouteCard route={route} />
         </li>
       ))}
+      <li>
+        <ShareRouteCard />
+      </li>
     </ul>
+  );
+}
+
+function ShareRouteCard() {
+  return (
+    <aside
+      aria-labelledby="share-route-heading"
+      className="card card-dash border-base-300 h-full"
+    >
+      <div className="card-body items-start justify-center gap-3 p-4">
+        <h3 id="share-route-heading" className="card-title font-serif text-xl">
+          Share yours
+        </h3>
+        <p>
+          ATTrails is just getting started. Know a route worth riding, running,
+          or hiking? Share it and help others find it.
+        </p>
+        <Link className="btn btn-primary btn-sm" href="/routes/new">
+          Share a route
+        </Link>
+      </div>
+    </aside>
   );
 }
 
