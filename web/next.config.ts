@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   allowedDevOrigins: ["127.0.0.1"],
+  headers: () => [
+    {
+      source: "/:path*",
+      headers: [
+        { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+      ],
+    },
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",
