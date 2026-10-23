@@ -1,5 +1,6 @@
 import "server-only";
 
+import { safeFetchWrap } from "@atproto-labs/fetch-node";
 import {
   createDidResolver,
   DidCacheMemory,
@@ -7,7 +8,15 @@ import {
   isAtprotoDid,
 } from "@atproto-labs/did-resolver";
 
-const didResolver = createDidResolver({ didCache: new DidCacheMemory() });
+const safeFetch = safeFetchWrap({
+  allowImplicitRedirect: true,
+  responseMaxSize: 1_000_000,
+});
+
+const didResolver = createDidResolver({
+  didCache: new DidCacheMemory(),
+  fetch: safeFetch,
+});
 
 /**
  * Fetches a blob from the PDS that hosts `did`'s repository.
@@ -28,7 +37,7 @@ export async function fetchBlob(did: string, cid: string): Promise<Response> {
   );
   url.search = new URLSearchParams({ did, cid }).toString();
 
-  const response = await fetch(url, { signal });
+  const response = await safeFetch(url, { signal });
   if (!response.ok) {
     throw new Error(`getBlob returned ${response.status} for ${did}/${cid}`);
   }

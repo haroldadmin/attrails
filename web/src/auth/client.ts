@@ -1,5 +1,6 @@
 import "server-only";
 
+import { safeFetchWrap } from "@atproto-labs/fetch-node";
 import {
   buildAtprotoLoopbackClientMetadata,
   JoseKey,
@@ -48,7 +49,12 @@ function createOAuthClient(): NodeOAuthClient {
   const webUrl = getWebUrl();
   const redirectUri = new URL("/oauth/callback", webUrl).href;
 
-  const options = { stateStore, sessionStore, requestLock };
+  const options = {
+    stateStore,
+    sessionStore,
+    requestLock,
+    fetch: safeFetchWrap({ allowImplicitRedirect: true }),
+  };
   if (isLoopback()) {
     return new NodeOAuthClient({
       ...options,
