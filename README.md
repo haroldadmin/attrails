@@ -23,6 +23,7 @@ ATTrails is an ATProto app for sharing cycling, running, and hiking routes. It h
 - Postgres + PostGIS for persistence
 - RabbitMQ for messaging and job queues
 - ATProto Tap for watching the Firehose
+- Next.js web app for users
 
 ## Local Development
 
