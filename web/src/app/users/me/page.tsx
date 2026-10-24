@@ -4,12 +4,16 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
-import { Avatar, profileName } from "@/components/author";
 import { Notice } from "@/components/notice";
+import {
+  ProfileHeader,
+  ProfileHeaderSkeleton,
+} from "@/components/profile-header";
 import { fetchAuthorProfile } from "@/lib/profiles";
-import { fetchReviewList, fetchRouteList } from "./listings";
+import { fetchReviewList, fetchRouteList } from "../listings";
+import { RouteList, RouteListSkeleton } from "../route-list";
+import { loadRoutes } from "./actions";
 import { ReviewList } from "./review-list";
-import { RouteList } from "./route-list";
 
 export const metadata: Metadata = {
   title: "Your profile",
@@ -46,34 +50,20 @@ async function Profile() {
         />
       </Suspense>
 
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-row items-center gap-4">
-          <Avatar profile={profile} size="lg" />
-          <div className="flex flex-col min-w-0">
-            <h1 className="font-serif text-4xl truncate">
-              {profileName(profile)}
-            </h1>
-            {profile.displayName && profile.handle && (
-              <p className="text-base-content/70 truncate">@{profile.handle}</p>
-            )}
-          </div>
-        </div>
-        {profile.bio && (
-          <p className="max-w-prose whitespace-pre-line">{profile.bio}</p>
-        )}
+      <ProfileHeader profile={profile}>
         <Link
           href="/users/me/edit"
           className="btn btn-outline btn-sm self-start"
         >
           Edit profile
         </Link>
-      </header>
+      </ProfileHeader>
 
       <section aria-labelledby="routes-heading" className="flex flex-col gap-6">
         <h2 id="routes-heading" className="font-serif text-3xl">
           Your routes
         </h2>
-        <Suspense fallback={<RoutesSkeleton />}>
+        <Suspense fallback={<RouteListSkeleton />}>
           <YourRoutes did={session.did} />
         </Suspense>
       </section>
@@ -107,7 +97,7 @@ async function YourRoutes({ did }: { did: string }) {
     );
   }
 
-  return <RouteList firstPage={firstPage} />;
+  return <RouteList firstPage={firstPage} load={loadRoutes} editable />;
 }
 
 async function YourReviews({ did }: { did: string }) {
@@ -117,30 +107,6 @@ async function YourReviews({ did }: { did: string }) {
   }
 
   return <ReviewList firstPage={firstPage} />;
-}
-
-function ProfileHeaderSkeleton() {
-  return (
-    <div className="flex flex-row items-center gap-4" aria-hidden="true">
-      <div className="skeleton size-20 rounded-full shrink-0" />
-      <div className="skeleton h-10 w-64" />
-    </div>
-  );
-}
-
-function RoutesSkeleton() {
-  return (
-    <div
-      className="flex flex-col divide-y divide-base-300 max-w-prose"
-      aria-hidden="true"
-    >
-      {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="py-3">
-          <div className="skeleton h-5 w-2/3" />
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function ReviewsSkeleton() {

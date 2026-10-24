@@ -79,11 +79,16 @@ export type RouteListing = {
 };
 
 /**
- * Fetches a page of `did`'s routes with tracks, newest first.
+ * Fetches a page of `did`'s routes with tracks, newest first. With
+ * `hideLabelled`, routes with moderation labels are left out.
  */
 export async function fetchRoutesByAuthor(
   did: string,
-  { cursor, limit }: { cursor?: string; limit: number },
+  {
+    cursor,
+    limit,
+    hideLabelled = false,
+  }: { cursor?: string; limit: number; hideLabelled?: boolean },
 ): Promise<Page<RouteListing>> {
   const db = await getDb();
   const position = cursor ? decodeCursor(cursor) : undefined;
@@ -106,6 +111,9 @@ export async function fetchRoutesByAuthor(
     .where("tracks.path", "is not", null);
   if (position) {
     query = query.where(after("routes.sort_at", "routes.rkey", position));
+  }
+  if (hideLabelled) {
+    query = query.where((eb) => eb.not(isLabelled("routes.uri", "routes.cid")));
   }
 
   const rows = await query

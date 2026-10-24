@@ -4,15 +4,21 @@ import Link from "next/link";
 import { LoadOnScroll } from "@/components/load-on-scroll";
 import { usePages } from "@/hooks/use-pages";
 import type { Page } from "@/lib/pages";
-import { loadRoutes } from "./actions";
 import type { RouteListItem } from "./listings";
 
 export type RouteListProps = {
   firstPage: Page<RouteListItem>;
+  load: (cursor: string) => Promise<Page<RouteListItem>>;
+  /** Whether to link to each route's edit page. */
+  editable?: boolean;
 };
 
-export function RouteList({ firstPage }: RouteListProps) {
-  const routes = usePages(firstPage, loadRoutes);
+export function RouteList({
+  firstPage,
+  load,
+  editable = false,
+}: RouteListProps) {
+  const routes = usePages(firstPage, load);
 
   return (
     <>
@@ -34,12 +40,14 @@ export function RouteList({ firstPage }: RouteListProps) {
                 <time dateTime={route.uploadedAt}>{route.uploadedOn}</time>
               </span>
             </div>
-            <Link
-              href={`/routes/${route.did}/${route.rkey}/edit`}
-              className="btn btn-ghost btn-sm rounded-full border-base-300"
-            >
-              Edit<span className="sr-only"> {route.name}</span>
-            </Link>
+            {editable && (
+              <Link
+                href={`/routes/${route.did}/${route.rkey}/edit`}
+                className="btn btn-ghost btn-sm rounded-full border-base-300"
+              >
+                Edit<span className="sr-only"> {route.name}</span>
+              </Link>
+            )}
           </li>
         ))}
       </ul>
@@ -56,5 +64,20 @@ export function RouteList({ firstPage }: RouteListProps) {
         </p>
       )}
     </>
+  );
+}
+
+export function RouteListSkeleton() {
+  return (
+    <div
+      className="flex flex-col divide-y divide-base-300 max-w-prose"
+      aria-hidden="true"
+    >
+      {Array.from({ length: 3 }, (_, i) => (
+        <div key={i} className="py-3">
+          <div className="skeleton h-5 w-2/3" />
+        </div>
+      ))}
+    </div>
   );
 }

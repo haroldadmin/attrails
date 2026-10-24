@@ -7,7 +7,7 @@ import {
   fetchRouteList,
   type ReviewListItem,
   type RouteListItem,
-} from "./listings";
+} from "../listings";
 
 export async function loadRoutes(cursor: string): Promise<Page<RouteListItem>> {
   const session = await getSession();
@@ -15,7 +15,7 @@ export async function loadRoutes(cursor: string): Promise<Page<RouteListItem>> {
     return { items: [], nextCursor: null };
   }
 
-  return fetchRouteList(session.did, cursor);
+  return fetchRouteList(session.did, { cursor });
 }
 
 export async function loadReviews(

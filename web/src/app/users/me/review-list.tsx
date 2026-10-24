@@ -7,7 +7,7 @@ import { ReviewRating } from "@/components/review-rating";
 import { usePages } from "@/hooks/use-pages";
 import type { Page } from "@/lib/pages";
 import { loadReviews } from "./actions";
-import type { ReviewListItem } from "./listings";
+import type { ReviewListItem } from "../listings";
 
 export type ReviewListProps = {
   firstPage: Page<ReviewListItem>;

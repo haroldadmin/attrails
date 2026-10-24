@@ -33,10 +33,14 @@ const REVIEWS_PAGE_SIZE = 20;
 
 export async function fetchRouteList(
   did: string,
-  cursor?: string,
+  { cursor, hideLabelled }: { cursor?: string; hideLabelled?: boolean } = {},
 ): Promise<Page<RouteListItem>> {
   const [page, format] = await Promise.all([
-    fetchRoutesByAuthor(did, { cursor, limit: ROUTES_PAGE_SIZE }),
+    fetchRoutesByAuthor(did, {
+      cursor,
+      limit: ROUTES_PAGE_SIZE,
+      hideLabelled,
+    }),
     getFormatter(),
   ]);
 
