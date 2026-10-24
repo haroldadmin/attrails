@@ -3,6 +3,7 @@ import "server-only";
 import { Agent } from "@atproto/api";
 import { sql } from "kysely";
 import { cacheLife } from "next/cache";
+import { cache } from "react";
 import { getDb } from "@/db/client";
 
 export type AuthorProfile = {
@@ -39,16 +40,36 @@ export async function fetchAuthorProfiles(
     fetchHandles(uniqueDids),
   ]);
 
-  return dids.map((did) => {
+  return dids.map((did) => toProfile(did, users.get(did), handles.get(did)));
+}
+
+/**
+ * Looks up the profile of an ATTrails user, or `null` if `did` doesn't have an
+ * ATTrails account.
+ */
+export const fetchUserProfile = cache(
+  async (did: string): Promise<AuthorProfile | null> => {
+    const [users, handles] = await Promise.all([
+      fetchUsers([did]),
+      fetchHandles([did]),
+    ]);
     const user = users.get(did);
-    return {
-      did,
-      handle: handles.get(did) ?? null,
-      displayName: user?.name.trim() || null,
-      bio: user?.bio?.trim() || null,
-      avatarUrl: user?.pictureCid ? avatarUrl(did, user.pictureCid) : null,
-    };
-  });
+    return user ? toProfile(did, user, handles.get(did)) : null;
+  },
+);
+
+function toProfile(
+  did: string,
+  user: User | undefined,
+  handle: string | undefined,
+): AuthorProfile {
+  return {
+    did,
+    handle: handle ?? null,
+    displayName: user?.name.trim() || null,
+    bio: user?.bio?.trim() || null,
+    avatarUrl: user?.pictureCid ? avatarUrl(did, user.pictureCid) : null,
+  };
 }
 
 /**

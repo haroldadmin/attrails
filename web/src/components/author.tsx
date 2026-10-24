@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import type { AuthorProfile } from "@/lib/profiles";
 
@@ -15,7 +16,12 @@ export function Author({ profile, children }: AuthorProps) {
     <div className="flex flex-row items-center gap-3 min-w-0">
       <Avatar profile={profile} />
       <div className="flex flex-col min-w-0 text-sm leading-snug">
-        <span className="font-semibold truncate">{profileName(profile)}</span>
+        <Link
+          href={`/users/${profile.did}`}
+          className="relative font-semibold truncate link-hover"
+        >
+          {profileName(profile)}
+        </Link>
         <span className="text-base-content/70 truncate">
           {secondary}
           {secondary && children && " · "}
