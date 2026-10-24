@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { RouteSearch } from "./route-search";
 import { SessionState } from "./session-state";
 
 export function TopNav() {
@@ -17,7 +18,8 @@ export function TopNav() {
           </Link>
         </li>
       </ul>
-      <div className="flex flex-row flex-wrap items-center gap-x-6 gap-y-3 ml-auto">
+      <RouteSearch className="order-last w-full lg:order-none lg:ml-auto lg:w-56 xl:w-72" />
+      <div className="flex flex-row flex-wrap items-center gap-x-6 gap-y-3 ml-auto lg:ml-0">
         <Suspense>
           <SessionState />
         </Suspense>

@@ -69,6 +69,7 @@ export interface Routes {
   images: Json;
   ingested_at: Temporal.Instant;
   name: string;
+  name_tsv: Generated<string>;
   rkey: string;
   sort_at: Temporal.Instant;
   surface: string | null;
