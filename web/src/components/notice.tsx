@@ -17,7 +17,8 @@ export function Notice({ messages }: NoticeProps) {
   const searchParams = useSearchParams();
 
   const notice = searchParams.get("notice");
-  if (!notice) {
+  const message = notice ? messages[notice] : undefined;
+  if (!notice || !message) {
     return null;
   }
 
@@ -30,7 +31,7 @@ export function Notice({ messages }: NoticeProps) {
 
   return (
     <div role="status" className="alert alert-success alert-soft">
-      <span>{messages[notice]}</span>
+      <span>{message}</span>
       <button type="button" className="btn btn-sm btn-ghost" onClick={dismiss}>
         Dismiss
       </button>

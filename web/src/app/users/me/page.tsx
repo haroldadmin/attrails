@@ -35,6 +35,17 @@ async function Profile() {
 
   return (
     <>
+      <Suspense>
+        <Notice
+          messages={{
+            "profile-updated":
+              "Profile updated. It'll show up across ATTrails once it has been processed.",
+            "route-deleted":
+              "Route deleted. It'll disappear from your routes once it has been processed.",
+          }}
+        />
+      </Suspense>
+
       <header className="flex flex-col gap-4">
         <div className="flex flex-row items-center gap-4">
           <Avatar profile={profile} size="lg" />
@@ -50,20 +61,18 @@ async function Profile() {
         {profile.bio && (
           <p className="max-w-prose whitespace-pre-line">{profile.bio}</p>
         )}
+        <Link
+          href="/users/me/edit"
+          className="btn btn-outline btn-sm self-start"
+        >
+          Edit profile
+        </Link>
       </header>
 
       <section aria-labelledby="routes-heading" className="flex flex-col gap-6">
         <h2 id="routes-heading" className="font-serif text-3xl">
           Your routes
         </h2>
-        <Suspense>
-          <Notice
-            messages={{
-              "route-deleted":
-                "Route deleted. It'll disappear from your routes once that has been processed.",
-            }}
-          />
-        </Suspense>
         <Suspense fallback={<RoutesSkeleton />}>
           <YourRoutes did={session.did} />
         </Suspense>
