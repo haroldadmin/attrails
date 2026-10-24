@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Newsreader, Source_Sans_3 } from "next/font/google";
+import Script from "next/script";
 import { Footer } from "@/components/footer";
 import { AtTrailsLogo } from "@/components/logo";
 import { TopNav } from "@/components/top-nav";
@@ -40,6 +41,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <div className="grow w-full max-w-7xl mx-auto">{children}</div>
         <Footer />
+        <Script
+          src="https://umami.haroldadmin.cloud/script.js"
+          data-website-id="95221821-af97-4846-b809-43bf20cb01fc"
+          data-domains="www.attrails.app"
+          data-do-not-track="true"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
