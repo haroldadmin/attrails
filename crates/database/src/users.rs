@@ -68,9 +68,17 @@ pub async fn upsert_user(pool: &PgPool, user: &NewUser) -> Result<()> {
 ///
 /// Will return an `Err` if the query fails.
 pub async fn tombstone_user(pool: &PgPool, did: &str) -> Result<()> {
+    let mut tx = pool.begin().await?;
+
     sqlx::query!("UPDATE users SET tombstoned = TRUE WHERE did = $1", did)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+
+    sqlx::query!("DELETE FROM oauth_sessions WHERE did = $1", did)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
 
     Ok(())
 }
