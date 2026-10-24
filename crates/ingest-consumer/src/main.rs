@@ -1,9 +1,13 @@
 use std::time::Duration;
 
 use amqp::{BlobMsg, Queue, amqp_connect, declare_topology};
-use anyhow::{Result, anyhow};
-use atproto_tap::{RecordAction, RecordEvent};
-use database::{PgPool, tracks::NewTrack};
+use anyhow::{Context, Result, anyhow};
+use atproto_tap::{IdentityEvent, IdentityStatus, RecordAction, RecordEvent};
+use database::{
+    PgPool,
+    tracks::NewTrack,
+    users::{tombstone_user, untombstone_user},
+};
 use jacquard::client::BasicClient;
 use jiff::Timestamp;
 use lapin::{Channel, protocol::constants::REPLY_SUCCESS};
@@ -74,6 +78,7 @@ async fn main() -> Result<()> {
             consume_reviews(&channel, &pool, &shutdown_token),
             consume_profiles(&channel, &pool, &shutdown_token),
             consume_blobs(&channel, &pool, &shutdown_token, &agent),
+            consume_identity(&channel, &pool, &shutdown_token),
         )
     };
     tokio::pin!(consumers);
@@ -249,7 +254,7 @@ async fn consume_profiles(
                     info!(uri, "profile upserted");
                 }
                 RecordAction::Delete => {
-                    database::users::tombstone_user(pool, &uri).await?;
+                    database::users::tombstone_user(pool, &event.did).await?;
                     info!(uri, "profile tombstoned");
                 }
             }
@@ -329,4 +334,32 @@ fn new_track(cid: &str, track: &TrackData) -> Result<NewTrack> {
         waypoints: serde_json::to_value(&track.waypoints)?,
         processed_at: Timestamp::now(),
     })
+}
+
+async fn consume_identity(
+    channel: &Channel,
+    pool: &PgPool,
+    shutdown: &CancellationToken,
+) -> Result<()> {
+    Queue::Identity
+        .consume::<IdentityEvent, _>(channel, shutdown, async |msg| {
+            let IdentityEvent { did, status, .. } = msg;
+
+            match status {
+                IdentityStatus::Active => untombstone_user(pool, &did)
+                    .await
+                    .with_context(|| format!("failed to untombstone user {did}"))?,
+                IdentityStatus::Deactivated
+                | IdentityStatus::Suspended
+                | IdentityStatus::Deleted
+                | IdentityStatus::Takendown => tombstone_user(pool, &did)
+                    .await
+                    .with_context(|| format!("failed to tombstone user {did}"))?,
+            }
+
+            info!(did, %status, "user identity updated");
+
+            Ok(())
+        })
+        .await
 }

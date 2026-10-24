@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE users SET tombstoned = TRUE WHERE uri = $1",
+  "query": "UPDATE users SET tombstoned = TRUE WHERE did = $1",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "8bd93c6c36860a60ca8bbffeee67e08db407e1566f98467c73aa38af163e20d5"
+  "hash": "325adfcb851b970096184106f5a48a59354c9c18c5848ef3f85d6e2816118c31"
 }
