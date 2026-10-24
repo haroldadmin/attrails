@@ -24,6 +24,7 @@ export type ReviewListItem = {
   text: string | null;
   createdAt: string;
   createdOn: string;
+  labelled: boolean;
   route: { did: string; rkey: string; name: string };
 };
 
@@ -73,6 +74,7 @@ export async function fetchReviewList(
       createdOn: format.dateTime(review.createdAt.epochMilliseconds, {
         dateStyle: "long",
       }),
+      labelled: review.labelled,
       route: review.route,
     })),
   };
