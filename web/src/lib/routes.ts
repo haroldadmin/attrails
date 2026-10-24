@@ -3,7 +3,8 @@ import "server-only";
 import type { LineString, MultiLineString } from "geojson";
 import { sql } from "kysely";
 import { cache } from "react";
-import { getDb } from "@/db/client";
+import { type AttrailsDb, getDb } from "@/db/client";
+import type { Location } from "@/lib/location";
 import { isLabelled } from "@/lib/moderation";
 import type { Page } from "@/lib/pages";
 import { after, decodeCursor, toPage } from "./pagination";
@@ -26,22 +27,16 @@ export type RouteSummary = {
 // side.
 const SIMPLIFY_FRACTION = 1 / 500;
 
-/**
- * Fetches the most recently ingested routes with tracks, leaving out routes
- * with moderation labels.
- */
-export async function fetchRecentRoutes(
-  limit: number,
-): Promise<RouteSummary[]> {
-  const db = await getDb();
-
+// Selects publicly listable routes with tracks as summary rows, leaving out
+// routes with moderation labels.
+function routeSummaries(db: AttrailsDb) {
   const geom = sql`tracks.path::geometry`;
   const tolerance = sql`GREATEST(
     ST_XMax(${geom}) - ST_XMin(${geom}),
     ST_YMax(${geom}) - ST_YMin(${geom})
   ) * ${SIMPLIFY_FRACTION}`;
 
-  const rows = await db
+  return db
     .selectFrom("routes")
     .innerJoin("tracks", "tracks.cid", "routes.gpx_cid")
     .select([
@@ -59,15 +54,54 @@ export async function fetchRecentRoutes(
     ])
     .where("routes.tombstoned", "=", false)
     .where("tracks.path", "is not", null)
-    .where((eb) => eb.not(isLabelled("routes.uri", "routes.cid")))
+    .where((eb) => eb.not(isLabelled("routes.uri", "routes.cid")));
+}
+
+function toRouteSummary<T extends { pathGeoJson: string }>({
+  pathGeoJson,
+  ...row
+}: T): Omit<T, "pathGeoJson"> & Pick<RouteSummary, "path"> {
+  return { ...row, path: JSON.parse(pathGeoJson) };
+}
+
+/**
+ * Fetches the most recently ingested routes with tracks, leaving out routes
+ * with moderation labels.
+ */
+export async function fetchRecentRoutes(
+  limit: number,
+): Promise<RouteSummary[]> {
+  const db = await getDb();
+
+  const rows = await routeSummaries(db)
     .orderBy("routes.sort_at", "desc")
     .limit(limit)
     .execute();
 
-  return rows.map(({ pathGeoJson, ...row }) => ({
-    ...row,
-    path: JSON.parse(pathGeoJson),
-  }));
+  return rows.map(toRouteSummary);
+}
+
+/**
+ * Fetches the routes that start within `radiusM` metres of `location`,
+ * nearest first, leaving out routes with moderation labels.
+ */
+export async function fetchRoutesNear(
+  location: Location,
+  { radiusM, limit }: { radiusM: number; limit: number },
+): Promise<RouteSummary[]> {
+  const db = await getDb();
+
+  const point = sql`ST_SetSRID(
+    ST_MakePoint(${location.longitude}, ${location.latitude}), 4326
+  )::geography`;
+
+  const rows = await routeSummaries(db)
+    .where(sql<boolean>`ST_DWithin(tracks.start_point, ${point}, ${radiusM})`)
+    .orderBy(sql`tracks.start_point <-> ${point}`)
+    .limit(limit)
+    .execute();
+
+  return rows.map(toRouteSummary);
 }
 
 export type RouteListing = {

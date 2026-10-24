@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { NearbyRoutes } from "@/components/nearby-routes";
 import { RecentRoutes, RecentRoutesSkeleton } from "@/components/recent-routes";
 import { Notice } from "@/components/notice";
 
@@ -14,13 +15,21 @@ export default function Home() {
           social web.
         </p>
       </hgroup>
+      <Suspense>
+        <NearbyRoutes />
+      </Suspense>
       <section
         aria-labelledby="recent-routes-heading"
         className="flex flex-col gap-6"
       >
-        <h2 id="recent-routes-heading" className="font-serif text-3xl">
-          Recently added
-        </h2>
+        <hgroup className="flex flex-col gap-2">
+          <h2 id="recent-routes-heading" className="font-serif text-3xl">
+            Recently added
+          </h2>
+          <p className="text-base-content/70">
+            The latest routes shared by the community.
+          </p>
+        </hgroup>
         <Suspense>
           <Notice
             messages={{
