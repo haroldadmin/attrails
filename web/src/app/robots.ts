@@ -5,7 +5,17 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/routes/", "/users/", "/oauth/", "/health/"],
+      disallow: [
+        "/routes/new",
+        "/routes/search",
+        "/routes/*/*/edit",
+        "/routes/*/*/review",
+        "/routes/*/*/gpx",
+        "/users/me",
+        "/oauth/",
+        "/health/",
+      ],
     },
+    sitemap: "https://www.attrails.app/sitemap.xml",
   };
 }

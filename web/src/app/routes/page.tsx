@@ -14,7 +14,6 @@ import { fetchRoutesPage } from "@/lib/routes";
 export const metadata: Metadata = {
   title: "All routes",
   description: "All the adventures you can find on ATTrails.",
-  robots: { index: false },
 };
 
 // Fills both grid layouts (2 and 3 columns).
