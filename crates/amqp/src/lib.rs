@@ -30,6 +30,8 @@ pub enum Queue {
     ProfilesDlq,
     Blobs,
     BlobsDlq,
+    Identity,
+    IdentityDlq,
 }
 
 impl Queue {
@@ -44,6 +46,8 @@ impl Queue {
             Queue::ProfilesDlq => "tap-events-profiles.dlq",
             Queue::Blobs => "tap-events-blobs",
             Queue::BlobsDlq => "tap-events-blobs.dlq",
+            Queue::Identity => "tap-events-identity",
+            Queue::IdentityDlq => "tap-events-identity.dlq",
         }
     }
 
@@ -226,6 +230,7 @@ pub async fn declare_topology(channel: &Channel) -> Result<()> {
     declare_queue(&Queue::Reviews, &Queue::ReviewsDlq, EXCHANGE, channel).await?;
     declare_queue(&Queue::Blobs, &Queue::BlobsDlq, EXCHANGE, channel).await?;
     declare_queue(&Queue::Profiles, &Queue::ProfilesDlq, EXCHANGE, channel).await?;
+    declare_queue(&Queue::Identity, &Queue::IdentityDlq, EXCHANGE, channel).await?;
 
     info!("RabbitMQ topology asserted");
 
