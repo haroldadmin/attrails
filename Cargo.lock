@@ -2649,6 +2649,7 @@ dependencies = [
  "lapin",
  "lexicons",
  "lifecycle",
+ "moderation",
  "reqwest",
  "serde",
  "serde_json",
@@ -3401,6 +3402,17 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "moderation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

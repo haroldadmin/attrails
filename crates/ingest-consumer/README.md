@@ -2,6 +2,14 @@
 
 Processes events produced by `ingest-watcher` to transform and index routes, reviews, profiles, and GPX files.
 
+## Labels
+
+Every route, review, and profile that is created or updated is queued on `tap-events-labels`. The labels consumer sends the text of the indexed version of the record to the Jev decisions API, with one yes/no question per content label (`porn`, `sexual`, `nudity`, `graphic-media`, `spam`, `rude`, `threat`). Labels whose probability is above 0.7 are stored in the `labels` table, keyed by the record's uri and cid, along with `!hide` (for `porn`, `threat`, or `spam`) or `!warn` (for any other label). Requests for a version that is no longer indexed, and reviews without text, are skipped.
+
+The questions and the `!hide`/`!warn` rules live in `crates/moderation`. Set `RUST_LOG=moderation=debug` to log each request payload and the answers.
+
+The API is configured with `ATTRAILS_DECISIONS_API_KEY` (required) and `ATTRAILS_DECISIONS_API_BASE_URL` (defaults to `https://api.typesafe.ai`).
+
 ## Probes
 
 The consumer serves HTTP probes on `0.0.0.0:$ATTRAILS_HEALTH_PORT` (default `8081`):

@@ -4,6 +4,7 @@ use tracing::info;
 
 pub use sqlx::PgPool;
 
+pub mod labels;
 pub mod reviews;
 pub mod routes;
 pub mod tracks;

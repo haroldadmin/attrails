@@ -8,13 +8,13 @@ anyhow = "1.0.104"
 jiff = "0.2"
 jiff-sqlx = { version = "0.2", features = ["postgres"] }
 sqlx = { version = "0.9", default-features = false, features = [
-    "runtime-tokio",
-    "tls-rustls",
-    "postgres",
-    "macros",
-    "migrate",
-    "json",
-    "sqlx-toml",
+  "runtime-tokio",
+  "tls-rustls",
+  "postgres",
+  "macros",
+  "migrate",
+  "json",
+  "sqlx-toml",
 ] }
 serde_json = "1.0.154"
 tracing = "0.1.44"
