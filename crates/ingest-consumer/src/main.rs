@@ -427,7 +427,7 @@ async fn consume_labels(
             // Only the version of a record that is currently indexed is
             // moderated. Older versions are skipped, since a later message
             // covers the newer one.
-            let labels = match collection.as_deref() {
+            let inference = match collection.as_deref() {
                 Some(RouteRecord::NSID) => {
                     let Some(route) = fetch_route_moderation_view(pool, &uri)
                         .await?
@@ -484,7 +484,7 @@ async fn consume_labels(
                 }
             };
 
-            if labels.is_empty() {
+            if inference.labels.is_empty() {
                 info!(uri, cid, "no labels applied");
                 return Ok(());
             }
@@ -492,9 +492,9 @@ async fn consume_labels(
             let labels = NewLabels {
                 uri,
                 cid,
-                vals: labels.iter().map(ToString::to_string).collect(),
+                vals: inference.labels.iter().map(ToString::to_string).collect(),
                 cts: Timestamp::now(),
-                source: String::from("jev"),
+                source: inference.source.as_str().to_owned(),
             };
             database::labels::insert_labels(pool, &labels).await?;
             info!(uri = labels.uri, cid = labels.cid, vals = ?labels.vals, "labels applied");
