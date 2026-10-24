@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
+import { ReviewModerationNotice } from "@/components/moderation-notice";
 import { fetchUserReview } from "@/lib/reviews";
 import { fetchRoute } from "@/lib/routes";
 import { deleteReview, saveReview } from "./actions";
@@ -63,6 +64,7 @@ async function ManageReview({ params }: Pick<ReviewPageProps, "params">) {
         </Link>
         .
       </p>
+      {review?.labelled && <ReviewModerationNotice />}
       <ReviewForm
         action={saveReview.bind(null, route.did, route.rkey)}
         initialValues={{

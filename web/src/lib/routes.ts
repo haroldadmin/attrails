@@ -4,6 +4,7 @@ import type { LineString, MultiLineString } from "geojson";
 import { sql } from "kysely";
 import { cache } from "react";
 import { getDb } from "@/db/client";
+import { isLabelled } from "@/lib/moderation";
 import type { Page } from "@/lib/pages";
 import { after, decodeCursor, toPage } from "./pagination";
 
@@ -26,7 +27,8 @@ export type RouteSummary = {
 const SIMPLIFY_FRACTION = 1 / 500;
 
 /**
- * Fetches the most recently ingested routes with tracks.
+ * Fetches the most recently ingested routes with tracks, leaving out routes
+ * with moderation labels.
  */
 export async function fetchRecentRoutes(
   limit: number,
@@ -57,6 +59,7 @@ export async function fetchRecentRoutes(
     ])
     .where("routes.tombstoned", "=", false)
     .where("tracks.path", "is not", null)
+    .where((eb) => eb.not(isLabelled("routes.uri", "routes.cid")))
     .orderBy("routes.sort_at", "desc")
     .limit(limit)
     .execute();
@@ -136,6 +139,8 @@ export type Route = {
   path: MultiLineString;
   /** Empty if the track has no elevation data. */
   elevationProfile: ElevationSample[];
+  /** Whether this version of the route has moderation labels. */
+  labelled: boolean;
 };
 
 export type ElevationSample = [distanceM: number, elevationM: number];
@@ -173,6 +178,7 @@ export const fetchRoute = cache(
         >`COALESCE(tracks.elevation_profile, '[]'::jsonb)`.as(
           "elevationProfile",
         ),
+        isLabelled("routes.uri", "routes.cid").as("labelled"),
       ])
       .where("routes.did", "=", did)
       .where("routes.rkey", "=", rkey)

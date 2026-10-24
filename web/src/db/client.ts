@@ -5,7 +5,7 @@ import { Pool, types, type CustomTypesConfig } from "pg";
 import type { DB } from "./types";
 import { envOrThrow } from "@/env";
 
-export type { DB, Reviews, Routes, Tracks, Users } from "./types";
+export type { DB, Labels, Reviews, Routes, Tracks, Users } from "./types";
 export type AttrailsDb = Kysely<DB>;
 
 const SLOW_QUERY_MS = 250;

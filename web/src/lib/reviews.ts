@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "kysely";
 import { cache } from "react";
 import { type AttrailsDb, getDb } from "@/db/client";
+import { isLabelled } from "@/lib/moderation";
 import type { Page } from "@/lib/pages";
 import { after, decodeCursor, toPage } from "./pagination";
 
@@ -12,6 +13,8 @@ export type Review = {
   rating: number;
   text: string | null;
   createdAt: Temporal.Instant;
+  /** Whether this version of the review has moderation labels. */
+  labelled: boolean;
 };
 
 export type ReviewSummary = {
@@ -28,6 +31,8 @@ function latestReviews(db: AttrailsDb, routeUri: string) {
     .innerJoin("routes", "routes.uri", "reviews.subject_uri")
     .distinctOn("reviews.did")
     .select([
+      "reviews.uri",
+      "reviews.cid",
       "reviews.did",
       "reviews.rkey",
       "reviews.rating",
@@ -43,12 +48,16 @@ function latestReviews(db: AttrailsDb, routeUri: string) {
     .orderBy("reviews.rkey", "desc");
 }
 
+/**
+ * Summarises a route's reviews, leaving out reviews with moderation labels.
+ */
 export const fetchReviewSummary = cache(
   async (routeUri: string): Promise<ReviewSummary> => {
     const db = await getDb();
 
     return db
       .selectFrom(latestReviews(db, routeUri).as("latest"))
+      .where((eb) => eb.not(isLabelled("latest.uri", "latest.cid")))
       .select([
         sql<number>`COUNT(*)::int`.as("count"),
         sql<number | null>`AVG(rating)::float8`.as("averageRating"),
@@ -58,17 +67,31 @@ export const fetchReviewSummary = cache(
 );
 
 /**
- * Fetches a route's reviews, newest first.
+ * Fetches a route's reviews, newest first. Reviews with moderation labels are
+ * left out, unless `viewerDid` wrote them.
  */
 export async function fetchReviews(
   routeUri: string,
-  { limit = 10 }: { limit?: number },
+  { limit = 10, viewerDid }: { limit?: number; viewerDid?: string },
 ): Promise<Review[]> {
   const db = await getDb();
 
   return db
     .selectFrom(latestReviews(db, routeUri).as("latest"))
-    .select(["did", "rkey", "rating", "text", "createdAt"])
+    .where((eb) => {
+      const unlabelled = eb.not(isLabelled("latest.uri", "latest.cid"));
+      return viewerDid
+        ? eb.or([unlabelled, eb("latest.did", "=", viewerDid)])
+        : unlabelled;
+    })
+    .select([
+      "did",
+      "rkey",
+      "rating",
+      "text",
+      "createdAt",
+      isLabelled("latest.uri", "latest.cid").as("labelled"),
+    ])
     .orderBy("sortAt", "desc")
     .limit(limit)
     .execute();
@@ -92,6 +115,7 @@ export async function fetchUserReview(
       "rating",
       "body as text",
       "created_at as createdAt",
+      isLabelled("reviews.uri", "reviews.cid").as("labelled"),
     ])
     .where("subject_uri", "=", routeUri)
     .where("did", "=", did)
@@ -132,6 +156,7 @@ export async function fetchReviewsByAuthor(
       "reviews.body as text",
       "reviews.created_at as createdAt",
       "reviews.sort_at as sortAt",
+      isLabelled("reviews.uri", "reviews.cid").as("labelled"),
       "routes.did as routeDid",
       "routes.rkey as routeRkey",
       "routes.name as routeName",
@@ -164,6 +189,7 @@ export async function fetchReviewsByAuthor(
       rating: row.rating,
       text: row.text,
       createdAt: row.createdAt,
+      labelled: row.labelled,
       route: { did: row.routeDid, rkey: row.routeRkey, name: row.routeName },
     })),
   };

@@ -7,6 +7,10 @@ import { type ReactNode, Suspense } from "react";
 import { Author, profileName } from "@/components/author";
 import { ElevationProfile } from "@/components/elevation-profile";
 import { LoginLink } from "@/components/login-link";
+import {
+  ModerationNotice,
+  ReviewModerationNotice,
+} from "@/components/moderation-notice";
 import { Notice } from "@/components/notice";
 import { ReviewRating } from "@/components/review-rating";
 import { RouteMap } from "@/components/route-map";
@@ -33,6 +37,14 @@ export async function generateMetadata({
   const route = await fetchRoute(decodeURIComponent(did), rkey);
   if (!route) {
     notFound();
+  }
+
+  // Routes with moderation labels don't get link previews or search listings.
+  if (route.labelled) {
+    return {
+      title: route.name,
+      robots: { index: false },
+    };
   }
 
   const [author, format, locale] = await Promise.all([
@@ -131,6 +143,9 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
 
   return (
     <article className="flex flex-col gap-8">
+      {route.labelled && (
+        <LimitedVisibility isAuthor={session?.did === route.did} />
+      )}
       <header className="flex flex-col gap-4">
         <h1 className="font-serif text-4xl sm:text-5xl">{route.name}</h1>
         <div className="flex flex-row flex-wrap items-center justify-between gap-4">
@@ -261,7 +276,10 @@ async function RouteReviews({ route }: { route: Route }) {
   const viewerDid = session?.did;
 
   const [reviews, viewerReview, format] = await Promise.all([
-    fetchReviews(route.uri, { limit: viewerDid === undefined ? 1 : 10 }),
+    fetchReviews(route.uri, {
+      limit: viewerDid === undefined ? 1 : 10,
+      viewerDid,
+    }),
     viewerDid ? fetchUserReview(route.uri, viewerDid) : null,
     getFormatter(),
   ]);
@@ -321,6 +339,7 @@ async function RouteReviews({ route }: { route: Route }) {
                     </Link>
                   )}
                 </div>
+                {review.labelled && <ReviewModerationNotice />}
                 <ReviewRating rating={review.rating} />
                 {review.text && (
                   <p className="whitespace-pre-line">{review.text}</p>
@@ -331,6 +350,16 @@ async function RouteReviews({ route }: { route: Route }) {
         </ol>
       )}
     </section>
+  );
+}
+
+function LimitedVisibility({ isAuthor }: { isAuthor: boolean }) {
+  return (
+    <ModerationNotice>
+      {isAuthor
+        ? "Automated moderation flagged your route, so it isn't shown in public listings. Anyone with the link can still view it."
+        : "Automated moderation flagged this route, so it isn't shown in public listings."}
+    </ModerationNotice>
   );
 }
 

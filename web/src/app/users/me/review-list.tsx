@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { LoadOnScroll } from "@/components/load-on-scroll";
+import { ReviewModerationNotice } from "@/components/moderation-notice";
 import { ReviewRating } from "@/components/review-rating";
 import { useGenerator } from "@/hooks/use-generator";
 import { type Page, pagesAfter } from "@/lib/pages";
@@ -52,6 +53,7 @@ export function ReviewList({ firstPage }: ReviewListProps) {
                     </span>
                   </Link>
                 </div>
+                {review.labelled && <ReviewModerationNotice />}
                 <ReviewRating rating={review.rating} />
                 {review.text && (
                   <p className="whitespace-pre-line">{review.text}</p>
