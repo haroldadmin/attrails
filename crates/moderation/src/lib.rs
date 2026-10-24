@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 use serde_json::{Map, Value};
-use std::{collections::HashMap, fmt::Display, time::Duration};
+use std::{collections::HashMap, fmt::Display, hash::BuildHasher, time::Duration};
 use tracing::debug;
 
 use crate::questions::{JUDGMENTS, TRUE_THRESHOLD};
@@ -100,6 +100,18 @@ impl Moderator {
     /// Returns an error if the request fails, or the response is missing an
     /// answer to any question.
     pub async fn infer_labels(&self, subject: &str, record: Value) -> Result<Vec<LabelVal>> {
+        let probabilities = self.judge(subject, record).await?;
+        Ok(labels(&probabilities))
+    }
+
+    /// Ask the decisions API for the probability that each content label
+    /// applies to `record`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails, or the response is missing an
+    /// answer to any question.
+    pub async fn judge(&self, subject: &str, record: Value) -> Result<HashMap<LabelVal, f32>> {
         let state = Value::Object(Map::from_iter([(subject.to_owned(), record)]));
         let questions = JUDGMENTS
             .iter()
@@ -128,15 +140,22 @@ impl Moderator {
             .collect::<Result<HashMap<_, _>>>()?;
         debug!(?probabilities, "decisions api answers");
 
-        let mut labels: Vec<LabelVal> = probabilities
-            .into_iter()
-            .filter(|(_, probability)| *probability > TRUE_THRESHOLD)
-            .map(|(label, _)| label)
-            .collect();
-        labels.extend(action(&labels));
-
-        Ok(labels)
+        Ok(probabilities)
     }
+}
+
+/// Decide the labels for a record from the probability of each content
+/// label: the content labels judged true, plus `!hide` or `!warn`.
+#[must_use]
+pub fn labels<S: BuildHasher>(probabilities: &HashMap<LabelVal, f32, S>) -> Vec<LabelVal> {
+    let mut labels: Vec<LabelVal> = probabilities
+        .iter()
+        .filter(|(_, probability)| **probability > TRUE_THRESHOLD)
+        .map(|(label, _)| *label)
+        .collect();
+    labels.extend(action(&labels));
+
+    labels
 }
 
 #[cfg(test)]

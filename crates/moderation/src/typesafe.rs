@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -76,7 +76,7 @@ impl Client {
         questions: HashMap<String, Question>,
     ) -> Result<HashMap<String, Answer>> {
         let req = Request {
-            model: "jev:latest",
+            model: "jev-latest",
             state,
             questions,
         };
@@ -90,11 +90,14 @@ impl Client {
             .header(CONTENT_TYPE, "application/json")
             .body(body)
             .send()
-            .await?
-            .error_for_status()?
-            .json::<Response>()
             .await?;
 
-        Ok(res.answers)
+        let status = res.status();
+        if !status.is_success() {
+            let detail = res.text().await.unwrap_or_default();
+            return Err(anyhow!("decisions api returned {status}: {detail}"));
+        }
+
+        Ok(res.json::<Response>().await?.answers)
     }
 }
