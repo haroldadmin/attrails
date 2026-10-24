@@ -12,3 +12,13 @@ pub struct BlobMsg {
     pub mime_type: String,
     pub size: usize,
 }
+
+/// Payload for [`Queue::Labels`](crate::Queue::Labels): a request to generate
+/// labels for a record that needs to pass moderation.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LabelMsg {
+    /// The `AtUri` of the record to label
+    pub uri: String,
+    /// The CID of the record to pin a specific version of it
+    pub cid: String,
+}

@@ -17,6 +17,7 @@ use tracing::{debug, error, info, warn};
 mod messages;
 
 pub use messages::BlobMsg;
+pub use messages::LabelMsg;
 
 pub const EXCHANGE: &str = "tap-events-dlx";
 
@@ -32,6 +33,8 @@ pub enum Queue {
     BlobsDlq,
     Identity,
     IdentityDlq,
+    Labels,
+    LabelsDlq,
 }
 
 impl Queue {
@@ -48,6 +51,8 @@ impl Queue {
             Queue::BlobsDlq => "tap-events-blobs.dlq",
             Queue::Identity => "tap-events-identity",
             Queue::IdentityDlq => "tap-events-identity.dlq",
+            Queue::Labels => "tap-events-labels",
+            Queue::LabelsDlq => "tap-events-labels.dlq",
         }
     }
 
@@ -231,6 +236,7 @@ pub async fn declare_topology(channel: &Channel) -> Result<()> {
     declare_queue(&Queue::Blobs, &Queue::BlobsDlq, EXCHANGE, channel).await?;
     declare_queue(&Queue::Profiles, &Queue::ProfilesDlq, EXCHANGE, channel).await?;
     declare_queue(&Queue::Identity, &Queue::IdentityDlq, EXCHANGE, channel).await?;
+    declare_queue(&Queue::Labels, &Queue::LabelsDlq, EXCHANGE, channel).await?;
 
     info!("RabbitMQ topology asserted");
 

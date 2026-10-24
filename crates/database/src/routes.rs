@@ -95,3 +95,38 @@ pub async fn tombstone_route(pool: &PgPool, uri: &str) -> Result<()> {
 
     Ok(())
 }
+
+pub struct RouteModerationView {
+    pub uri: String,
+    pub cid: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub tags: Vec<String>,
+}
+
+/// Fetches all the route information relevant for making
+/// moderation decisions on it, or `None` if the route does not
+/// exist or is tombstoned.
+///
+/// # Errors
+///
+/// Will return an `Err` if the query fails.
+pub async fn fetch_route_moderation_view(
+    pool: &PgPool,
+    uri: &str,
+) -> Result<Option<RouteModerationView>> {
+    let route = sqlx::query_as!(
+        RouteModerationView,
+        r#"
+            SELECT uri, cid, name, description, tags
+            FROM routes
+            WHERE uri = $1
+              AND tombstoned = FALSE;
+        "#,
+        uri,
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(route)
+}

@@ -82,3 +82,36 @@ pub async fn tombstone_review(pool: &PgPool, uri: &str) -> Result<()> {
 
     Ok(())
 }
+
+pub struct ReviewModerationView {
+    pub uri: String,
+    pub cid: String,
+    pub body: Option<String>,
+}
+
+/// Fetches all the review information relevant for making
+/// moderation decisions on it, or `None` if the review does not
+/// exist or is tombstoned.
+///
+/// # Errors
+///
+/// Will return an `Err` if the query fails.
+pub async fn fetch_review_moderation_view(
+    pool: &PgPool,
+    uri: &str,
+) -> Result<Option<ReviewModerationView>> {
+    let review = sqlx::query_as!(
+        ReviewModerationView,
+        r#"
+            SELECT uri, cid, body
+            FROM reviews
+            WHERE uri = $1
+              AND tombstoned = FALSE;
+        "#,
+        uri,
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(review)
+}

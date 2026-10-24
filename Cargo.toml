@@ -8,6 +8,7 @@ members = [
   "crates/lexicons",
   "crates/lifecycle",
   "crates/tracks",
+  "crates/moderation",
 ]
 
 [workspace.lints.clippy]

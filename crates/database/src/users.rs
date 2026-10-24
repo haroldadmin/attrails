@@ -89,3 +89,37 @@ pub async fn untombstone_user(pool: &PgPool, did: &str) -> Result<()> {
 
     Ok(())
 }
+
+pub struct UserModerationView {
+    pub uri: String,
+    pub cid: String,
+    pub name: String,
+    pub bio: Option<String>,
+}
+
+/// Fetches all the profile information relevant for making
+/// moderation decisions on it, or `None` if the profile does not
+/// exist or is tombstoned.
+///
+/// # Errors
+///
+/// Will return an `Err` if the query fails.
+pub async fn fetch_user_moderation_view(
+    pool: &PgPool,
+    uri: &str,
+) -> Result<Option<UserModerationView>> {
+    let user = sqlx::query_as!(
+        UserModerationView,
+        r#"
+            SELECT uri, cid, name, bio
+            FROM users
+            WHERE uri = $1
+              AND tombstoned = FALSE;
+        "#,
+        uri,
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(user)
+}

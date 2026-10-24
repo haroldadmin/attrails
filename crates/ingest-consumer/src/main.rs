@@ -1,20 +1,32 @@
 use std::time::Duration;
 
-use amqp::{BlobMsg, Queue, amqp_connect, declare_topology};
+use amqp::{BlobMsg, LabelMsg, Queue, amqp_connect, declare_topology};
 use anyhow::{Context, Result, anyhow};
 use atproto_tap::{IdentityEvent, IdentityStatus, RecordAction, RecordEvent};
 use database::{
     PgPool,
+    labels::NewLabels,
+    reviews::fetch_review_moderation_view,
+    routes::fetch_route_moderation_view,
     tracks::NewTrack,
-    users::{tombstone_user, untombstone_user},
+    users::{fetch_user_moderation_view, tombstone_user, untombstone_user},
 };
-use jacquard::client::BasicClient;
+use jacquard::{
+    client::BasicClient,
+    types::{aturi::AtUri, collection::Collection},
+};
 use jiff::Timestamp;
 use lapin::{Channel, protocol::constants::REPLY_SUCCESS};
+use lexicons::app_attrails::{
+    actor::profile::ProfileRecord,
+    v0::{review::ReviewRecord, route::RouteRecord},
+};
 use lifecycle::{
     health::{Readiness, Server, check},
     shutdown::Shutdown,
 };
+use moderation::{Moderator, ModeratorConfig};
+use serde_json::json;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
@@ -63,6 +75,11 @@ async fn main() -> Result<()> {
     let pool = database::connect(&conf.postgres_uri).await?;
     let agent = BasicClient::unauthenticated();
 
+    let moderator = Moderator::build(ModeratorConfig {
+        decisions_api_base_url: conf.decisions_api_base_url,
+        decisions_api_key: conf.decisions_api_key,
+    })?;
+
     readiness.mark_started(vec![
         check("rabbitmq", amqp::health_check(&channel)),
         check("postgres", {
@@ -79,6 +96,7 @@ async fn main() -> Result<()> {
             consume_profiles(&channel, &pool, &shutdown_token),
             consume_blobs(&channel, &pool, &shutdown_token, &agent),
             consume_identity(&channel, &pool, &shutdown_token),
+            consume_labels(&channel, &pool, &moderator, &shutdown_token),
         )
     };
     tokio::pin!(consumers);
@@ -172,6 +190,8 @@ async fn consume_routes(
                         .publish(&serde_json::to_vec(&msg)?, channel)
                         .await?;
                     info!(uri, cid = msg.cid, "gpx blob queued");
+
+                    queue_labels(channel, &route.uri, &route.cid).await?;
                 }
                 RecordAction::Delete => {
                     database::routes::tombstone_route(pool, &uri).await?;
@@ -212,6 +232,10 @@ async fn consume_reviews(
 
                     database::reviews::upsert_review(pool, &review).await?;
                     info!(uri, "review upserted");
+
+                    // If publishing fails the event is retried, which upserts
+                    // the review again.
+                    queue_labels(channel, &review.uri, &review.cid).await?;
                 }
                 RecordAction::Delete => {
                     database::reviews::tombstone_review(pool, &uri).await?;
@@ -252,6 +276,10 @@ async fn consume_profiles(
 
                     database::users::upsert_user(pool, &user).await?;
                     info!(uri, "profile upserted");
+
+                    // If publishing fails the event is retried, which upserts
+                    // the profile again.
+                    queue_labels(channel, &user.uri, &user.cid).await?;
                 }
                 RecordAction::Delete => {
                     database::users::tombstone_user(pool, &event.did).await?;
@@ -358,6 +386,118 @@ async fn consume_identity(
             }
 
             info!(did, %status, "user identity updated");
+
+            Ok(())
+        })
+        .await
+}
+
+/// Ask for a version of a record to be moderated.
+async fn queue_labels(channel: &Channel, uri: &str, cid: &str) -> Result<()> {
+    let msg = LabelMsg {
+        uri: uri.to_string(),
+        cid: cid.to_string(),
+    };
+    Queue::Labels
+        .publish(&serde_json::to_vec(&msg)?, channel)
+        .await?;
+    info!(uri, cid, "labels queued");
+
+    Ok(())
+}
+
+async fn consume_labels(
+    channel: &Channel,
+    pool: &PgPool,
+    moderator: &Moderator,
+    shutdown: &CancellationToken,
+) -> Result<()> {
+    Queue::Labels
+        .consume::<LabelMsg, _>(channel, shutdown, async |msg| {
+            let LabelMsg { uri, cid } = msg;
+
+            let collection = match AtUri::new(uri.as_str()) {
+                Ok(at_uri) => at_uri.collection().map(|nsid| nsid.as_str().to_string()),
+                Err(error) => {
+                    error!(%error, uri, "discarding label request with invalid uri");
+                    return Ok(());
+                }
+            };
+
+            // Only the version of a record that is currently indexed is
+            // moderated. Older versions are skipped, since a later message
+            // covers the newer one.
+            let labels = match collection.as_deref() {
+                Some(RouteRecord::NSID) => {
+                    let Some(route) = fetch_route_moderation_view(pool, &uri)
+                        .await?
+                        .filter(|route| route.cid == cid)
+                    else {
+                        info!(uri, cid, "skipping labels for stale or deleted route");
+                        return Ok(());
+                    };
+                    moderator
+                        .infer_labels(
+                            "route",
+                            json!({
+                                "name": route.name,
+                                "description": route.description,
+                                "tags": route.tags,
+                            }),
+                        )
+                        .await?
+                }
+                Some(ReviewRecord::NSID) => {
+                    // A review without a body is only a rating, so there is
+                    // nothing to moderate.
+                    let Some(body) = fetch_review_moderation_view(pool, &uri)
+                        .await?
+                        .filter(|review| review.cid == cid)
+                        .and_then(|review| review.body)
+                        .filter(|body| !body.trim().is_empty())
+                    else {
+                        info!(
+                            uri,
+                            cid, "skipping labels for stale, deleted or empty review"
+                        );
+                        return Ok(());
+                    };
+                    moderator
+                        .infer_labels("review", json!({ "text": body }))
+                        .await?
+                }
+                Some(ProfileRecord::NSID) => {
+                    let Some(user) = fetch_user_moderation_view(pool, &uri)
+                        .await?
+                        .filter(|user| user.cid == cid)
+                    else {
+                        info!(uri, cid, "skipping labels for stale or deleted profile");
+                        return Ok(());
+                    };
+                    moderator
+                        .infer_labels("profile", json!({ "name": user.name, "bio": user.bio }))
+                        .await?
+                }
+                _ => {
+                    error!(uri, "discarding label request for unsupported collection");
+                    return Ok(());
+                }
+            };
+
+            if labels.is_empty() {
+                info!(uri, cid, "no labels applied");
+                return Ok(());
+            }
+
+            let labels = NewLabels {
+                uri,
+                cid,
+                vals: labels.iter().map(ToString::to_string).collect(),
+                cts: Timestamp::now(),
+                source: String::from("jev"),
+            };
+            database::labels::insert_labels(pool, &labels).await?;
+            info!(uri = labels.uri, cid = labels.cid, vals = ?labels.vals, "labels applied");
 
             Ok(())
         })
