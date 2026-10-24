@@ -83,6 +83,7 @@ function confidentialClientMetadata(
     client_id: new URL("/oauth/client-metadata.json", webUrl).href,
     client_name: "ATTrails",
     client_uri: webUrl.origin,
+    logo_uri: new URL("/icon.png", webUrl).href,
     redirect_uris: [redirectUri],
     scope: OAUTH_SCOPE,
     grant_types: ["authorization_code", "refresh_token"],
