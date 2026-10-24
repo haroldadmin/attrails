@@ -17,6 +17,11 @@ description = "List pending Postgres migrations without applying them"
 dir = "{{config_root}}/crates/database"
 run = "sqlx migrate run --dry-run"
 
+[tasks."db:sqlx:prepare"]
+description = "Prepare offline query information for CI runs. Run this everytime a new query is added."
+dir = "{{config_root}}/crates/database"
+run = "cargo sqlx prepare --config sqlx.toml"
+
 [tasks."web:db:codegen"]
 description = "Generate the frontend's Kysely types from the migrated Postgres schema"
 dir = "{{config_root}}/web"

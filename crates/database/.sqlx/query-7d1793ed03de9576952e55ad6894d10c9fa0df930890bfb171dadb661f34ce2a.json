@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET tombstoned = FALSE WHERE did = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7d1793ed03de9576952e55ad6894d10c9fa0df930890bfb171dadb661f34ce2a"
+}

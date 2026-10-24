@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use amqp::Queue::{Profiles, Reviews, Routes};
+use amqp::Queue::{Identity, Profiles, Reviews, Routes};
 use atproto_tap::{TapEvent, TapStream};
 use lapin::{Channel, protocol::constants::REPLY_SUCCESS};
 use lifecycle::{
@@ -104,7 +104,7 @@ async fn handle_event(event: &TapEvent, channel: &Channel) {
             let payload = match serde_json::to_vec(record) {
                 Ok(payload) => payload,
                 Err(error) => {
-                    error!(%error, "failed to serialise tap event");
+                    error!(%error, "failed to serialise tap record event");
                     return;
                 }
             };
@@ -120,7 +120,26 @@ async fn handle_event(event: &TapEvent, channel: &Channel) {
                 }
             }
         }
-        TapEvent::Identity { .. } => info!("ignoring identity event"),
+        TapEvent::Identity { id: _, identity } => {
+            let payload = match serde_json::to_vec(identity) {
+                Ok(payload) => payload,
+                Err(error) => {
+                    error!(%error, "failed to serialise tap identity event");
+                    return;
+                }
+            };
+
+            match Identity.publish(&payload, channel).await {
+                Ok(()) => info!(queue = Identity.name(), "message published"),
+                Err(error) => {
+                    error!(
+                        error = error.to_string(),
+                        queue = Identity.name(),
+                        "failed to publish message"
+                    );
+                }
+            }
+        }
     }
 }
 
