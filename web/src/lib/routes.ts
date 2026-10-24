@@ -128,6 +128,58 @@ export async function fetchRoutesByAuthor(
   }));
 }
 
+export type RouteSearchResult = {
+  did: string;
+  rkey: string;
+  name: string;
+  activity: string;
+  distanceM: number;
+};
+
+const MAX_SEARCH_TERMS = 5;
+
+/**
+ * Searches route names for every word in `query`, matching each word as a
+ * prefix so partial input finds routes as it's typed. Best matches come
+ * first. Routes with moderation labels are left out.
+ */
+export async function searchRoutes(
+  query: string,
+  limit: number,
+): Promise<RouteSearchResult[]> {
+  // Only letters and digits reach `to_tsquery`, so its syntax can't be
+  // injected and the call can't fail.
+  const terms = query
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .slice(0, MAX_SEARCH_TERMS);
+  if (terms.length === 0) {
+    return [];
+  }
+
+  const db = await getDb();
+  const tsquery = sql`to_tsquery('simple', ${terms.map((term) => `${term}:*`).join(" & ")})`;
+
+  return db
+    .selectFrom("routes")
+    .innerJoin("tracks", "tracks.cid", "routes.gpx_cid")
+    .select([
+      "routes.did",
+      "routes.rkey",
+      "routes.name",
+      "routes.activity",
+      "tracks.distance_m as distanceM",
+    ])
+    .where(sql<boolean>`routes.name_tsv @@ ${tsquery}`)
+    .where("routes.tombstoned", "=", false)
+    .where("tracks.path", "is not", null)
+    .where((eb) => eb.not(isLabelled("routes.uri", "routes.cid")))
+    .orderBy(sql`ts_rank_cd(routes.name_tsv, ${tsquery})`, "desc")
+    .orderBy("routes.sort_at", "desc")
+    .limit(limit)
+    .execute();
+}
+
 export type Route = {
   uri: string;
   cid: string;
