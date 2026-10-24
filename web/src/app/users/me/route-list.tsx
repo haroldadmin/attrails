@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { LoadOnScroll } from "@/components/load-on-scroll";
-import { useGenerator } from "@/hooks/use-generator";
-import { type Page, pagesAfter } from "@/lib/pages";
+import { usePages } from "@/hooks/use-pages";
+import type { Page } from "@/lib/pages";
 import { loadRoutes } from "./actions";
 import type { RouteListItem } from "./listings";
 
@@ -12,10 +12,7 @@ export type RouteListProps = {
 };
 
 export function RouteList({ firstPage }: RouteListProps) {
-  const routes = useGenerator(
-    () => pagesAfter(firstPage.nextCursor, loadRoutes),
-    firstPage.items,
-  );
+  const routes = usePages(firstPage, loadRoutes);
 
   return (
     <>
@@ -48,7 +45,7 @@ export function RouteList({ firstPage }: RouteListProps) {
       </ul>
       {routes.hasMore && (
         <LoadOnScroll
-          onLoad={routes.generate}
+          onLoad={routes.loadMore}
           loading={routes.loading}
           loadingLabel="Loading more routes…"
         />

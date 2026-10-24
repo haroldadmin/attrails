@@ -4,8 +4,8 @@ import Link from "next/link";
 import { LoadOnScroll } from "@/components/load-on-scroll";
 import { ReviewModerationNotice } from "@/components/moderation-notice";
 import { ReviewRating } from "@/components/review-rating";
-import { useGenerator } from "@/hooks/use-generator";
-import { type Page, pagesAfter } from "@/lib/pages";
+import { usePages } from "@/hooks/use-pages";
+import type { Page } from "@/lib/pages";
 import { loadReviews } from "./actions";
 import type { ReviewListItem } from "./listings";
 
@@ -14,10 +14,7 @@ export type ReviewListProps = {
 };
 
 export function ReviewList({ firstPage }: ReviewListProps) {
-  const reviews = useGenerator(
-    () => pagesAfter(firstPage.nextCursor, loadReviews),
-    firstPage.items,
-  );
+  const reviews = usePages(firstPage, loadReviews);
 
   return (
     <>
@@ -65,7 +62,7 @@ export function ReviewList({ firstPage }: ReviewListProps) {
       </ol>
       {reviews.hasMore && (
         <LoadOnScroll
-          onLoad={reviews.generate}
+          onLoad={reviews.loadMore}
           loading={reviews.loading}
           loadingLabel="Loading more reviews…"
         />
