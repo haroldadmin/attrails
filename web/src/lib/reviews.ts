@@ -171,16 +171,21 @@ export async function fetchReviewsByAuthor(
 
   let query = db.selectFrom(latest.as("latest")).selectAll();
   if (position) {
-    query = query.where(after("sortAt", "rkey", position));
+    query = query.where(after("sortAt", "did", "rkey", position));
   }
 
   const rows = await query
     .orderBy("sortAt", "desc")
+    .orderBy("did", "desc")
     .orderBy("rkey", "desc")
     .limit(limit + 1)
     .execute();
 
-  const page = toPage(rows, limit, ({ sortAt, rkey }) => ({ sortAt, rkey }));
+  const page = toPage(rows, limit, ({ sortAt, did, rkey }) => ({
+    sortAt,
+    did,
+    rkey,
+  }));
   return {
     ...page,
     items: page.items.map((row) => ({

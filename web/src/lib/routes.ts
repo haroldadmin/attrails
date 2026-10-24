@@ -65,20 +65,58 @@ function toRouteSummary<T extends { pathGeoJson: string }>({
 }
 
 /**
+ * Fetches a page of the most recently ingested routes with tracks, leaving out
+ * routes with moderation labels. With `activity`, only routes for that
+ * activity are listed.
+ */
+export async function fetchRoutesPage({
+  activity,
+  cursor,
+  limit,
+}: {
+  activity?: string;
+  cursor?: string;
+  limit: number;
+}): Promise<Page<RouteSummary>> {
+  const db = await getDb();
+  const position = cursor ? decodeCursor(cursor) : undefined;
+  if (position === null) {
+    return { items: [], nextCursor: null };
+  }
+
+  let query = routeSummaries(db);
+  if (activity) {
+    query = query.where("routes.activity", "=", activity);
+  }
+  if (position) {
+    query = query.where(
+      after("routes.sort_at", "routes.did", "routes.rkey", position),
+    );
+  }
+
+  const rows = await query
+    .orderBy("routes.sort_at", "desc")
+    .orderBy("routes.did", "desc")
+    .orderBy("routes.rkey", "desc")
+    .limit(limit + 1)
+    .execute();
+
+  const page = toPage(rows, limit, ({ uploadedAt, did, rkey }) => ({
+    sortAt: uploadedAt,
+    did,
+    rkey,
+  }));
+  return { ...page, items: page.items.map(toRouteSummary) };
+}
+
+/**
  * Fetches the most recently ingested routes with tracks, leaving out routes
  * with moderation labels.
  */
 export async function fetchRecentRoutes(
   limit: number,
 ): Promise<RouteSummary[]> {
-  const db = await getDb();
-
-  const rows = await routeSummaries(db)
-    .orderBy("routes.sort_at", "desc")
-    .limit(limit)
-    .execute();
-
-  return rows.map(toRouteSummary);
+  return (await fetchRoutesPage({ limit })).items;
 }
 
 /**
@@ -144,7 +182,9 @@ export async function fetchRoutesByAuthor(
     .where("routes.tombstoned", "=", false)
     .where("tracks.path", "is not", null);
   if (position) {
-    query = query.where(after("routes.sort_at", "routes.rkey", position));
+    query = query.where(
+      after("routes.sort_at", "routes.did", "routes.rkey", position),
+    );
   }
   if (hideLabelled) {
     query = query.where((eb) => eb.not(isLabelled("routes.uri", "routes.cid")));
@@ -152,12 +192,14 @@ export async function fetchRoutesByAuthor(
 
   const rows = await query
     .orderBy("routes.sort_at", "desc")
+    .orderBy("routes.did", "desc")
     .orderBy("routes.rkey", "desc")
     .limit(limit + 1)
     .execute();
 
-  return toPage(rows, limit, ({ uploadedAt, rkey }) => ({
+  return toPage(rows, limit, ({ uploadedAt, did, rkey }) => ({
     sortAt: uploadedAt,
+    did,
     rkey,
   }));
 }

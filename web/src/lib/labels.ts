@@ -32,6 +32,32 @@ export function activityLabel(activity: string): string {
   return ACTIVITY_LABELS.get(activity) ?? "Other";
 }
 
+/** Activities offered as discovery filters, in display order. */
+export const ACTIVITY_FILTERS: readonly Option[] = [
+  [defs.Running, "Running"],
+  [defs.Cycling, "Cycling"],
+  [defs.Hiking, "Hiking"],
+  [defs.Walking, "Walking"],
+];
+
+/** URL-safe identifier for an activity, e.g. `running`. */
+export function activitySlug(activity: string): string {
+  const index = activity.lastIndexOf("#");
+  return index === -1 ? activity : activity.slice(index + 1);
+}
+
+const ACTIVITY_VALUES_BY_SLUG: ReadonlyMap<string, string> = new Map(
+  ACTIVITY_FILTERS.map(([value]) => [activitySlug(value), value]),
+);
+
+/**
+ * Resolves the activity slug from a page's URL. Returns `undefined` when the
+ * activity is missing or isn't one that can be filtered by.
+ */
+export function activityFromSlug(slug: string | undefined): string | undefined {
+  return slug ? ACTIVITY_VALUES_BY_SLUG.get(slug.toLowerCase()) : undefined;
+}
+
 const SURFACE_LABELS: ReadonlyMap<string, string> = new Map(SURFACES);
 
 export function surfaceLabel(surface: string): string | undefined {

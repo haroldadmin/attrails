@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { NearbyRoutes } from "@/components/nearby-routes";
 import { RecentRoutes, RecentRoutesSkeleton } from "@/components/recent-routes";
@@ -22,14 +23,22 @@ export default function Home() {
         aria-labelledby="recent-routes-heading"
         className="flex flex-col gap-6"
       >
-        <hgroup className="flex flex-col gap-2">
-          <h2 id="recent-routes-heading" className="font-serif text-3xl">
-            Recently added
-          </h2>
-          <p className="text-base-content/70">
-            The latest routes shared by the community.
-          </p>
-        </hgroup>
+        <div className="flex flex-row flex-wrap items-end justify-between gap-4">
+          <hgroup className="flex flex-col gap-2">
+            <h2 id="recent-routes-heading" className="font-serif text-3xl">
+              Recently added
+            </h2>
+            <p className="text-base-content/70">
+              The latest routes shared by the community.
+            </p>
+          </hgroup>
+          <Link
+            className="btn btn-ghost btn-sm rounded-full border-base-300"
+            href="/routes"
+          >
+            View all routes
+          </Link>
+        </div>
         <Suspense>
           <Notice
             messages={{

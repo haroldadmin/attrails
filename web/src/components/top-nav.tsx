@@ -8,13 +8,18 @@ export function TopNav() {
     <nav className="flex flex-row flex-wrap items-center gap-x-6 gap-y-3 grow">
       <ul className="flex flex-row items-center gap-6">
         <li>
-          <Link className="link-hover" href="/">
-            Discover
+          <Link className="link-hover" href="/routes?activity=running">
+            Running
           </Link>
         </li>
         <li>
-          <Link className="link-hover" href="/about">
-            About
+          <Link className="link-hover" href="/routes?activity=cycling">
+            Cycling
+          </Link>
+        </li>
+        <li>
+          <Link className="link-hover" href="/routes?activity=hiking">
+            Hiking
           </Link>
         </li>
       </ul>
