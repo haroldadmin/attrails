@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Newsreader, Source_Sans_3 } from "next/font/google";
 import Script from "next/script";
 import { Footer } from "@/components/footer";
-import { AtTrailsLogo } from "@/components/logo";
 import { TopNav } from "@/components/top-nav";
 import { openGraphDefaults } from "./shared-metadata";
 import "./globals.css";
@@ -34,10 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-lvh flex flex-col font-sans">
         <header className="w-full max-w-7xl mx-auto px-4 sm:px-16">
-          <div className="flex flex-row flex-wrap items-center gap-x-8 gap-y-2 py-3 border-b border-base-300">
-            <AtTrailsLogo size="large" />
-            <TopNav />
-          </div>
+          <TopNav />
         </header>
         <div className="grow w-full max-w-7xl mx-auto">{children}</div>
         <Footer />

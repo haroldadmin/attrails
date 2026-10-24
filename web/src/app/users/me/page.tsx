@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { logout } from "@/auth/actions";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
 import { Notice } from "@/components/notice";
@@ -51,12 +52,16 @@ async function Profile() {
       </Suspense>
 
       <ProfileHeader profile={profile}>
-        <Link
-          href="/users/me/edit"
-          className="btn btn-outline btn-sm self-start"
-        >
-          Edit profile
-        </Link>
+        <div className="flex flex-row gap-3">
+          <Link href="/users/me/edit" className="btn btn-outline btn-sm">
+            Edit profile
+          </Link>
+          <form action={logout}>
+            <button type="submit" className="btn btn-ghost btn-sm">
+              Log out
+            </button>
+          </form>
+        </div>
       </ProfileHeader>
 
       <section aria-labelledby="routes-heading" className="flex flex-col gap-6">
