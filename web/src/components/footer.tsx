@@ -11,6 +11,26 @@ export function Footer() {
             </Link>
           </li>
           <li>
+            <Link className="link-hover" href="/routes?activity=running">
+              Running
+            </Link>
+          </li>
+          <li>
+            <Link className="link-hover" href="/routes?activity=cycling">
+              Cycling
+            </Link>
+          </li>
+          <li>
+            <Link className="link-hover" href="/routes?activity=hiking">
+              Hiking
+            </Link>
+          </li>
+          <li>
+            <Link className="link-hover" href="/routes?activity=walking">
+              Walking
+            </Link>
+          </li>
+          <li>
             <Link className="link-hover" href="/about">
               About
             </Link>
