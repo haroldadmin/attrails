@@ -4,9 +4,15 @@ Processes events produced by `ingest-watcher` to transform and index routes, rev
 
 ## Labels
 
-Every route, review, and profile that is created or updated is queued on `tap-events-labels`. The labels consumer sends the text of the indexed version of the record to the Jev decisions API, with one yes/no question per content label (`porn`, `sexual`, `nudity`, `graphic-media`, `spam`, `rude`, `threat`). Labels whose probability is above 0.7 are stored in the `labels` table, keyed by the record's uri and cid, along with `!hide` (for `porn`, `threat`, or `spam`) or `!warn` (for any other label). Requests for a version that is no longer indexed, and reviews without text, are skipped.
+Every route, review, and profile that is created or updated is queued on `tap-events-labels`. The labels consumer first checks the text of the indexed version of the record with [rustrict](https://crates.io/crates/rustrict). Only severe, unambiguous matches bypass the decisions API:
 
-The questions and the `!hide`/`!warn` rules live in `crates/moderation`. Set `RUST_LOG=moderation=debug` to log each request payload and the answers.
+- severe profanity or offensive language applies `rude`;
+- severe sexual language applies `porn`;
+- severe `mean`, `spam`, and `evasive` matches are left to the decisions model, as are labels that rustrict cannot decide (`nudity`, `graphic-media`, and `threat`).
+
+If rustrict finds a match, the labels are stored directly and the decisions API is not called. Otherwise the consumer sends the record to the Jev decisions API, with one yes/no question per content label (`porn`, `sexual`, `nudity`, `graphic-media`, `spam`, `rude`, `threat`). Labels whose probability is above 0.7 are stored in the `labels` table, keyed by the record's uri and cid, along with `!hide` (for `porn`, `threat`, or `spam`) or `!warn` (for any other label). The `labels.source` column records `rustrict` or `jev`. Requests for a version that is no longer indexed, and reviews without text, are skipped.
+
+The questions and the `!hide`/`!warn` rules live in `crates/moderation`. Set `RUST_LOG=moderation=debug` to log each request payload, the answers, and rustrict fast-path matches.
 
 The API is configured with `ATTRAILS_DECISIONS_API_KEY` (required) and `ATTRAILS_DECISIONS_API_BASE_URL` (defaults to `https://api.typesafe.ai`).
 

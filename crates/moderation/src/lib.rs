@@ -5,6 +5,7 @@ use tracing::debug;
 
 use crate::questions::{JUDGMENTS, TRUE_THRESHOLD};
 
+mod fast_path;
 mod questions;
 mod typesafe;
 
@@ -44,6 +45,35 @@ impl Display for LabelVal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
     }
+}
+
+/// Where the labels for a record came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LabelSource {
+    /// Rustrict's local fast path.
+    Rustrict,
+    /// The decisions API.
+    Jev,
+}
+
+impl LabelSource {
+    /// The value stored in the `labels.source` column.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Rustrict => "rustrict",
+            Self::Jev => "jev",
+        }
+    }
+}
+
+/// Labels for a record, and how they were decided.
+#[derive(Debug, Clone)]
+pub struct Inference {
+    /// The labels to store, including `!hide` or `!warn`.
+    pub labels: Vec<LabelVal>,
+    /// Whether the labels came from rustrict or the decisions API.
+    pub source: LabelSource,
 }
 
 /// Decide whether a record with the given content labels is hidden or shown
@@ -91,17 +121,33 @@ impl Moderator {
     /// Ask the decisions API which content labels apply to `record`, and add
     /// `!hide` or `!warn` if any do.
     ///
+    /// Before calling the API, rustrict checks the record's text for severe
+    /// profanity, offensive language, or sexual content. If it finds any, those
+    /// labels are returned directly and the API is not called.
+    ///
     /// `subject` names the record in the state sent to the API, such as
-    /// `route`, so questions can refer to it directly. An empty list means
-    /// the record needs no labels.
+    /// `route`, so questions can refer to it directly. An empty list of labels
+    /// means the record needs no labels.
     ///
     /// # Errors
     ///
     /// Returns an error if the request fails, or the response is missing an
     /// answer to any question.
-    pub async fn infer_labels(&self, subject: &str, record: Value) -> Result<Vec<LabelVal>> {
+    pub async fn infer_labels(&self, subject: &str, record: Value) -> Result<Inference> {
+        let fast = fast_path::record_labels(&record);
+        if !fast.is_empty() {
+            debug!(?fast, "rustrict fast path applied");
+            return Ok(Inference {
+                labels: fast,
+                source: LabelSource::Rustrict,
+            });
+        }
+
         let probabilities = self.judge(subject, record).await?;
-        Ok(labels(&probabilities))
+        Ok(Inference {
+            labels: labels(&probabilities),
+            source: LabelSource::Jev,
+        })
     }
 
     /// Ask the decisions API for the probability that each content label
@@ -144,18 +190,23 @@ impl Moderator {
     }
 }
 
+/// Add `!hide` or `!warn` to a set of content labels.
+pub(crate) fn with_action(mut labels: Vec<LabelVal>) -> Vec<LabelVal> {
+    labels.extend(action(&labels));
+    labels
+}
+
 /// Decide the labels for a record from the probability of each content
 /// label: the content labels judged true, plus `!hide` or `!warn`.
 #[must_use]
 pub fn labels<S: BuildHasher>(probabilities: &HashMap<LabelVal, f32, S>) -> Vec<LabelVal> {
-    let mut labels: Vec<LabelVal> = probabilities
+    let labels: Vec<LabelVal> = probabilities
         .iter()
         .filter(|(_, probability)| **probability > TRUE_THRESHOLD)
         .map(|(label, _)| *label)
         .collect();
-    labels.extend(action(&labels));
 
-    labels
+    with_action(labels)
 }
 
 #[cfg(test)]
