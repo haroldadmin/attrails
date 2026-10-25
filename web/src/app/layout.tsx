@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Newsreader, Source_Sans_3 } from "next/font/google";
 import Script from "next/script";
+import { getWebUrl } from "@/auth/client";
 import { Footer } from "@/components/footer";
 import { TopNav } from "@/components/top-nav";
 import { openGraphDefaults } from "./shared-metadata";
@@ -17,12 +18,22 @@ const sourceSans = Source_Sans_3({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: { default: "ATTrails", template: "%s · ATTrails" },
-  description:
-    "Discover and share cycling, running, and hiking routes on the open social web.",
-  openGraph: openGraphDefaults,
-};
+const DESCRIPTION =
+  "Discover and share cycling, running, and hiking routes on the open social web.";
+
+export function generateMetadata(): Metadata {
+  return {
+    metadataBase: getWebUrl(),
+    title: { default: "ATTrails", template: "%s · ATTrails" },
+    description: DESCRIPTION,
+    openGraph: {
+      ...openGraphDefaults,
+      title: "ATTrails",
+      description: DESCRIPTION,
+    },
+    twitter: { card: "summary_large_image" },
+  };
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

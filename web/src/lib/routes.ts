@@ -331,6 +331,25 @@ export const fetchRoute = cache(
   },
 );
 
+/**
+ * Fetches what a route's link preview image shows, with a simplified track.
+ * Returns `null` if the route doesn't exist, hasn't been processed yet, or
+ * has moderation labels.
+ */
+export async function fetchRouteCard(
+  did: string,
+  rkey: string,
+): Promise<RouteSummary | null> {
+  const db = await getDb();
+
+  const row = await routeSummaries(db)
+    .where("routes.did", "=", did)
+    .where("routes.rkey", "=", rkey)
+    .executeTakeFirst();
+
+  return row ? toRouteSummary(row) : null;
+}
+
 export type RouteGpx = {
   did: string;
   rkey: string;
