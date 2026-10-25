@@ -14,7 +14,6 @@ import {
 import { Notice } from "@/components/notice";
 import { ReviewRating } from "@/components/review-rating";
 import { RouteMap } from "@/components/route-map";
-import { getWebUrl } from "@/auth/client";
 import { getSession } from "@/auth/session";
 import { ShareButton } from "@/components/share-button";
 import {
@@ -70,19 +69,20 @@ export async function generateMetadata({
     .filter(Boolean)
     .join(" · ");
   const path = `/routes/${route.did}/${route.rkey}`;
+  const description = truncate(
+    route.description ? `${summary}. ${route.description}` : summary,
+    DESCRIPTION_LENGTH,
+  );
 
   return {
-    metadataBase: getWebUrl(),
     title: route.name,
-    description: truncate(
-      route.description ? `${summary}. ${route.description}` : summary,
-      DESCRIPTION_LENGTH,
-    ),
+    description,
     alternates: { canonical: path },
     openGraph: {
       ...openGraphDefaults,
       type: "article",
       title: route.name,
+      description,
       url: path,
       publishedTime: route.createdAt.toString(),
     },
