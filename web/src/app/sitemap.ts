@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { ACTIVITY_FILTERS, activitySlug } from "@/lib/labels";
+import { SITE_URL } from "./shared-metadata";
 
-const url = (path: string) => new URL(path, "https://www.attrails.app").href;
+const url = (path: string) => new URL(path, SITE_URL).href;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

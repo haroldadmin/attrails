@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "./shared-metadata";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -16,6 +17,6 @@ export default function robots(): MetadataRoute.Robots {
         "/health/",
       ],
     },
-    sitemap: "https://www.attrails.app/sitemap.xml",
+    sitemap: new URL("/sitemap.xml", SITE_URL).href,
   };
 }
