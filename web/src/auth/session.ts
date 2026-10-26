@@ -6,7 +6,7 @@ import { sql } from "kysely";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { getDb } from "@/db/client";
-import { getOAuthClient, getWebUrl } from "./client";
+import { getOAuthClient, getWebUrl, OAUTH_SCOPE } from "./client";
 import { logger } from "@/lib/logger";
 
 const SESSION_COOKIE = "attrails_session";
@@ -21,7 +21,8 @@ function hashSessionId(id: string): string {
  * Returns the signed-in account's OAuth session, or `null` when signed out.
  *
  * Restoring the session refreshes its tokens when they have expired. A session
- * that can no longer be refreshed reads as signed out.
+ * that can no longer be refreshed, or lacks any scope in `OAUTH_SCOPE`, reads
+ * as signed out.
  */
 export const getSession = cache(async (): Promise<OAuthSession | undefined> => {
   const id = (await cookies()).get(SESSION_COOKIE)?.value;
@@ -41,12 +42,22 @@ export const getSession = cache(async (): Promise<OAuthSession | undefined> => {
     return undefined;
   }
 
+  let session: OAuthSession;
   try {
-    return await getOAuthClient().restore(row.did);
+    session = await getOAuthClient().restore(row.did);
   } catch (error) {
     logger.warn({ err: error, did: row.did }, "auth:restore");
     return undefined;
   }
+
+  const { scope } = await session.getTokenInfo(false);
+  const granted = new Set(scope.split(" "));
+  if (!OAUTH_SCOPE.split(" ").every((s) => granted.has(s))) {
+    logger.info({ did: row.did, scope }, "auth:insufficient-scope");
+    return undefined;
+  }
+
+  return session;
 });
 
 /**
