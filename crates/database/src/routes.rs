@@ -5,7 +5,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 
 /// A row to insert or update in the `routes` table, built from an
-/// `app.attrails.v0.route` record.
+/// `app.attrails.route` record.
 #[derive(Debug, Clone)]
 pub struct NewRoute {
     pub uri: String,

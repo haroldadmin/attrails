@@ -14,8 +14,8 @@ import { requestLock, sessionStore, stateStore } from "./stores";
 
 export const OAUTH_SCOPE = [
   "atproto",
-  "repo:app.attrails.v0.route",
-  "repo:app.attrails.v0.review",
+  "repo:app.attrails.route",
+  "repo:app.attrails.review",
   "repo:app.attrails.actor.profile",
   "blob:application/gpx+xml",
 ].join(" ");

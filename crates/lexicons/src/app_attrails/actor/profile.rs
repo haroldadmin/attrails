@@ -28,7 +28,8 @@ use jacquard_lexicon::schema::LexiconSchema;
 #[allow(unused_imports)]
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Serialize, Deserialize};
-/// A user's ATTrails profile. Unlike the throwaway app.attrails.v0.* records, this NSID is unversioned and durable; the existence of this record is the signal that an account is an ATTrails user.
+use crate::com_atproto::label::SelfLabels;
+/// A user's ATTrails profile. The existence of this record is the signal that an account is an ATTrails user.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(
@@ -42,9 +43,12 @@ pub struct Profile<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bio: Option<S>,
     pub created_at: Datetime,
-    ///Display name. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).
+    ///Self-label values for this profile.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub labels: Option<SelfLabels<S>>,
+    ///Display name.
     pub name: S,
-    ///Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.v0.defs#image (1MB).
+    ///Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.defs#image (1MB).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_picture: Option<BlobRef<S>>,
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
@@ -135,6 +139,17 @@ impl<S: BosStr> LexiconSchema for Profile<S> {
                 return Err(ConstraintError::MaxLength {
                     path: ValidationPath::from_field("name"),
                     max: 1000usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        {
+            let value = &self.name;
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) < 1usize {
+                return Err(ConstraintError::MinLength {
+                    path: ValidationPath::from_field("name"),
+                    min: 1usize,
                     actual: <str>::len(value.as_ref()),
                 });
             }
@@ -241,7 +256,13 @@ pub mod profile_state {
 /// Builder for constructing an instance of this type.
 pub struct ProfileBuilder<St: profile_state::State, S: BosStr = DefaultStr> {
     _state: PhantomData<fn() -> St>,
-    _fields: (Option<S>, Option<Datetime>, Option<S>, Option<BlobRef<S>>),
+    _fields: (
+        Option<S>,
+        Option<Datetime>,
+        Option<SelfLabels<S>>,
+        Option<S>,
+        Option<BlobRef<S>>,
+    ),
     _type: PhantomData<fn() -> S>,
 }
 
@@ -264,7 +285,7 @@ impl ProfileBuilder<profile_state::Empty, DefaultStr> {
     pub fn new() -> Self {
         ProfileBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None),
+            _fields: (None, None, None, None, None),
             _type: PhantomData,
         }
     }
@@ -275,7 +296,7 @@ impl<S: BosStr> ProfileBuilder<profile_state::Empty, S> {
     pub fn builder() -> Self {
         ProfileBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None),
+            _fields: (None, None, None, None, None),
             _type: PhantomData,
         }
     }
@@ -313,6 +334,19 @@ where
     }
 }
 
+impl<St: profile_state::State, S: BosStr> ProfileBuilder<St, S> {
+    /// Set the `labels` field (optional)
+    pub fn labels(mut self, value: impl Into<Option<SelfLabels<S>>>) -> Self {
+        self._fields.2 = value.into();
+        self
+    }
+    /// Set the `labels` field to an Option value (optional)
+    pub fn maybe_labels(mut self, value: Option<SelfLabels<S>>) -> Self {
+        self._fields.2 = value;
+        self
+    }
+}
+
 impl<St, S: BosStr> ProfileBuilder<St, S>
 where
     St: profile_state::State,
@@ -323,7 +357,7 @@ where
         mut self,
         value: impl Into<S>,
     ) -> ProfileBuilder<profile_state::SetName<St>, S> {
-        self._fields.2 = Option::Some(value.into());
+        self._fields.3 = Option::Some(value.into());
         ProfileBuilder {
             _state: PhantomData,
             _fields: self._fields,
@@ -335,12 +369,12 @@ where
 impl<St: profile_state::State, S: BosStr> ProfileBuilder<St, S> {
     /// Set the `profilePicture` field (optional)
     pub fn profile_picture(mut self, value: impl Into<Option<BlobRef<S>>>) -> Self {
-        self._fields.3 = value.into();
+        self._fields.4 = value.into();
         self
     }
     /// Set the `profilePicture` field to an Option value (optional)
     pub fn maybe_profile_picture(mut self, value: Option<BlobRef<S>>) -> Self {
-        self._fields.3 = value;
+        self._fields.4 = value;
         self
     }
 }
@@ -356,8 +390,9 @@ where
         Profile {
             bio: self._fields.0,
             created_at: self._fields.1.unwrap(),
-            name: self._fields.2.unwrap(),
-            profile_picture: self._fields.3,
+            labels: self._fields.2,
+            name: self._fields.3.unwrap(),
+            profile_picture: self._fields.4,
             extra_data: Default::default(),
         }
     }
@@ -366,8 +401,9 @@ where
         Profile {
             bio: self._fields.0,
             created_at: self._fields.1.unwrap(),
-            name: self._fields.2.unwrap(),
-            profile_picture: self._fields.3,
+            labels: self._fields.2,
+            name: self._fields.3.unwrap(),
+            profile_picture: self._fields.4,
             extra_data: Some(extra_data),
         }
     }
@@ -388,7 +424,7 @@ fn lexicon_doc_app_attrails_actor_profile() -> LexiconDoc<'static> {
                 LexUserType::Record(LexRecord {
                     description: Some(
                         CowStr::new_static(
-                            "A user's ATTrails profile. Unlike the throwaway app.attrails.v0.* records, this NSID is unversioned and durable; the existence of this record is the signal that an account is an ATTrails user.",
+                            "A user's ATTrails profile. The existence of this record is the signal that an account is an ATTrails user.",
                         ),
                     ),
                     key: Some(CowStr::new_static("literal:self")),
@@ -421,13 +457,22 @@ fn lexicon_doc_app_attrails_actor_profile() -> LexiconDoc<'static> {
                                 }),
                             );
                             map.insert(
+                                SmolStr::new_static("labels"),
+                                LexObjectProperty::Union(LexRefUnion {
+                                    description: Some(
+                                        CowStr::new_static("Self-label values for this profile."),
+                                    ),
+                                    refs: vec![
+                                        CowStr::new_static("com.atproto.label.defs#selfLabels")
+                                    ],
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
                                 SmolStr::new_static("name"),
                                 LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Display name. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).",
-                                        ),
-                                    ),
+                                    description: Some(CowStr::new_static("Display name.")),
+                                    min_length: Some(1usize),
                                     max_length: Some(1000usize),
                                     max_graphemes: Some(100usize),
                                     ..Default::default()

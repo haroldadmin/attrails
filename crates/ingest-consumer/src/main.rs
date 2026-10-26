@@ -18,8 +18,7 @@ use jacquard::{
 use jiff::Timestamp;
 use lapin::{Channel, protocol::constants::REPLY_SUCCESS};
 use lexicons::app_attrails::{
-    actor::profile::ProfileRecord,
-    v0::{review::ReviewRecord, route::RouteRecord},
+    actor::profile::ProfileRecord, review::ReviewRecord, route::RouteRecord,
 };
 use lifecycle::{
     health::{Readiness, Server, check},
@@ -161,7 +160,7 @@ async fn consume_routes(
             match event.action {
                 RecordAction::Create | RecordAction::Update => {
                     let parsed = event
-                        .parse_record::<lexicons::app_attrails::v0::route::Route>()
+                        .parse_record::<lexicons::app_attrails::route::Route>()
                         .map_err(anyhow::Error::from)
                         .and_then(|record| {
                             let route = routes::from_event(&event, &record)?;
@@ -213,7 +212,7 @@ async fn consume_reviews(
             match event.action {
                 RecordAction::Create | RecordAction::Update => {
                     let parsed = event
-                        .parse_record::<lexicons::app_attrails::v0::review::Review>()
+                        .parse_record::<lexicons::app_attrails::review::Review>()
                         .map_err(anyhow::Error::from)
                         .and_then(|review| reviews::from_event(&event, &review));
 

@@ -3,6 +3,7 @@
  */
 
 import { l } from '@atproto/lex'
+import * as LabelDefs from '../../../com/atproto/label/defs.defs'
 
 const $nsid = 'app.attrails.actor.profile'
 
@@ -10,7 +11,7 @@ type $nsid = typeof $nsid
 
 export { $nsid }
 
-/** A user's ATTrails profile. Unlike the throwaway app.attrails.v0.* records, this NSID is unversioned and durable; the existence of this record is the signal that an account is an ATTrails user. */
+/** A user's ATTrails profile. The existence of this record is the signal that an account is an ATTrails user. */
 type Main = {
   $type: 'app.attrails.actor.profile'
 
@@ -21,19 +22,24 @@ type Main = {
   createdAt: l.DatetimeString
 
   /**
-   * Display name. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).
+   * Self-label values for this profile.
+   */
+  labels?: l.$Typed<LabelDefs.SelfLabels> | l.Unknown$TypedObject
+
+  /**
+   * Display name.
    */
   name: string
 
   /**
-   * Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.v0.defs#image (1MB).
+   * Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.defs#image (1MB).
    */
   profilePicture?: l.BlobRef
 }
 
 export type { Main }
 
-/** A user's ATTrails profile. Unlike the throwaway app.attrails.v0.* records, this NSID is unversioned and durable; the existence of this record is the signal that an account is an ATTrails user. */
+/** A user's ATTrails profile. The existence of this record is the signal that an account is an ATTrails user. */
 const main = /*#__PURE__*/ l.record<'literal:self', Main>(
   'literal:self',
   $nsid,
@@ -42,7 +48,21 @@ const main = /*#__PURE__*/ l.record<'literal:self', Main>(
       /*#__PURE__*/ l.string({ maxLength: 30000, maxGraphemes: 3000 }),
     ),
     createdAt: /*#__PURE__*/ l.string({ format: 'datetime' }),
-    name: /*#__PURE__*/ l.string({ maxLength: 1000, maxGraphemes: 100 }),
+    labels: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.typedUnion(
+        [
+          /*#__PURE__*/ l.typedRef<LabelDefs.SelfLabels>(
+            (() => LabelDefs.selfLabels) as any,
+          ),
+        ],
+        false,
+      ),
+    ),
+    name: /*#__PURE__*/ l.string({
+      minLength: 1,
+      maxLength: 1000,
+      maxGraphemes: 100,
+    }),
     profilePicture: /*#__PURE__*/ l.optional(
       /*#__PURE__*/ l.blob({ accept: ['image/*'], maxSize: 1000000 }),
     ),

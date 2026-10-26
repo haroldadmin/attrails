@@ -92,8 +92,8 @@ async fn handle_event(event: &TapEvent, channel: &Channel) {
             info!(id, "processing tap event");
 
             let queue = match record.collection.as_ref() {
-                "app.attrails.v0.route" => Routes,
-                "app.attrails.v0.review" => Reviews,
+                "app.attrails.route" => Routes,
+                "app.attrails.review" => Reviews,
                 "app.attrails.actor.profile" => Profiles,
                 _ => {
                     warn!("ignoring event from unknown collection");

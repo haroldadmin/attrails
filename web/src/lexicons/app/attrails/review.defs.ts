@@ -3,10 +3,11 @@
  */
 
 import { l } from '@atproto/lex'
-import * as V0Defs from './defs.defs'
-import * as RepoStrongRef from '../../../com/atproto/repo/strongRef.defs'
+import * as AttrailsDefs from './defs.defs'
+import * as LabelDefs from '../../com/atproto/label/defs.defs'
+import * as RepoStrongRef from '../../com/atproto/repo/strongRef.defs'
 
-const $nsid = 'app.attrails.v0.review'
+const $nsid = 'app.attrails.review'
 
 type $nsid = typeof $nsid
 
@@ -14,14 +15,24 @@ export { $nsid }
 
 /** A review of a route: a 1-5 rating, optional text, and optional photos. Activity-neutral. The AppView treats the most recent review per (author, subject) as canonical. */
 type Main = {
-  $type: 'app.attrails.v0.review'
+  $type: 'app.attrails.review'
 
   /**
    * When the reviewer last did the route (rode, ran, hiked), if they want to say.
    */
   completedAt?: l.DatetimeString
   createdAt: l.DatetimeString
-  images?: V0Defs.Image[]
+  images?: AttrailsDefs.Image[]
+
+  /**
+   * Self-label values for this review, e.g. to flag sensitive photos.
+   */
+  labels?: l.$Typed<LabelDefs.SelfLabels> | l.Unknown$TypedObject
+
+  /**
+   * Languages of this record's text (review text, image alt text), as BCP-47 tags. If absent, consumers should assume English ('en').
+   */
+  langs?: l.LanguageString[]
 
   /**
    * Star rating from 1 (worst) to 5 (best).
@@ -29,9 +40,13 @@ type Main = {
   rating: number
 
   /**
-   * Strong reference to an app.attrails.v0.route record. The AppView rejects reviews whose subject is not a route (lexicon cannot constrain the URI collection in-schema).
+   * Strong reference to an attrails record, often an app.attrails.route record.
    */
   subject: RepoStrongRef.Main
+
+  /**
+   * Review text, as CommonMark markdown. Clients must not render raw HTML.
+   */
   text?: string
 }
 
@@ -48,9 +63,26 @@ const main = /*#__PURE__*/ l.record<'tid', Main>(
     createdAt: /*#__PURE__*/ l.string({ format: 'datetime' }),
     images: /*#__PURE__*/ l.optional(
       /*#__PURE__*/ l.array(
-        /*#__PURE__*/ l.ref<V0Defs.Image>((() => V0Defs.image) as any),
+        /*#__PURE__*/ l.ref<AttrailsDefs.Image>(
+          (() => AttrailsDefs.image) as any,
+        ),
         { maxLength: 10 },
       ),
+    ),
+    labels: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.typedUnion(
+        [
+          /*#__PURE__*/ l.typedRef<LabelDefs.SelfLabels>(
+            (() => LabelDefs.selfLabels) as any,
+          ),
+        ],
+        false,
+      ),
+    ),
+    langs: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.array(/*#__PURE__*/ l.string({ format: 'language' }), {
+        maxLength: 3,
+      }),
     ),
     rating: /*#__PURE__*/ l.integer({ minimum: 1, maximum: 5 }),
     subject: /*#__PURE__*/ l.ref<RepoStrongRef.Main>(

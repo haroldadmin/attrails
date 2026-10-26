@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "app.attrails.v0.review",
+  "id": "app.attrails.review",
   "defs": {
     "main": {
       "type": "record",
@@ -27,9 +27,25 @@
             "type": "array",
             "items": {
               "type": "ref",
-              "ref": "app.attrails.v0.defs#image"
+              "ref": "app.attrails.defs#image"
             },
             "maxLength": 10
+          },
+          "labels": {
+            "type": "union",
+            "description": "Self-label values for this review, e.g. to flag sensitive photos.",
+            "refs": [
+              "com.atproto.label.defs#selfLabels"
+            ]
+          },
+          "langs": {
+            "type": "array",
+            "description": "Languages of this record's text (review text, image alt text), as BCP-47 tags. If absent, consumers should assume English ('en').",
+            "items": {
+              "type": "string",
+              "format": "language"
+            },
+            "maxLength": 3
           },
           "rating": {
             "type": "integer",
@@ -39,11 +55,12 @@
           },
           "subject": {
             "type": "ref",
-            "description": "Strong reference to an app.attrails.v0.route record. The AppView rejects reviews whose subject is not a route (lexicon cannot constrain the URI collection in-schema).",
+            "description": "Strong reference to an attrails record, often an app.attrails.route record.",
             "ref": "com.atproto.repo.strongRef"
           },
           "text": {
             "type": "string",
+            "description": "Review text, as CommonMark markdown. Clients must not render raw HTML.",
             "maxLength": 30000,
             "maxGraphemes": 3000
           }

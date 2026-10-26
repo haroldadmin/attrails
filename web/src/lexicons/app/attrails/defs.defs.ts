@@ -4,7 +4,7 @@
 
 import { l } from '@atproto/lex'
 
-const $nsid = 'app.attrails.v0.defs'
+const $nsid = 'app.attrails.defs'
 
 type $nsid = typeof $nsid
 
@@ -12,7 +12,7 @@ export { $nsid }
 
 /** Width:height ratio so clients can lay out before the image loads. */
 type AspectRatio = {
-  $type?: 'app.attrails.v0.defs#aspectRatio'
+  $type?: 'app.attrails.defs#aspectRatio'
   height: number
   width: number
 }
@@ -111,7 +111,7 @@ export { Hiking }
 
 /** A photo attached to a route or review. */
 type Image = {
-  $type?: 'app.attrails.v0.defs#image'
+  $type?: 'app.attrails.defs#image'
 
   /**
    * Alt text for accessibility. May be empty.

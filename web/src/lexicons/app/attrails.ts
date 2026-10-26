@@ -3,4 +3,6 @@
  */
 
 export * as actor from './attrails/actor'
-export * as v0 from './attrails/v0'
+export * as defs from './attrails/defs'
+export * as review from './attrails/review'
+export * as route from './attrails/route'

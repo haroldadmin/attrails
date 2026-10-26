@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use atproto_tap::RecordEvent;
 use database::routes::NewRoute;
 use jiff::Timestamp;
-use lexicons::app_attrails::v0::route::Route;
+use lexicons::app_attrails::route::Route;
 use serde_json::json;
 
 /// Build a `routes` row from a create or update event and its parsed record.
@@ -53,13 +53,13 @@ pub fn from_event(event: &RecordEvent, route: &Route) -> Result<NewRoute> {
         sort_at: created_at.min(ingested_at),
         created_at,
         ingested_at,
-        gpx_cid: route.gpx.blob().cid().as_str().to_string(),
+        gpx_cid: route.track.blob().cid().as_str().to_string(),
     })
 }
 
 /// Build a message asking for the route's GPX blob to be parsed.
 pub fn blob_msg(event: &RecordEvent, route: &Route) -> BlobMsg {
-    let blob = route.gpx.blob();
+    let blob = route.track.blob();
     BlobMsg {
         did: event.did.to_string(),
         cid: blob.cid().as_str().to_string(),

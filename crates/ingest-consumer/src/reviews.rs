@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use atproto_tap::RecordEvent;
 use database::reviews::NewReview;
 use jiff::Timestamp;
-use lexicons::app_attrails::v0::review::Review;
+use lexicons::app_attrails::review::Review;
 use serde_json::json;
 
 /// Build a `reviews` row from a create or update event and its parsed record.
