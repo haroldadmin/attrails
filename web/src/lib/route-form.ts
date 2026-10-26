@@ -32,7 +32,7 @@ export function checkRouteValues(values: RouteValues): string | undefined {
 export function routeDetails(values: RouteValues) {
   const tags = values.tags
     .split(",")
-    .map((tag) => tag.trim())
+    .map((tag) => tag.trim().replace(/^#+/, ""))
     .filter((tag) => tag.length > 0);
 
   return {

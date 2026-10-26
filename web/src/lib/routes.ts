@@ -13,7 +13,7 @@ export type RouteSummary = {
   did: string;
   rkey: string;
   name: string;
-  /** Lexicon token, e.g. `app.attrails.v0.defs#cycling`. */
+  /** Lexicon token, e.g. `app.attrails.defs#cycling`. */
   activity: string;
   uploadedAt: Temporal.Instant;
   distanceM: number;

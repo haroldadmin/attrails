@@ -1,6 +1,6 @@
 import { app } from "@/lexicons";
 
-const { defs } = app.attrails.v0;
+const { defs } = app.attrails;
 
 export type Option = readonly [value: string, label: string];
 

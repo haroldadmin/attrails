@@ -4,7 +4,7 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "A user's ATTrails profile. Unlike the throwaway app.attrails.v0.* records, this NSID is unversioned and durable; the existence of this record is the signal that an account is an ATTrails user.",
+      "description": "A user's ATTrails profile. The existence of this record is the signal that an account is an ATTrails user.",
       "key": "literal:self",
       "record": {
         "type": "object",
@@ -23,15 +23,23 @@
             "type": "string",
             "format": "datetime"
           },
+          "labels": {
+            "type": "union",
+            "description": "Self-label values for this profile.",
+            "refs": [
+              "com.atproto.label.defs#selfLabels"
+            ]
+          },
           "name": {
             "type": "string",
-            "description": "Display name. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).",
+            "description": "Display name.",
+            "minLength": 1,
             "maxLength": 1000,
             "maxGraphemes": 100
           },
           "profilePicture": {
             "type": "blob",
-            "description": "Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.v0.defs#image (1MB).",
+            "description": "Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.defs#image (1MB).",
             "accept": [
               "image/*"
             ],

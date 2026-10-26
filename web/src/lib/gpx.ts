@@ -1,6 +1,6 @@
 import { gpx } from "@tmcw/togeojson";
 
-/** `maxSize` of the `gpx` blob in the `app.attrails.v0.route` lexicon. */
+/** `maxSize` of the `track` blob in the `app.attrails.route` lexicon. */
 export const GPX_MAX_SIZE_BYTES = 976_563;
 
 /**

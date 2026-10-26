@@ -15,7 +15,7 @@ import {
 } from "@/lib/route-form";
 import { logger } from "@/lib/logger";
 
-const { route } = app.attrails.v0;
+const { route } = app.attrails;
 
 const GPX_ENCODING = "application/gpx+xml";
 
@@ -65,7 +65,7 @@ export async function uploadRoute(
     const record = route.$safeValidate(
       route.$build({
         ...routeDetails(values),
-        gpx: body.blob,
+        track: body.blob,
         createdAt: currentDatetimeString(),
       }),
     );

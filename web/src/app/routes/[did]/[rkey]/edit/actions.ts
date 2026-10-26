@@ -13,7 +13,7 @@ import {
 } from "@/lib/route-form";
 import { logger } from "@/lib/logger";
 
-const { route } = app.attrails.v0;
+const { route } = app.attrails;
 
 export type EditRouteState = {
   values: RouteValues;
@@ -48,7 +48,7 @@ export async function saveRoute(
 
   const client = new Client(session);
   try {
-    // The form doesn't cover every field of the record, such as the GPX file,
+    // The form doesn't cover every field of the record, such as the track,
     // so the rest are kept from the record as it is now.
     const current = await client.get(route, { rkey });
     const record = route.$safeValidate({

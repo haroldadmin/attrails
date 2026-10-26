@@ -5,7 +5,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 
 /// A row to insert or update in the `reviews` table, built from an
-/// `app.attrails.v0.review` record.
+/// `app.attrails.review` record.
 #[derive(Debug, Clone)]
 pub struct NewReview {
     pub uri: String,

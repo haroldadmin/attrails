@@ -3,9 +3,10 @@
  */
 
 import { l } from '@atproto/lex'
-import * as V0Defs from './defs.defs'
+import * as AttrailsDefs from './defs.defs'
+import * as LabelDefs from '../../com/atproto/label/defs.defs'
 
-const $nsid = 'app.attrails.v0.route'
+const $nsid = 'app.attrails.route'
 
 type $nsid = typeof $nsid
 
@@ -26,13 +27,13 @@ export { Commute }
 
 /** Cycling-specific attributes of a route. */
 type CyclingDetails = {
-  $type?: 'app.attrails.v0.route#cyclingDetails'
+  $type?: 'app.attrails.route#cyclingDetails'
   discipline?:
-    | 'app.attrails.v0.route#road'
-    | 'app.attrails.v0.route#gravelBike'
-    | 'app.attrails.v0.route#mtb'
-    | 'app.attrails.v0.route#touring'
-    | 'app.attrails.v0.route#commute'
+    | 'app.attrails.route#road'
+    | 'app.attrails.route#gravelBike'
+    | 'app.attrails.route#mtb'
+    | 'app.attrails.route#touring'
+    | 'app.attrails.route#commute'
     | l.UnknownString
 }
 
@@ -46,11 +47,11 @@ const cyclingDetails = /*#__PURE__*/ l.typedObject<CyclingDetails>(
     discipline: /*#__PURE__*/ l.optional(
       /*#__PURE__*/ l.string<{
         knownValues: [
-          'app.attrails.v0.route#road',
-          'app.attrails.v0.route#gravelBike',
-          'app.attrails.v0.route#mtb',
-          'app.attrails.v0.route#touring',
-          'app.attrails.v0.route#commute',
+          'app.attrails.route#road',
+          'app.attrails.route#gravelBike',
+          'app.attrails.route#mtb',
+          'app.attrails.route#touring',
+          'app.attrails.route#commute',
         ]
       }>(),
     ),
@@ -72,21 +73,25 @@ type GravelBike = typeof GravelBike
 
 export { GravelBike }
 
-/** A route for a human-powered activity (cycling, running, hiking, ...) shared by a user. The GPX track is stored as a blob; all geographic statistics are derived by the AppView from the blob and are not part of this record. */
+/** A cycling, running, hiking, walking, etc. route shared by a user. The associated track file is stored as a blob. */
 type Main = {
-  $type: 'app.attrails.v0.route'
+  $type: 'app.attrails.route'
 
   /**
    * The activity this route is intended for. Open enum; unknown values are allowed.
    */
   activity:
-    | 'app.attrails.v0.defs#cycling'
-    | 'app.attrails.v0.defs#running'
-    | 'app.attrails.v0.defs#hiking'
-    | 'app.attrails.v0.defs#walking'
-    | 'app.attrails.v0.defs#other'
+    | 'app.attrails.defs#cycling'
+    | 'app.attrails.defs#running'
+    | 'app.attrails.defs#hiking'
+    | 'app.attrails.defs#walking'
+    | 'app.attrails.defs#other'
     | l.UnknownString
   createdAt: l.DatetimeString
+
+  /**
+   * Description of the route, as CommonMark markdown. Clients must not render raw HTML.
+   */
   description?: string
 
   /**
@@ -98,20 +103,25 @@ type Main = {
    * Author's subjective difficulty for the stated activity.
    */
   difficulty?:
-    | 'app.attrails.v0.defs#easy'
-    | 'app.attrails.v0.defs#moderate'
-    | 'app.attrails.v0.defs#hard'
-    | 'app.attrails.v0.defs#extreme'
+    | 'app.attrails.defs#easy'
+    | 'app.attrails.defs#moderate'
+    | 'app.attrails.defs#hard'
+    | 'app.attrails.defs#extreme'
     | l.UnknownString
+  images?: AttrailsDefs.Image[]
 
   /**
-   * GPX 1.1 track. Upload with Content-Type application/gpx+xml. maxSize matches the default Bluesky PDS blob limit (976.5625KB); larger routes must be simplified or compressed to fit.
+   * Self-label values for this route, e.g. to flag sensitive photos.
    */
-  gpx: l.BlobRef
-  images?: V0Defs.Image[]
+  labels?: l.$Typed<LabelDefs.SelfLabels> | l.Unknown$TypedObject
 
   /**
-   * Name of the route. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).
+   * Languages of this record's text (name, description, tags, image alt text), as BCP-47 tags. If absent, consumers should assume English ('en').
+   */
+  langs?: l.LanguageString[]
+
+  /**
+   * Name of the route.
    */
   name: string
 
@@ -119,28 +129,37 @@ type Main = {
    * Predominant surface. Activity-neutral.
    */
   surface?:
-    | 'app.attrails.v0.defs#paved'
-    | 'app.attrails.v0.defs#gravel'
-    | 'app.attrails.v0.defs#trail'
-    | 'app.attrails.v0.defs#mixed'
+    | 'app.attrails.defs#paved'
+    | 'app.attrails.defs#gravel'
+    | 'app.attrails.defs#trail'
+    | 'app.attrails.defs#mixed'
     | l.UnknownString
+
+  /**
+   * Free-form tags, stored without a leading '#'.
+   */
   tags?: string[]
+
+  /**
+   * The route's track, commonly as a GPX file. Subject to max size limitations imposed by the user's PDS, so large routes might need to be simplified or compressed to fit.
+   */
+  track: l.BlobRef
 }
 
 export type { Main }
 
-/** A route for a human-powered activity (cycling, running, hiking, ...) shared by a user. The GPX track is stored as a blob; all geographic statistics are derived by the AppView from the blob and are not part of this record. */
+/** A cycling, running, hiking, walking, etc. route shared by a user. The associated track file is stored as a blob. */
 const main = /*#__PURE__*/ l.record<'tid', Main>(
   'tid',
   $nsid,
   /*#__PURE__*/ l.object({
     activity: /*#__PURE__*/ l.string<{
       knownValues: [
-        'app.attrails.v0.defs#cycling',
-        'app.attrails.v0.defs#running',
-        'app.attrails.v0.defs#hiking',
-        'app.attrails.v0.defs#walking',
-        'app.attrails.v0.defs#other',
+        'app.attrails.defs#cycling',
+        'app.attrails.defs#running',
+        'app.attrails.defs#hiking',
+        'app.attrails.defs#walking',
+        'app.attrails.defs#other',
       ]
     }>(),
     createdAt: /*#__PURE__*/ l.string({ format: 'datetime' }),
@@ -160,31 +179,48 @@ const main = /*#__PURE__*/ l.record<'tid', Main>(
     difficulty: /*#__PURE__*/ l.optional(
       /*#__PURE__*/ l.string<{
         knownValues: [
-          'app.attrails.v0.defs#easy',
-          'app.attrails.v0.defs#moderate',
-          'app.attrails.v0.defs#hard',
-          'app.attrails.v0.defs#extreme',
+          'app.attrails.defs#easy',
+          'app.attrails.defs#moderate',
+          'app.attrails.defs#hard',
+          'app.attrails.defs#extreme',
         ]
       }>(),
     ),
-    gpx: /*#__PURE__*/ l.blob({
-      accept: ['application/gpx+xml', 'application/xml', 'text/xml'],
-      maxSize: 976563,
-    }),
     images: /*#__PURE__*/ l.optional(
       /*#__PURE__*/ l.array(
-        /*#__PURE__*/ l.ref<V0Defs.Image>((() => V0Defs.image) as any),
+        /*#__PURE__*/ l.ref<AttrailsDefs.Image>(
+          (() => AttrailsDefs.image) as any,
+        ),
         { maxLength: 10 },
       ),
     ),
-    name: /*#__PURE__*/ l.string({ maxLength: 1000, maxGraphemes: 100 }),
+    labels: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.typedUnion(
+        [
+          /*#__PURE__*/ l.typedRef<LabelDefs.SelfLabels>(
+            (() => LabelDefs.selfLabels) as any,
+          ),
+        ],
+        false,
+      ),
+    ),
+    langs: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.array(/*#__PURE__*/ l.string({ format: 'language' }), {
+        maxLength: 3,
+      }),
+    ),
+    name: /*#__PURE__*/ l.string({
+      minLength: 1,
+      maxLength: 1000,
+      maxGraphemes: 100,
+    }),
     surface: /*#__PURE__*/ l.optional(
       /*#__PURE__*/ l.string<{
         knownValues: [
-          'app.attrails.v0.defs#paved',
-          'app.attrails.v0.defs#gravel',
-          'app.attrails.v0.defs#trail',
-          'app.attrails.v0.defs#mixed',
+          'app.attrails.defs#paved',
+          'app.attrails.defs#gravel',
+          'app.attrails.defs#trail',
+          'app.attrails.defs#mixed',
         ]
       }>(),
     ),
@@ -194,6 +230,10 @@ const main = /*#__PURE__*/ l.record<'tid', Main>(
         { maxLength: 20 },
       ),
     ),
+    track: /*#__PURE__*/ l.blob({
+      accept: ['application/gpx+xml', 'application/xml', 'text/xml'],
+      maxSize: 976563,
+    }),
   }),
 )
 

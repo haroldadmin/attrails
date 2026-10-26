@@ -9,7 +9,7 @@ import { fetchRoute } from "@/lib/routes";
 import { app } from "@/lexicons";
 import { logger } from "@/lib/logger";
 
-const { review } = app.attrails.v0;
+const { review } = app.attrails;
 
 export type ReviewValues = {
   rating: string;

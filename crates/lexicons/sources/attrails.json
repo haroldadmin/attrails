@@ -3,7 +3,7 @@
     {
       "value": {
         "lexicon": 1,
-        "id": "app.attrails.v0.defs",
+        "id": "app.attrails.defs",
         "defs": {
           "image": {
             "type": "object",
@@ -108,35 +108,46 @@
     {
       "value": {
         "lexicon": 1,
-        "id": "app.attrails.v0.route",
+        "id": "app.attrails.route",
         "defs": {
           "main": {
             "type": "record",
-            "description": "A route for a human-powered activity (cycling, running, hiking, ...) shared by a user. The GPX track is stored as a blob; all geographic statistics are derived by the AppView from the blob and are not part of this record.",
+            "description": "A cycling, running, hiking, walking, etc. route shared by a user. The associated track file is stored as a blob.",
             "key": "tid",
             "record": {
               "type": "object",
               "required": [
                 "name",
                 "activity",
-                "gpx",
+                "track",
                 "createdAt"
               ],
               "properties": {
                 "name": {
                   "type": "string",
-                  "description": "Name of the route. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).",
+                  "description": "Name of the route.",
+                  "minLength": 1,
                   "maxGraphemes": 100,
                   "maxLength": 1000
                 },
                 "description": {
                   "type": "string",
+                  "description": "Description of the route, as CommonMark markdown. Clients must not render raw HTML.",
                   "maxGraphemes": 3000,
                   "maxLength": 30000
                 },
-                "gpx": {
+                "langs": {
+                  "type": "array",
+                  "description": "Languages of this record's text (name, description, tags, image alt text), as BCP-47 tags. If absent, consumers should assume English ('en').",
+                  "maxLength": 3,
+                  "items": {
+                    "type": "string",
+                    "format": "language"
+                  }
+                },
+                "track": {
                   "type": "blob",
-                  "description": "GPX 1.1 track. Upload with Content-Type application/gpx+xml. maxSize matches the default Bluesky PDS blob limit (976.5625KB); larger routes must be simplified or compressed to fit.",
+                  "description": "The route's track, commonly as a GPX file. Subject to max size limitations imposed by the user's PDS, so large routes might need to be simplified or compressed to fit.",
                   "accept": [
                     "application/gpx+xml",
                     "application/xml",
@@ -148,42 +159,43 @@
                   "type": "string",
                   "description": "The activity this route is intended for. Open enum; unknown values are allowed.",
                   "knownValues": [
-                    "app.attrails.v0.defs#cycling",
-                    "app.attrails.v0.defs#running",
-                    "app.attrails.v0.defs#hiking",
-                    "app.attrails.v0.defs#walking",
-                    "app.attrails.v0.defs#other"
+                    "app.attrails.defs#cycling",
+                    "app.attrails.defs#running",
+                    "app.attrails.defs#hiking",
+                    "app.attrails.defs#walking",
+                    "app.attrails.defs#other"
                   ]
                 },
                 "surface": {
                   "type": "string",
                   "description": "Predominant surface. Activity-neutral.",
                   "knownValues": [
-                    "app.attrails.v0.defs#paved",
-                    "app.attrails.v0.defs#gravel",
-                    "app.attrails.v0.defs#trail",
-                    "app.attrails.v0.defs#mixed"
+                    "app.attrails.defs#paved",
+                    "app.attrails.defs#gravel",
+                    "app.attrails.defs#trail",
+                    "app.attrails.defs#mixed"
                   ]
                 },
                 "difficulty": {
                   "type": "string",
                   "description": "Author's subjective difficulty for the stated activity.",
                   "knownValues": [
-                    "app.attrails.v0.defs#easy",
-                    "app.attrails.v0.defs#moderate",
-                    "app.attrails.v0.defs#hard",
-                    "app.attrails.v0.defs#extreme"
+                    "app.attrails.defs#easy",
+                    "app.attrails.defs#moderate",
+                    "app.attrails.defs#hard",
+                    "app.attrails.defs#extreme"
                   ]
                 },
                 "details": {
                   "type": "union",
                   "description": "Activity-specific attributes. Open union: new activity detail types can be added later without breaking existing clients.",
                   "refs": [
-                    "app.attrails.v0.route#cyclingDetails"
+                    "app.attrails.route#cyclingDetails"
                   ]
                 },
                 "tags": {
                   "type": "array",
+                  "description": "Free-form tags, stored without a leading '#'.",
                   "maxLength": 20,
                   "items": {
                     "type": "string",
@@ -196,8 +208,15 @@
                   "maxLength": 10,
                   "items": {
                     "type": "ref",
-                    "ref": "app.attrails.v0.defs#image"
+                    "ref": "app.attrails.defs#image"
                   }
+                },
+                "labels": {
+                  "type": "union",
+                  "description": "Self-label values for this route, e.g. to flag sensitive photos.",
+                  "refs": [
+                    "com.atproto.label.defs#selfLabels"
+                  ]
                 },
                 "createdAt": {
                   "type": "string",
@@ -213,11 +232,11 @@
               "discipline": {
                 "type": "string",
                 "knownValues": [
-                  "app.attrails.v0.route#road",
-                  "app.attrails.v0.route#gravelBike",
-                  "app.attrails.v0.route#mtb",
-                  "app.attrails.v0.route#touring",
-                  "app.attrails.v0.route#commute"
+                  "app.attrails.route#road",
+                  "app.attrails.route#gravelBike",
+                  "app.attrails.route#mtb",
+                  "app.attrails.route#touring",
+                  "app.attrails.route#commute"
                 ]
               }
             }
@@ -248,7 +267,7 @@
     {
       "value": {
         "lexicon": 1,
-        "id": "app.attrails.v0.review",
+        "id": "app.attrails.review",
         "defs": {
           "main": {
             "type": "record",
@@ -264,7 +283,7 @@
               "properties": {
                 "subject": {
                   "type": "ref",
-                  "description": "Strong reference to an app.attrails.v0.route record. The AppView rejects reviews whose subject is not a route (lexicon cannot constrain the URI collection in-schema).",
+                  "description": "Strong reference to an attrails record, often an app.attrails.route record.",
                   "ref": "com.atproto.repo.strongRef"
                 },
                 "rating": {
@@ -275,16 +294,33 @@
                 },
                 "text": {
                   "type": "string",
+                  "description": "Review text, as CommonMark markdown. Clients must not render raw HTML.",
                   "maxGraphemes": 3000,
                   "maxLength": 30000
+                },
+                "langs": {
+                  "type": "array",
+                  "description": "Languages of this record's text (review text, image alt text), as BCP-47 tags. If absent, consumers should assume English ('en').",
+                  "maxLength": 3,
+                  "items": {
+                    "type": "string",
+                    "format": "language"
+                  }
                 },
                 "images": {
                   "type": "array",
                   "maxLength": 10,
                   "items": {
                     "type": "ref",
-                    "ref": "app.attrails.v0.defs#image"
+                    "ref": "app.attrails.defs#image"
                   }
+                },
+                "labels": {
+                  "type": "union",
+                  "description": "Self-label values for this review, e.g. to flag sensitive photos.",
+                  "refs": [
+                    "com.atproto.label.defs#selfLabels"
+                  ]
                 },
                 "completedAt": {
                   "type": "string",
@@ -308,7 +344,7 @@
         "defs": {
           "main": {
             "type": "record",
-            "description": "A user's ATTrails profile. Unlike the throwaway app.attrails.v0.* records, this NSID is unversioned and durable; the existence of this record is the signal that an account is an ATTrails user.",
+            "description": "A user's ATTrails profile. The existence of this record is the signal that an account is an ATTrails user.",
             "key": "literal:self",
             "record": {
               "type": "object",
@@ -319,7 +355,8 @@
               "properties": {
                 "name": {
                   "type": "string",
-                  "description": "Display name. Must not be empty; the AppView rejects records with an empty name (lexicon has no minLength, so this cannot be expressed in-schema).",
+                  "description": "Display name.",
+                  "minLength": 1,
                   "maxGraphemes": 100,
                   "maxLength": 1000
                 },
@@ -331,11 +368,18 @@
                 },
                 "profilePicture": {
                   "type": "blob",
-                  "description": "Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.v0.defs#image (1MB).",
+                  "description": "Profile picture. Upload with an image/* Content-Type. maxSize matches app.attrails.defs#image (1MB).",
                   "accept": [
                     "image/*"
                   ],
                   "maxSize": 1000000
+                },
+                "labels": {
+                  "type": "union",
+                  "description": "Self-label values for this profile.",
+                  "refs": [
+                    "com.atproto.label.defs#selfLabels"
+                  ]
                 },
                 "createdAt": {
                   "type": "string",
