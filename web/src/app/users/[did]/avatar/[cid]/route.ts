@@ -1,5 +1,6 @@
 import { fetchBlob } from "@/lib/blobs";
 import { fetchAvatarMimeType } from "@/lib/profiles";
+import { logger } from "@/lib/logger";
 
 // Raster formats only: an SVG served from our origin could run scripts.
 const IMAGE_TYPES = new Set([
@@ -29,7 +30,7 @@ export async function GET(
   try {
     blob = await fetchBlob(did, cid);
   } catch (error) {
-    console.warn(`users:avatar ${did}/${cid}`, error);
+    logger.warn({ err: error, did, cid }, "users:avatar");
     return new Response("We couldn't fetch the profile picture.", {
       status: 502,
     });

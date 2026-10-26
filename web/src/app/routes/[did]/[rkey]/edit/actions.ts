@@ -11,6 +11,7 @@ import {
   routeDetails,
   type RouteValues,
 } from "@/lib/route-form";
+import { logger } from "@/lib/logger";
 
 const { route } = app.attrails.v0;
 
@@ -76,7 +77,7 @@ export async function saveRoute(
       }
     }
 
-    console.warn(`routes:edit ${session.did} ${rkey}`, error);
+    logger.warn({ err: error, did: session.did, rkey }, "routes:edit");
     return {
       values,
       error: "We couldn't save the route to your account. Please try again.",
@@ -106,7 +107,7 @@ export async function deleteRoute(
   try {
     await client.delete(route, { rkey });
   } catch (error) {
-    console.warn(`routes:delete ${session.did} ${rkey}`, error);
+    logger.warn({ err: error, did: session.did, rkey }, "routes:delete");
     return {
       error:
         "We couldn't delete the route from your account. Please try again.",

@@ -5,6 +5,7 @@ import { sql } from "kysely";
 import { cacheLife } from "next/cache";
 import { cache } from "react";
 import { getDb } from "@/db/client";
+import { logger } from "@/lib/logger";
 
 export type AuthorProfile = {
   did: string;
@@ -133,7 +134,7 @@ async function fetchHandles(dids: string[]): Promise<Map<string, string>> {
   try {
     return await fetchBskyHandles(dids);
   } catch (error) {
-    console.warn(`profiles:handles ${dids.join(" ")}`, error);
+    logger.warn({ err: error, dids }, "profiles:handles");
     return new Map();
   }
 }

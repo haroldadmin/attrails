@@ -1,6 +1,7 @@
 import { create as contentDisposition } from "content-disposition";
 import { fetchRouteGpx } from "@/lib/routes";
 import { fetchBlob } from "@/lib/blobs";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -16,7 +17,7 @@ export async function GET(
   try {
     blob = await fetchBlob(route.did, route.gpxCid);
   } catch (error) {
-    console.warn(`routes:gpx ${route.did}/${route.rkey}`, error);
+    logger.warn({ err: error, did: route.did, rkey: route.rkey }, "routes:gpx");
     return new Response("We couldn't fetch the GPX file. Please try again.", {
       status: 502,
     });

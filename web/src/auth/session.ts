@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import { getDb } from "@/db/client";
 import { getOAuthClient, getWebUrl } from "./client";
+import { logger } from "@/lib/logger";
 
 const SESSION_COOKIE = "attrails_session";
 
@@ -43,7 +44,7 @@ export const getSession = cache(async (): Promise<OAuthSession | undefined> => {
   try {
     return await getOAuthClient().restore(row.did);
   } catch (error) {
-    console.warn(`auth:restore ${row.did}`, error);
+    logger.warn({ err: error, did: row.did }, "auth:restore");
     return undefined;
   }
 });
@@ -112,6 +113,6 @@ export async function endWebSession(): Promise<void> {
   try {
     await getOAuthClient().revoke(ended.did);
   } catch (error) {
-    console.warn(`auth:revoke ${ended.did}`, error);
+    logger.warn({ err: error, did: ended.did }, "auth:revoke");
   }
 }

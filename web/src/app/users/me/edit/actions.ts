@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
 import { app } from "@/lexicons";
+import { logger } from "@/lib/logger";
 
 const { profile } = app.attrails.actor;
 
@@ -73,7 +74,7 @@ export async function saveProfile(
       }
     }
 
-    console.warn(`profiles:edit ${session.did}`, error);
+    logger.warn({ err: error, did: session.did }, "profiles:edit");
     return {
       values,
       error: "We couldn't save your profile to your account. Please try again.",

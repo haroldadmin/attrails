@@ -13,6 +13,7 @@ import {
   routeDetails,
   type RouteValues,
 } from "@/lib/route-form";
+import { logger } from "@/lib/logger";
 
 const { route } = app.attrails.v0;
 
@@ -78,7 +79,7 @@ export async function uploadRoute(
 
     await client.create(route, record.value);
   } catch (error) {
-    console.warn(`routes:upload ${session.did}`, error);
+    logger.warn({ err: error, did: session.did }, "routes:upload");
     return {
       values,
       error: "We couldn't save the route to your account. Please try again.",

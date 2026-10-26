@@ -1,5 +1,6 @@
 import { sql } from "kysely";
 import { getDb } from "@/db/client";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   const checks = [await checkPostgres()];
@@ -30,7 +31,7 @@ async function checkPostgres(): Promise<boolean> {
     await sql`SELECT 1`.execute(db);
     return true;
   } catch (error) {
-    console.error("healthcheck:pg", error);
+    logger.error({ err: error }, "healthcheck:pg");
     return false;
   }
 }

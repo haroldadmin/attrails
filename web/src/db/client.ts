@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Pool, types, type CustomTypesConfig } from "pg";
 import type { DB } from "./types";
 import { envOrThrow } from "@/env";
+import { logger } from "@/lib/logger";
 
 export type { DB, Labels, Reviews, Routes, Tracks, Users } from "./types";
 export type AttrailsDb = Kysely<DB>;
@@ -16,8 +17,9 @@ function logSlowQuery(event: LogEvent): void {
     return;
   }
 
-  console.warn(
-    `db:slow ${event.queryDurationMillis.toFixed(1)}ms ${event.query.sql}`,
+  logger.warn(
+    { durationMs: event.queryDurationMillis, sql: event.query.sql },
+    "db:slow",
   );
 }
 

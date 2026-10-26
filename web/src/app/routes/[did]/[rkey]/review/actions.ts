@@ -7,6 +7,7 @@ import { getSession } from "@/auth/session";
 import { fetchUserReview } from "@/lib/reviews";
 import { fetchRoute } from "@/lib/routes";
 import { app } from "@/lexicons";
+import { logger } from "@/lib/logger";
 
 const { review } = app.attrails.v0;
 
@@ -73,7 +74,10 @@ export async function saveReview(
       await client.create(review, record.value);
     }
   } catch (error) {
-    console.warn(`reviews:save ${session.did} ${route.uri}`, error);
+    logger.warn(
+      { err: error, did: session.did, route: route.uri },
+      "reviews:save",
+    );
     return {
       values,
       error: "We couldn't save your review to your account. Please try again.",
@@ -102,7 +106,10 @@ export async function deleteReview(
   try {
     await client.delete(review, { rkey: reviewRkey });
   } catch (error) {
-    console.warn(`reviews:delete ${session.did} ${reviewRkey}`, error);
+    logger.warn(
+      { err: error, did: session.did, rkey: reviewRkey },
+      "reviews:delete",
+    );
     return {
       error:
         "We couldn't delete your review from your account. Please try again.",

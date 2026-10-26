@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getOAuthClient, OAUTH_SCOPE } from "./client";
 import { safeReturnTo } from "./return-to";
 import { endWebSession } from "./session";
+import { logger } from "@/lib/logger";
 
 export type LoginState = {
   handle: string;
@@ -28,7 +29,7 @@ export async function login(
       state: safeReturnTo(formData.get("returnTo")),
     });
   } catch (error) {
-    console.warn(`auth:authorize ${handle}`, error);
+    logger.warn({ err: error, handle }, "auth:authorize");
     return {
       handle,
       error: "We couldn't find that account. Check the handle and try again.",

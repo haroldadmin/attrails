@@ -4,6 +4,7 @@ import { Client, currentDatetimeString, XrpcResponseError } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app } from "@/lexicons";
 import { fetchAuthorProfile } from "@/lib/profiles";
+import { logger } from "@/lib/logger";
 
 /**
  * Makes sure the signed-in account has an `app.attrails.actor.profile`
@@ -49,7 +50,7 @@ async function fetchBskyProfileRecord(
     return value;
   } catch (error) {
     if (!isRecordNotFound(error)) {
-      console.warn(`auth:bsky-profile ${client.did}`, error);
+      logger.warn({ err: error, did: client.did }, "auth:bsky-profile");
     }
     return undefined;
   }
