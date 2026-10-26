@@ -9,8 +9,7 @@ use lifecycle::{
 };
 use tokio::time::{Instant, timeout, timeout_at};
 use tokio_stream::StreamExt;
-use tracing::{error, info, warn};
-use tracing_subscriber::EnvFilter;
+use tracing::{error, info, instrument, warn};
 
 mod config;
 mod tap;
@@ -26,11 +25,9 @@ const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .init();
+    // Declared first so it is dropped last, flushing spans and logs on every
+    // exit path.
+    let _telemetry = telemetry::init()?;
 
     let conf = config::Config::from_env()?;
 
@@ -86,6 +83,9 @@ async fn run(stream: &mut TapStream, channel: &Channel, shutdown: &mut Shutdown)
 }
 
 /// Publish a single Tap event to the queue for its collection.
+///
+/// Each event starts a new trace, which consumers of the queue continue.
+#[instrument(name = "tap event", skip_all, fields(id = event.id()))]
 async fn handle_event(event: &TapEvent, channel: &Channel) {
     match event {
         TapEvent::Record { id, record } => {

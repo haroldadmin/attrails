@@ -4,6 +4,7 @@ use jacquard::{
     identity::resolver::IdentityResolver, types::did::Did, xrpc::XrpcExt,
 };
 use sha2::{Digest, Sha256};
+use tracing::instrument;
 
 use jacquard::client::BasicClient;
 
@@ -19,6 +20,7 @@ const SHA2_256_CODE: u64 = 0x12;
 /// - Either the given `did` or `cid` are invalid
 /// - The PDS for the given repository can not be resolved
 /// - Fetching the blob from the PDS fails
+#[instrument(skip(agent))]
 pub async fn fetch_blob(agent: &BasicClient, did: &str, cid: &str) -> Result<Bytes> {
     let did: Did = did.parse()?;
     let pds = agent.pds_for_did(&did).await?;

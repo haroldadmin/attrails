@@ -1,0 +1,22 @@
+[package]
+name = "telemetry"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.104"
+opentelemetry = "0.33.1"
+opentelemetry-appender-tracing = "0.33.1"
+opentelemetry-otlp = { version = "0.33.1", default-features = false, features = [
+  "http-proto",
+  "logs",
+  "reqwest-blocking-client",
+  "trace",
+] }
+opentelemetry_sdk = "0.33.1"
+tracing = "0.1.44"
+tracing-opentelemetry = "0.34.0"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[lints]
+workspace = true

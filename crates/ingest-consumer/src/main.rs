@@ -29,8 +29,7 @@ use moderation::{Moderator, ModeratorConfig};
 use serde_json::json;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info, warn};
-use tracing_subscriber::EnvFilter;
+use tracing::{error, info, info_span, warn};
 use tracks::TrackData;
 
 use crate::blobs::verify_cid;
@@ -50,11 +49,9 @@ const CONSUMER_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .init();
+    // Declared first so it is dropped last, flushing spans and logs on every
+    // exit path.
+    let _telemetry = telemetry::init()?;
 
     let conf = config::Config::from_env()?;
 
@@ -325,7 +322,8 @@ async fn consume_blobs(
 
             verify_cid(&cid, &blob)?;
 
-            let track_data = tracks::TrackData::from_bytes(&blob)?;
+            let track_data =
+                info_span!("parse gpx").in_scope(|| tracks::TrackData::from_bytes(&blob))?;
             let track = new_track(&cid, &track_data)?;
 
             database::tracks::upsert_track(pool, &track).await?;

@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow};
 use serde_json::{Map, Value};
 use std::{collections::HashMap, fmt::Display, hash::BuildHasher, time::Duration};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::questions::{JUDGMENTS, TRUE_THRESHOLD};
 
@@ -133,6 +133,7 @@ impl Moderator {
     ///
     /// Returns an error if the request fails, or the response is missing an
     /// answer to any question.
+    #[instrument(skip(self, record))]
     pub async fn infer_labels(&self, subject: &str, record: Value) -> Result<Inference> {
         let fast = fast_path::record_labels(&record);
         if !fast.is_empty() {

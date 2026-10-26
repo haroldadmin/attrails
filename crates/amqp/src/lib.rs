@@ -1,6 +1,7 @@
 use anyhow::Result;
 use lapin::{
     Channel, Connection, ConnectionProperties, ExchangeKind,
+    message::Delivery,
     options::{
         BasicAckOptions, BasicCancelOptions, BasicConsumeOptions, BasicNackOptions,
         BasicPublishOptions, ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions,
@@ -12,9 +13,10 @@ use serde::Deserialize;
 use std::{collections::BTreeMap, fmt::Display, future::Ready};
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info, warn};
+use tracing::{Instrument, Span, debug, error, info, info_span, warn};
 
 mod messages;
+mod propagation;
 
 pub use messages::BlobMsg;
 pub use messages::LabelMsg;
@@ -59,11 +61,17 @@ impl Queue {
     /// Publish a durable message to this queue with a JSON payload over
     /// `EXCHANGE`.
     ///
+    /// The message headers carry the trace context of the publish span, so
+    /// that consumers continue the same trace.
+    ///
     /// # Errors
     ///
     /// Will return `Err` if the payload can not be serialised to bytes, or
     /// if publishing the message fails
     pub async fn publish(&self, payload: &[u8], channel: &Channel) -> Result<()> {
+        let span = self.span("send", "producer");
+        let headers = propagation::inject(&span);
+
         channel
             .basic_publish(
                 "".into(),
@@ -72,13 +80,18 @@ impl Queue {
                 payload,
                 AMQPProperties::default()
                     .with_content_type("application/json".into())
-                    .with_delivery_mode(2),
+                    .with_delivery_mode(2)
+                    .with_headers(headers),
             )
+            .instrument(span)
             .await?;
         Ok(())
     }
 
     /// Consume messages from the queue until `shutdown` is cancelled.
+    ///
+    /// Each delivery is processed in its own span, which continues the trace
+    /// in the message headers when they carry one.
     ///
     /// Cancellation stops new deliveries. A callback that is already running
     /// is allowed to finish, after which the consumer is cancelled.
@@ -118,43 +131,9 @@ impl Queue {
                 }
             };
 
-            if delivery.data.is_empty() {
-                info!("discarding empty message");
-                let _ = delivery.ack(BasicAckOptions::default()).await;
-                continue;
-            }
-
-            let Some(content_type) = delivery.properties.content_type() else {
-                error!("no content_type header in message");
-                let _ = delivery.nack(BasicNackOptions::default()).await;
-                continue;
-            };
-
-            if content_type.as_str() != "application/json" {
-                error!("non-json messages are not supported");
-                let _ = delivery.nack(BasicNackOptions::default()).await;
-                continue;
-            }
-
-            let payload = match serde_json::from_slice::<T>(&delivery.data) {
-                Ok(payload) => payload,
-                Err(error) => {
-                    error!(%error, "failed to deserialize payload");
-                    let _ = delivery.nack(BasicNackOptions::default()).await;
-                    continue;
-                }
-            };
-
-            match callback(payload).await {
-                Ok(()) => {
-                    debug!("message processed");
-                    let _ = delivery.ack(BasicAckOptions::default()).await;
-                }
-                Err(error) => {
-                    error!(%error,"failed to process message");
-                    let _ = delivery.nack(BasicNackOptions::default()).await;
-                }
-            }
+            let span = self.span("process", "consumer");
+            propagation::extract(&span, delivery.properties.headers().as_ref());
+            process(delivery, &mut callback).instrument(span).await;
         }
 
         if channel.status().connected()
@@ -166,6 +145,65 @@ impl Queue {
         }
 
         Ok(())
+    }
+
+    /// A span for a messaging operation on this queue, named and attributed
+    /// following the OpenTelemetry messaging semantic conventions.
+    fn span(&self, operation: &'static str, kind: &'static str) -> Span {
+        info_span!(
+            "amqp",
+            otel.name = format!("{operation} {self}"),
+            otel.kind = kind,
+            messaging.system = "rabbitmq",
+            messaging.operation.type = operation,
+            messaging.destination.name = self.name(),
+        )
+    }
+}
+
+/// Validate and deserialize a delivery, run the callback on it, and
+/// acknowledge it.
+async fn process<T, F>(delivery: Delivery, callback: &mut F)
+where
+    F: AsyncFnMut(T) -> Result<()>,
+    T: for<'a> Deserialize<'a>,
+{
+    if delivery.data.is_empty() {
+        info!("discarding empty message");
+        let _ = delivery.ack(BasicAckOptions::default()).await;
+        return;
+    }
+
+    let Some(content_type) = delivery.properties.content_type() else {
+        error!("no content_type header in message");
+        let _ = delivery.nack(BasicNackOptions::default()).await;
+        return;
+    };
+
+    if content_type.as_str() != "application/json" {
+        error!("non-json messages are not supported");
+        let _ = delivery.nack(BasicNackOptions::default()).await;
+        return;
+    }
+
+    let payload = match serde_json::from_slice::<T>(&delivery.data) {
+        Ok(payload) => payload,
+        Err(error) => {
+            error!(%error, "failed to deserialize payload");
+            let _ = delivery.nack(BasicNackOptions::default()).await;
+            return;
+        }
+    };
+
+    match callback(payload).await {
+        Ok(()) => {
+            debug!("message processed");
+            let _ = delivery.ack(BasicAckOptions::default()).await;
+        }
+        Err(error) => {
+            error!(%error,"failed to process message");
+            let _ = delivery.nack(BasicNackOptions::default()).await;
+        }
     }
 }
 
