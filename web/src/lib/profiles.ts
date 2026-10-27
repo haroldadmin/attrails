@@ -5,6 +5,7 @@ import { sql } from "kysely";
 import { cacheLife } from "next/cache";
 import { cache } from "react";
 import { getDb } from "@/db/client";
+import type { ActorSearchItem } from "@/lib/actor-search";
 import { logger } from "@/lib/logger";
 
 export type AuthorProfile = {
@@ -141,6 +142,28 @@ async function fetchHandles(dids: string[]): Promise<Map<string, string>> {
 
 // Handle reported by the Bluesky AppView when bidirectional verification fails.
 const INVALID_HANDLE = "handle.invalid";
+
+/**
+ * Suggests Bluesky accounts whose handle or display name starts with `query`.
+ */
+export async function searchBskyActors(
+  query: string,
+  limit: number,
+): Promise<ActorSearchItem[]> {
+  const { data } = await bskyAppView.app.bsky.actor.searchActorsTypeahead(
+    { q: query, limit },
+    { signal: AbortSignal.timeout(1500) },
+  );
+
+  return data.actors
+    .filter((actor) => actor.handle !== INVALID_HANDLE)
+    .map((actor) => ({
+      did: actor.did,
+      handle: actor.handle,
+      displayName: actor.displayName?.trim() || null,
+      avatarUrl: actor.avatar ?? null,
+    }));
+}
 
 async function fetchBskyHandles(dids: string[]): Promise<Map<string, string>> {
   "use cache";

@@ -42,7 +42,7 @@ const AVATAR_SIZES = {
 };
 
 export type AvatarProps = {
-  profile: AuthorProfile;
+  profile: Pick<AuthorProfile, "displayName" | "handle" | "avatarUrl">;
   size?: keyof typeof AVATAR_SIZES;
 };
 
