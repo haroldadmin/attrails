@@ -27,15 +27,18 @@ export default function GpxPreview({ gpx, locale, units }: GpxPreviewProps) {
   const elevation = new Intl.NumberFormat(locale, formats.elevation);
 
   return (
-    <section aria-labelledby="preview-heading" className="flex flex-col gap-4">
-      <h2 id="preview-heading" className="font-serif text-2xl">
+    <section
+      aria-labelledby="preview-heading"
+      className="flex flex-col gap-4 transition-opacity duration-300 starting:opacity-0 motion-reduce:transition-none"
+    >
+      <h2 id="preview-heading" className="sr-only">
         Preview
       </h2>
 
       <RouteMap
         path={gpxPath(gpx)}
         isLoop={isLoop}
-        className="h-80 rounded-box"
+        className="h-80 rounded-box bg-base-200 lg:h-96"
       />
 
       <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-4">

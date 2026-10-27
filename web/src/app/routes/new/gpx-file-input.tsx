@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import {
   GPX_MAX_SIZE_BYTES,
   type Gpx,
@@ -21,33 +21,19 @@ export type GpxFileInputProps = {
  * the size limit are replaced with a compact copy when that fits.
  */
 export function GpxFileInput({ onChange }: GpxFileInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [dragging, setDragging] = useState(false);
-
-  useEffect(() => {
-    const input = inputRef.current;
-    const form = input?.form;
-    if (!input || !form) {
-      return;
-    }
-
-    function clear() {
-      input?.setCustomValidity("");
-      setFileName(null);
-      setError(null);
-      onChange(null);
-    }
-    form.addEventListener("reset", clear);
-    return () => form.removeEventListener("reset", clear);
-  }, [onChange]);
 
   async function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
     const file = input.files?.[0];
     setDragging(false);
     setFileName(file?.name ?? null);
+    setError(null);
+    setLoaded(false);
+    input.setCustomValidity("");
     onChange(null);
 
     const result = file ? await readGpxFile(file) : null;
@@ -68,6 +54,7 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
       transfer.items.add(result.file);
       input.files = transfer.files;
     }
+    setLoaded(true);
     onChange(result.gpx);
   }
 
@@ -78,7 +65,10 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
       </label>
       <div
         className={clsx(
-          "relative rounded-box border-2 border-dashed px-4 py-8 text-center transition-colors hover:border-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary",
+          "relative rounded-box border-2 border-dashed transition-colors hover:border-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary",
+          loaded
+            ? "px-4 py-3"
+            : "flex min-h-48 items-center justify-center px-4 py-8 text-center lg:min-h-96",
           dragging
             ? "border-primary bg-primary/5"
             : error
@@ -87,7 +77,12 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
         )}
       >
         <p aria-hidden="true">
-          {fileName ? (
+          {loaded ? (
+            <span className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <span className="font-semibold break-all">{fileName}</span>
+              <span className="link text-sm">Choose a different file</span>
+            </span>
+          ) : fileName ? (
             <>
               <span className="font-semibold break-all">{fileName}</span>
               <br />
@@ -104,7 +99,6 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
           )}
         </p>
         <input
-          ref={inputRef}
           id="gpx"
           name="gpx"
           type="file"
@@ -137,10 +131,14 @@ async function readGpxFile(file: File): Promise<ReadResult> {
   try {
     gpx = parseGpx(await file.text());
   } catch (error) {
-    if (error instanceof GpxError) {
-      return { error: gpxErrorMessage(error.reason) };
+    if (!(error instanceof GpxError)) {
+      console.error(error);
     }
-    throw error;
+    return {
+      error: gpxErrorMessage(
+        error instanceof GpxError ? error.reason : "not-gpx",
+      ),
+    };
   }
 
   if (file.size <= GPX_MAX_SIZE_BYTES) {
