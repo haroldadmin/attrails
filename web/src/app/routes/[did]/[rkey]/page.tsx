@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFormatter, getLocale } from "next-intl/server";
-import { type ReactNode, Suspense } from "react";
+import { Suspense } from "react";
 import { Author } from "@/components/author";
+import { Detail } from "@/components/detail";
 import { ElevationProfile } from "@/components/elevation-profile";
 import { JsonLd } from "@/components/json-ld";
 import { LoginLink } from "@/components/login-link";
@@ -377,15 +378,6 @@ function RouteReviewsSkeleton() {
     <div className="flex flex-col gap-6" aria-hidden="true">
       <div className="skeleton h-9 w-40" />
       <div className="skeleton h-64 w-full max-w-prose" />
-    </div>
-  );
-}
-
-function Detail({ term, children }: { term: string; children: ReactNode }) {
-  return (
-    <div>
-      <dt className="text-sm text-base-content/70">{term}</dt>
-      <dd className="text-lg font-semibold">{children}</dd>
     </div>
   );
 }
