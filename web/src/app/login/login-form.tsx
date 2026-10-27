@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 import { login, type LoginState } from "@/auth/actions";
+import { HandleField } from "./handle-field";
 
 const callbackErrors: Record<string, string> = {
   callback: "Logging in didn't finish. Please try again.",
@@ -28,18 +29,7 @@ export function LoginForm() {
         <label className="fieldset-legend" htmlFor="handle">
           Handle
         </label>
-        <input
-          id="handle"
-          name="handle"
-          type="text"
-          className="input w-full"
-          placeholder="alice.bsky.social"
-          autoComplete="username"
-          autoCapitalize="none"
-          spellCheck={false}
-          defaultValue={state.handle}
-          required
-        />
+        <HandleField defaultValue={state.handle} />
         {error && (
           <p className="text-error" role="alert">
             {error}
