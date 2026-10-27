@@ -1,12 +1,11 @@
 "use server";
 
 import { Client, currentDatetimeString } from "@atproto/lex";
-import { DOMParser, onErrorStopParsing } from "@xmldom/xmldom";
 import { redirect } from "next/navigation";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
 import { app } from "@/lexicons";
-import { GPX_MAX_SIZE_BYTES, hasGpxTrack } from "@/lib/gpx";
+import { GPX_MAX_SIZE_BYTES, GpxError, parseGpx } from "@/lib/gpx";
 import {
   checkRouteValues,
   readRouteValues,
@@ -14,6 +13,7 @@ import {
   type RouteValues,
 } from "@/lib/route-form";
 import { logger } from "@/lib/logger";
+import { GPX_TOO_LARGE_MESSAGE, gpxErrorMessage } from "./gpx-messages";
 
 const { route } = app.attrails;
 
@@ -44,18 +44,17 @@ export async function uploadRoute(
     return { values, error: "Choose a GPX file." };
   }
   if (file.size > GPX_MAX_SIZE_BYTES) {
-    return {
-      values,
-      error: "That GPX file is too large. The limit is 976 KB.",
-    };
+    return { values, error: GPX_TOO_LARGE_MESSAGE };
   }
 
   const gpx = new Uint8Array(await file.arrayBuffer());
-  if (!isUsableGpx(gpx)) {
-    return {
-      values,
-      error: "That file isn't a GPX file with a track or route in it.",
-    };
+  try {
+    parseGpx(new TextDecoder().decode(gpx));
+  } catch (error) {
+    if (error instanceof GpxError) {
+      return { values, error: gpxErrorMessage(error.reason) };
+    }
+    throw error;
   }
 
   const client = new Client(session);
@@ -87,16 +86,4 @@ export async function uploadRoute(
   }
 
   redirect("/?notice=route-uploaded");
-}
-
-function isUsableGpx(gpx: Uint8Array): boolean {
-  try {
-    const doc = new DOMParser({ onError: onErrorStopParsing }).parseFromString(
-      new TextDecoder().decode(gpx),
-      "application/xml",
-    );
-    return hasGpxTrack(doc);
-  } catch {
-    return false;
-  }
 }

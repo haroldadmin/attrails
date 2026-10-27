@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { Suspense } from "react";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
+import { unitsForLocale } from "@/i18n/units";
 import { ACTIVITIES, DIFFICULTIES, SURFACES } from "@/lib/labels";
 import { UploadRouteForm } from "./upload-route-form";
 
@@ -30,12 +32,15 @@ async function SignedInUploadForm() {
   if (!session) {
     redirect(loginHref("/routes/new"));
   }
+  const locale = await getLocale();
 
   return (
     <UploadRouteForm
       activities={ACTIVITIES}
       surfaces={SURFACES}
       difficulties={DIFFICULTIES}
+      locale={locale}
+      units={unitsForLocale(locale)}
     />
   );
 }
