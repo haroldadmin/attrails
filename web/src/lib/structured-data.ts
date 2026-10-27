@@ -9,7 +9,8 @@ import type {
   WithContext,
 } from "schema-dts";
 import { activityLabel } from "@/lib/labels";
-import { profileName, type AuthorProfile } from "@/lib/profiles";
+import { profileName } from "@/lib/profile-name";
+import type { AuthorProfile } from "@/lib/profiles";
 import type { ReviewSummary } from "@/lib/reviews";
 import type { Route } from "@/lib/routes";
 

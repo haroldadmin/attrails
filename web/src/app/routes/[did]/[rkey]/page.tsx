@@ -26,11 +26,8 @@ import {
 import { fetchRoute, type Route } from "@/lib/routes";
 import { unitsForLocale } from "@/i18n/units";
 import { activityLabel, difficultyLabel, surfaceLabel } from "@/lib/labels";
-import {
-  fetchAuthorProfile,
-  fetchAuthorProfiles,
-  profileName,
-} from "@/lib/profiles";
+import { profileName } from "@/lib/profile-name";
+import { fetchAuthorProfile, fetchAuthorProfiles } from "@/lib/profiles";
 import { routeJsonLd } from "@/lib/structured-data";
 import { openGraphDefaults } from "@/app/shared-metadata";
 

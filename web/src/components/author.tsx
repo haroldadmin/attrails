@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { profileName, type AuthorProfile } from "@/lib/profiles";
+import { profileName } from "@/lib/profile-name";
+import type { AuthorProfile } from "@/lib/profiles";
 
 export type AuthorProps = {
   profile: AuthorProfile;

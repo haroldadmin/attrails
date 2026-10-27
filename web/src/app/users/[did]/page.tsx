@@ -8,11 +8,8 @@ import {
   ProfileHeader,
   ProfileHeaderSkeleton,
 } from "@/components/profile-header";
-import {
-  type AuthorProfile,
-  fetchUserProfile,
-  profileName,
-} from "@/lib/profiles";
+import { profileName } from "@/lib/profile-name";
+import { type AuthorProfile, fetchUserProfile } from "@/lib/profiles";
 import { profileJsonLd } from "@/lib/structured-data";
 import { fetchRouteList } from "../listings";
 import { RouteList, RouteListSkeleton } from "../route-list";

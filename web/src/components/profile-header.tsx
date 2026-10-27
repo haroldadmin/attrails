@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { profileName, type AuthorProfile } from "@/lib/profiles";
+import { profileName } from "@/lib/profile-name";
+import type { AuthorProfile } from "@/lib/profiles";
 import { Avatar } from "./author";
 
 export type ProfileHeaderProps = {
