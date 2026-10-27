@@ -41,6 +41,16 @@ export function Footer() {
             </Link>
           </li>
           <li>
+            <Link className="link-hover" href="/privacy">
+              Privacy
+            </Link>
+          </li>
+          <li>
+            <Link className="link-hover" href="/terms">
+              Terms
+            </Link>
+          </li>
+          <li>
             <a
               className="link-hover"
               href="https://bsky.app/profile/attrails.app"
