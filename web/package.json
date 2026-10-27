@@ -55,6 +55,7 @@
     "eslint-config-next": "16.4.2",
     "kysely-codegen": "0.20.0",
     "prettier": "3.9.10",
+    "schema-dts": "2.1.0",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3"
   },

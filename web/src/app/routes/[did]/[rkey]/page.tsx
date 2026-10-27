@@ -4,8 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFormatter, getLocale } from "next-intl/server";
 import { type ReactNode, Suspense } from "react";
-import { Author, profileName } from "@/components/author";
+import { Author } from "@/components/author";
 import { ElevationProfile } from "@/components/elevation-profile";
+import { JsonLd } from "@/components/json-ld";
 import { LoginLink } from "@/components/login-link";
 import {
   ModerationNotice,
@@ -24,7 +25,12 @@ import {
 import { fetchRoute, type Route } from "@/lib/routes";
 import { unitsForLocale } from "@/i18n/units";
 import { activityLabel, difficultyLabel, surfaceLabel } from "@/lib/labels";
-import { fetchAuthorProfile, fetchAuthorProfiles } from "@/lib/profiles";
+import {
+  fetchAuthorProfile,
+  fetchAuthorProfiles,
+  profileName,
+} from "@/lib/profiles";
+import { routeJsonLd } from "@/lib/structured-data";
 import { openGraphDefaults } from "@/app/shared-metadata";
 
 type RoutePageProps = PageProps<"/routes/[did]/[rkey]">;
@@ -143,6 +149,9 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
 
   return (
     <article className="flex flex-col gap-8">
+      {!route.labelled && (
+        <JsonLd data={routeJsonLd(route, author, reviewSummary)} />
+      )}
       {route.labelled && (
         <LimitedVisibility isAuthor={session?.did === route.did} />
       )}
