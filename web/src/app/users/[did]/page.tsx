@@ -3,12 +3,17 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getWebUrl } from "@/auth/client";
 import { getSession } from "@/auth/session";
-import { profileName } from "@/components/author";
+import { JsonLd } from "@/components/json-ld";
 import {
   ProfileHeader,
   ProfileHeaderSkeleton,
 } from "@/components/profile-header";
-import { type AuthorProfile, fetchUserProfile } from "@/lib/profiles";
+import {
+  type AuthorProfile,
+  fetchUserProfile,
+  profileName,
+} from "@/lib/profiles";
+import { profileJsonLd } from "@/lib/structured-data";
 import { fetchRouteList } from "../listings";
 import { RouteList, RouteListSkeleton } from "../route-list";
 import { loadUserRoutes } from "./actions";
@@ -58,6 +63,7 @@ async function Profile({ params }: Pick<UserPageProps, "params">) {
 
   return (
     <>
+      <JsonLd data={profileJsonLd(profile)} />
       <ProfileHeader profile={profile} />
 
       <section aria-labelledby="routes-heading" className="flex flex-col gap-6">

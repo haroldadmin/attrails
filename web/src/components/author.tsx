@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { AuthorProfile } from "@/lib/profiles";
+import { profileName, type AuthorProfile } from "@/lib/profiles";
 
 export type AuthorProps = {
   profile: AuthorProfile;
@@ -30,10 +30,6 @@ export function Author({ profile, children }: AuthorProps) {
       </div>
     </div>
   );
-}
-
-export function profileName(profile: AuthorProfile): string {
-  return profile.displayName ?? profile.handle ?? profile.did;
 }
 
 const AVATAR_SIZES = {
