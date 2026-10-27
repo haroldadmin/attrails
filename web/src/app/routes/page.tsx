@@ -8,6 +8,7 @@ import {
   activityFromSlug,
   activityLabel,
   activitySlug,
+  DEFAULT_ACTIVITY,
 } from "@/lib/labels";
 import { fetchRoutesPage } from "@/lib/routes";
 
@@ -39,19 +40,11 @@ type RoutesContentProps = Pick<PageProps<"/routes">, "searchParams">;
 
 async function RoutesContent({ searchParams }: RoutesContentProps) {
   const { activity: activityParam, cursor } = await searchParams;
-  const activity = activityFromSlug(
-    typeof activityParam === "string" ? activityParam : undefined,
-  );
+  const activity =
+    activityFromSlug(
+      typeof activityParam === "string" ? activityParam : undefined,
+    ) ?? DEFAULT_ACTIVITY;
   const cursorParam = typeof cursor === "string" ? cursor : undefined;
-
-  if (!activity) {
-    return (
-      <>
-        <ActivityTabs activity={activity} />
-        <p>Choose an activity to see its routes.</p>
-      </>
-    );
-  }
 
   const page = await fetchRoutesPage({
     activity,

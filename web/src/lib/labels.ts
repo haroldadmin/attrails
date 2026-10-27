@@ -40,6 +40,8 @@ export const ACTIVITY_FILTERS: readonly Option[] = [
   [defs.Walking, "Walking"],
 ];
 
+export const DEFAULT_ACTIVITY: string = defs.Running;
+
 /** URL-safe identifier for an activity, e.g. `running`. */
 export function activitySlug(activity: string): string {
   const index = activity.lastIndexOf("#");
