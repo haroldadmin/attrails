@@ -103,7 +103,9 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
           name="gpx"
           type="file"
           className="absolute inset-0 cursor-pointer opacity-0"
-          accept=".gpx,application/gpx+xml"
+          // Only the extension: on iOS, a MIME type here can match a type an
+          // installed app declares for GPX, which then disables GPX files.
+          accept=".gpx"
           aria-invalid={error ? true : undefined}
           aria-describedby="gpx-hint"
           onChange={handleChange}
