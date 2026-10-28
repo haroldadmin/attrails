@@ -89,7 +89,7 @@ async function Profile() {
 }
 
 async function YourRoutes({ did }: { did: string }) {
-  const firstPage = await fetchRouteList(did);
+  const firstPage = await fetchRouteList(did, { labelled: "include" });
   if (firstPage.items.length === 0) {
     return (
       <p>

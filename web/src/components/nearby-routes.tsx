@@ -1,5 +1,5 @@
 import { approximateLocation } from "@/lib/location";
-import { fetchRoutesNear } from "@/lib/routes";
+import { loadRoutesNear } from "@/lib/routes";
 import { RouteCard } from "./route-card";
 
 // Fills both grid layouts (2 and 3 columns).
@@ -18,8 +18,9 @@ export async function NearbyRoutes() {
     return null;
   }
 
-  const routes = await fetchRoutesNear(location, {
+  const routes = await loadRoutesNear(location, {
     radiusM: NEARBY_RADIUS_M,
+    labelled: "exclude",
     limit: NEARBY_ROUTES_LIMIT,
   });
   if (routes.length === 0) {

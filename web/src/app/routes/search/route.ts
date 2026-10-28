@@ -2,13 +2,13 @@ import convert from "convert";
 import type { NextRequest } from "next/server";
 import { getFormatter, getLocale } from "next-intl/server";
 import { unitsForLocale } from "@/i18n/units";
-import { activityLabel } from "@/lib/labels";
 import {
-  MAX_QUERY_LENGTH,
-  MIN_QUERY_LENGTH,
+  activityLabel,
+  loadRoutesMatching,
+  ROUTE_QUERY_MAX_LENGTH,
+  ROUTE_QUERY_MIN_LENGTH,
   type RouteSearchItem,
-} from "@/lib/route-search";
-import { searchRoutes } from "@/lib/routes";
+} from "@/lib/routes";
 
 const RESULTS_LIMIT = 10;
 
@@ -22,14 +22,14 @@ const CACHE_HEADERS = {
 
 export async function GET(request: NextRequest) {
   const query = (request.nextUrl.searchParams.get("q") ?? "")
-    .slice(0, MAX_QUERY_LENGTH)
+    .slice(0, ROUTE_QUERY_MAX_LENGTH)
     .trim();
-  if (query.length < MIN_QUERY_LENGTH) {
+  if (query.length < ROUTE_QUERY_MIN_LENGTH) {
     return Response.json({ items: [] }, { headers: CACHE_HEADERS });
   }
 
   const [routes, format, locale] = await Promise.all([
-    searchRoutes(query, RESULTS_LIMIT),
+    loadRoutesMatching(query, { labelled: "exclude", limit: RESULTS_LIMIT }),
     getFormatter(),
     getLocale(),
   ]);

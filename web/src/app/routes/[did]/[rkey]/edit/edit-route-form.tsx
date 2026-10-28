@@ -2,8 +2,8 @@
 
 import { useActionState } from "react";
 import { RouteFields } from "@/components/route-fields";
-import type { Option } from "@/lib/labels";
-import type { RouteValues } from "@/lib/route-form";
+import type { Option } from "@/lib/routes/shared";
+import type { RouteValues } from "../../../route-values";
 import type { EditRouteState } from "./actions";
 
 export type EditRouteFormProps = {

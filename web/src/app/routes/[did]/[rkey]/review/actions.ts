@@ -11,7 +11,7 @@ import {
   saveReview,
   type SaveReviewError,
 } from "@/lib/reviews";
-import { fetchRoute } from "@/lib/routes";
+import { loadRoute } from "@/lib/routes";
 
 export type ReviewValues = {
   rating: string;
@@ -44,7 +44,10 @@ export async function saveRouteReview(
     text: text(formData, "text"),
   };
 
-  const route = await fetchRoute(routeDid, routeRkey);
+  const route = await loadRoute(
+    { did: routeDid, rkey: routeRkey },
+    { labelled: "include" },
+  );
   if (!route) {
     return { values, error: "This route no longer exists." };
   }

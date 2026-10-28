@@ -2,11 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { loginHref } from "@/auth/login-href";
-import { getSession } from "@/auth/session";
-import { fetchRoute } from "@/lib/routes";
-import { ACTIVITIES, DIFFICULTIES, SURFACES } from "@/lib/labels";
-import { deleteRoute, saveRoute } from "./actions";
+import { assertSession } from "@/auth/session";
+import { ACTIVITIES, DIFFICULTIES, loadRoute, SURFACES } from "@/lib/routes";
+import { deleteRouteAction, saveRouteAction } from "./actions";
 import { DeleteRoute } from "./delete-route";
 import { EditRouteForm } from "./edit-route-form";
 
@@ -32,12 +30,9 @@ async function EditRoute({ params }: Pick<EditRoutePageProps, "params">) {
   const did = decodeURIComponent(encodedDid);
   const routePath = `/routes/${did}/${rkey}`;
 
-  const session = await getSession();
-  if (!session) {
-    redirect(loginHref(`${routePath}/edit`));
-  }
+  const session = await assertSession(`${routePath}/edit`);
 
-  const route = await fetchRoute(did, rkey);
+  const route = await loadRoute({ did, rkey }, { labelled: "include" });
   if (!route) {
     notFound();
   }
@@ -56,7 +51,7 @@ async function EditRoute({ params }: Pick<EditRoutePageProps, "params">) {
         .
       </p>
       <EditRouteForm
-        action={saveRoute.bind(null, route.did, route.rkey, route.cid)}
+        action={saveRouteAction.bind(null, route.did, route.rkey, route.cid)}
         initialValues={{
           name: route.name,
           description: route.description ?? "",
@@ -69,7 +64,9 @@ async function EditRoute({ params }: Pick<EditRoutePageProps, "params">) {
         surfaces={SURFACES}
         difficulties={DIFFICULTIES}
       />
-      <DeleteRoute action={deleteRoute.bind(null, route.did, route.rkey)} />
+      <DeleteRoute
+        action={deleteRouteAction.bind(null, route.did, route.rkey)}
+      />
     </>
   );
 }

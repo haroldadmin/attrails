@@ -1,5 +1,5 @@
-import type { Option } from "@/lib/labels";
-import type { RouteValues } from "@/lib/route-form";
+import type { RouteValues } from "@/app/routes/route-values";
+import type { Option } from "@/lib/routes/shared";
 import { TagInput } from "./tag-input";
 
 export type RouteFieldsProps = {

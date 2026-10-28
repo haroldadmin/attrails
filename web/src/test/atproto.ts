@@ -50,6 +50,18 @@ export function fakeAccount(
         });
       }
 
+      if (method === "com.atproto.repo.uploadBlob") {
+        const bytes = init.body as Uint8Array;
+        const blob = {
+          $type: "blob",
+          ref: { $link: await newCid() },
+          mimeType: new Headers(init.headers).get("content-type"),
+          size: bytes.byteLength,
+        };
+        writes.push({ method, input: { size: bytes.byteLength } });
+        return Response.json({ blob });
+      }
+
       const body =
         typeof init.body === "string"
           ? init.body

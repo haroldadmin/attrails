@@ -6,7 +6,7 @@ import { assertSession } from "@/auth/session";
 import { ReviewModerationNotice } from "@/components/moderation-notice";
 import { loadLabelledUris } from "@/lib/moderation";
 import { loadViewerReview } from "@/lib/reviews";
-import { fetchRoute } from "@/lib/routes";
+import { loadRoute } from "@/lib/routes";
 import { deleteRouteReview, saveRouteReview } from "./actions";
 import { DeleteReview } from "./delete-review";
 import { ReviewForm } from "./review-form";
@@ -17,7 +17,10 @@ export async function generateMetadata({
   params,
 }: ReviewPageProps): Promise<Metadata> {
   const { did, rkey } = await params;
-  const route = await fetchRoute(decodeURIComponent(did), rkey);
+  const route = await loadRoute(
+    { did: decodeURIComponent(did), rkey },
+    { labelled: "include" },
+  );
   return { title: route ? `Review ${route.name}` : "Review a route" };
 }
 
@@ -38,7 +41,7 @@ async function ManageReview({ params }: Pick<ReviewPageProps, "params">) {
 
   const session = await assertSession(`${routePath}/review`);
 
-  const route = await fetchRoute(did, rkey);
+  const route = await loadRoute({ did, rkey }, { labelled: "include" });
   if (!route) {
     notFound();
   }
