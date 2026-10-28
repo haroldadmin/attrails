@@ -1,7 +1,7 @@
 "use client";
 
 import { type KeyboardEvent, useRef, useState } from "react";
-import { MAX_TAGS, parseTags } from "@/lib/route-form";
+import { parseTags, ROUTE_MAX_TAGS } from "@/lib/routes/shared";
 
 const FULL_MESSAGE = "That's the most tags a route can have.";
 
@@ -32,7 +32,7 @@ export function TagInput({
   const [tags, setTags] = useState(() => parseTags(defaultValue));
   const [draft, setDraft] = useState("");
   const [announcement, setAnnouncement] = useState("");
-  const full = tags.length >= MAX_TAGS;
+  const full = tags.length >= ROUTE_MAX_TAGS;
 
   function add(text: string) {
     const next = parseTags([...tags, text].join(","));
@@ -41,7 +41,7 @@ export function TagInput({
     if (added.length > 0) {
       const message = `Added ${added.join(", ")}.`;
       setAnnouncement(
-        next.length >= MAX_TAGS ? `${message} ${FULL_MESSAGE}` : message,
+        next.length >= ROUTE_MAX_TAGS ? `${message} ${FULL_MESSAGE}` : message,
       );
     }
   }

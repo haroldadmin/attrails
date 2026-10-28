@@ -1,42 +1,33 @@
 "use server";
 
-import { Client, currentDatetimeString } from "@atproto/lex";
 import { redirect } from "next/navigation";
-import { loginHref } from "@/auth/login-href";
-import { getSession } from "@/auth/session";
-import { app } from "@/lexicons";
+import { assertSession } from "@/auth/session";
 import { GPX_MAX_SIZE_BYTES, GpxError, parseGpx } from "@/lib/gpx";
-import {
-  checkRouteValues,
-  readRouteValues,
-  routeDetails,
-  type RouteValues,
-} from "@/lib/route-form";
-import { logger } from "@/lib/logger";
+import { createRoute, type CreateRouteError, routeSchema } from "@/lib/routes";
+import { readRouteValues, type RouteValues } from "../route-values";
 import { GPX_TOO_LARGE_MESSAGE, gpxErrorMessage } from "./gpx-messages";
-
-const { route } = app.attrails;
-
-const GPX_ENCODING = "application/gpx+xml";
 
 export type UploadRouteState = {
   values: RouteValues;
   error?: string;
 };
 
+const CREATE_ERROR_MESSAGES: Record<CreateRouteError, string> = {
+  invalid: "Check the route's details and try again.",
+  "write-failed":
+    "We couldn't save the route to your account. Please try again.",
+};
+
 export async function uploadRoute(
   _previous: UploadRouteState,
   formData: FormData,
 ): Promise<UploadRouteState> {
-  const session = await getSession();
-  if (!session) {
-    redirect(loginHref("/routes/new"));
-  }
+  const session = await assertSession("/routes/new");
 
   const values = readRouteValues(formData);
-  const error = checkRouteValues(values);
-  if (error) {
-    return { values, error };
+  const draft = routeSchema.safeParse(values);
+  if (!draft.success) {
+    return { values, error: draft.error.issues[0].message };
   }
 
   const file = formData.get("gpx");
@@ -57,32 +48,9 @@ export async function uploadRoute(
     throw error;
   }
 
-  const client = new Client(session);
-  try {
-    const { body } = await client.uploadBlob(gpx, { encoding: GPX_ENCODING });
-
-    const record = route.$safeValidate(
-      route.$build({
-        ...routeDetails(values),
-        track: body.blob,
-        createdAt: currentDatetimeString(),
-      }),
-    );
-    // The PDS deletes the uploaded blob on its own once nothing references it.
-    if (!record.success) {
-      return {
-        values,
-        error: `Check the route's details: ${record.reason.message}`,
-      };
-    }
-
-    await client.create(route, record.value);
-  } catch (error) {
-    logger.warn({ err: error, did: session.did }, "routes:upload");
-    return {
-      values,
-      error: "We couldn't save the route to your account. Please try again.",
-    };
+  const result = await createRoute(session, draft.data, gpx);
+  if (!result.ok) {
+    return { values, error: CREATE_ERROR_MESSAGES[result.reason] };
   }
 
   redirect("/?notice=route-uploaded");

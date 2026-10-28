@@ -11,5 +11,5 @@ export async function loadUserRoutes(
     return { items: [], nextCursor: null };
   }
 
-  return fetchRouteList(did, { cursor, hideLabelled: true });
+  return fetchRouteList(did, { cursor, labelled: "exclude" });
 }

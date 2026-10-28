@@ -1,9 +1,8 @@
 import convert from "convert";
 import Link from "next/link";
 import { getFormatter, getLocale } from "next-intl/server";
-import type { RouteSummary } from "@/lib/routes";
 import { unitsForLocale } from "@/i18n/units";
-import { activityLabel } from "@/lib/labels";
+import { activityLabel, type RouteSummary } from "@/lib/routes";
 import { fetchProfile } from "@/lib/profiles";
 import { Author } from "./author";
 import { RoutePreview } from "./route-preview";

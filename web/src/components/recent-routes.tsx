@@ -1,12 +1,15 @@
 import Link from "next/link";
-import { fetchRecentRoutes } from "@/lib/routes";
+import { loadRoutes } from "@/lib/routes";
 import { RouteCard, RouteCardSkeleton } from "./route-card";
 
 // With the invitation card, fills both grid layouts (2 and 3 columns).
 const RECENT_ROUTES_LIMIT = 11;
 
 export async function RecentRoutes() {
-  const routes = await fetchRecentRoutes(RECENT_ROUTES_LIMIT);
+  const { items: routes } = await loadRoutes({
+    labelled: "exclude",
+    limit: RECENT_ROUTES_LIMIT,
+  });
   return (
     <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {routes.map((route) => (

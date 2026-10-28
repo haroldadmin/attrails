@@ -4,10 +4,10 @@ import clsx from "clsx";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
-  MAX_QUERY_LENGTH,
-  MIN_QUERY_LENGTH,
+  ROUTE_QUERY_MAX_LENGTH,
+  ROUTE_QUERY_MIN_LENGTH,
   type RouteSearchItem,
-} from "@/lib/route-search";
+} from "@/lib/routes/shared";
 
 const DEBOUNCE_MS = 250;
 
@@ -27,7 +27,7 @@ export function RouteSearch({ className }: { className?: string }) {
   const [results, setResults] = useState<Results>({ status: "pending" });
 
   const trimmed = query.trim();
-  const searchable = trimmed.length >= MIN_QUERY_LENGTH;
+  const searchable = trimmed.length >= ROUTE_QUERY_MIN_LENGTH;
 
   useEffect(() => {
     if (!searchable) {
@@ -104,12 +104,12 @@ export function RouteSearch({ className }: { className?: string }) {
           placeholder="Search routes"
           autoComplete="off"
           spellCheck={false}
-          maxLength={MAX_QUERY_LENGTH}
+          maxLength={ROUTE_QUERY_MAX_LENGTH}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
             setOpen(true);
-            if (event.target.value.trim().length < MIN_QUERY_LENGTH) {
+            if (event.target.value.trim().length < ROUTE_QUERY_MIN_LENGTH) {
               setResults({ status: "pending" });
             }
           }}

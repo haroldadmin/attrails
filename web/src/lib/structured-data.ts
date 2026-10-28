@@ -8,10 +8,9 @@ import type {
   ProfilePage,
   WithContext,
 } from "schema-dts";
-import { activityLabel } from "@/lib/labels";
 import { type Profile, profileName } from "@/lib/profiles";
 import type { ReviewSummary } from "@/lib/reviews";
-import type { Route } from "@/lib/routes";
+import { activityLabel, type Route } from "@/lib/routes";
 
 export type JsonLdNode = WithContext<CreativeWork> | WithContext<ProfilePage>;
 

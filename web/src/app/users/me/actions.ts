@@ -15,7 +15,7 @@ export async function loadRoutes(cursor: string): Promise<Page<RouteListItem>> {
     return { items: [], nextCursor: null };
   }
 
-  return fetchRouteList(session.did, { cursor });
+  return fetchRouteList(session.did, { cursor, labelled: "include" });
 }
 
 export async function loadReviews(

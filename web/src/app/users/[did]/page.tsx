@@ -75,7 +75,7 @@ async function Profile({ params }: Pick<UserPageProps, "params">) {
 }
 
 async function UserRoutes({ profile }: { profile: Profile }) {
-  const firstPage = await fetchRouteList(profile.did, { hideLabelled: true });
+  const firstPage = await fetchRouteList(profile.did, { labelled: "exclude" });
   if (firstPage.items.length === 0) {
     return <p>{profileName(profile)} hasn&apos;t shared any routes yet.</p>;
   }

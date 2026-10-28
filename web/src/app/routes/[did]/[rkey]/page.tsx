@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFormatter, getLocale } from "next-intl/server";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import { Author } from "@/components/author";
 import { Detail } from "@/components/detail";
 import { ElevationProfile } from "@/components/elevation-profile";
@@ -24,26 +24,41 @@ import {
   loadReviews,
   loadViewerReview,
 } from "@/lib/reviews";
-import { fetchRoute, type Route } from "@/lib/routes";
+import {
+  activityLabel,
+  difficultyLabel,
+  loadRoute,
+  type Route,
+  surfaceLabel,
+} from "@/lib/routes";
 import { unitsForLocale } from "@/i18n/units";
-import { activityLabel, difficultyLabel, surfaceLabel } from "@/lib/labels";
 import { fetchProfile, fetchProfiles, profileName } from "@/lib/profiles";
 import { routeJsonLd } from "@/lib/structured-data";
 import { openGraphDefaults } from "@/app/shared-metadata";
 
 type RoutePageProps = PageProps<"/routes/[did]/[rkey]">;
 
-export async function generateMetadata({
-  params,
-}: RoutePageProps): Promise<Metadata> {
-  const { did, rkey } = await params;
-  const route = await fetchRoute(decodeURIComponent(did), rkey);
+const loadPageRoute = cache(async (did: string, rkey: string) => {
+  const route = await loadRoute(
+    { did: decodeURIComponent(did), rkey },
+    { labelled: "include" },
+  );
   if (!route) {
     notFound();
   }
 
+  const labelled = (await loadLabelledUris([route])).has(route.uri);
+  return { route, labelled };
+});
+
+export async function generateMetadata({
+  params,
+}: RoutePageProps): Promise<Metadata> {
+  const { did, rkey } = await params;
+  const { route, labelled } = await loadPageRoute(did, rkey);
+
   // Routes with moderation labels don't get link previews or search listings.
-  if (route.labelled) {
+  if (labelled) {
     return {
       title: route.name,
       robots: { index: false },
@@ -128,10 +143,7 @@ export default function RoutePage({ params }: RoutePageProps) {
 
 async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
   const { did, rkey } = await params;
-  const route = await fetchRoute(decodeURIComponent(did), rkey);
-  if (!route) {
-    notFound();
-  }
+  const { route, labelled } = await loadPageRoute(did, rkey);
 
   const [session, author, reviewSummary, format, locale] = await Promise.all([
     getSession(),
@@ -147,12 +159,8 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
 
   return (
     <article className="flex flex-col gap-8">
-      {!route.labelled && (
-        <JsonLd data={routeJsonLd(route, author, reviewSummary)} />
-      )}
-      {route.labelled && (
-        <LimitedVisibility isAuthor={session?.did === route.did} />
-      )}
+      {!labelled && <JsonLd data={routeJsonLd(route, author, reviewSummary)} />}
+      {labelled && <LimitedVisibility isAuthor={session?.did === route.did} />}
       <header className="flex flex-col gap-4">
         <h1 className="font-serif text-4xl sm:text-5xl">{route.name}</h1>
         <div className="flex flex-row flex-wrap items-center justify-between gap-4">

@@ -2,10 +2,9 @@ import "server-only";
 
 import { getFormatter } from "next-intl/server";
 import { AtUri } from "@atproto/syntax";
-import { loadLabelledUris } from "@/lib/moderation";
+import { type LabelledFilter, loadLabelledUris } from "@/lib/moderation";
 import { loadAuthorReviews } from "@/lib/reviews";
-import { fetchRoutesByAuthor, loadRouteNames } from "@/lib/routes";
-import { activityLabel } from "@/lib/labels";
+import { activityLabel, loadRouteNames, loadRoutes } from "@/lib/routes";
 import type { Page } from "@/lib/pages";
 
 // What the lists render. Dates are formatted here so that the server-rendered
@@ -35,13 +34,14 @@ const REVIEWS_PAGE_SIZE = 20;
 
 export async function fetchRouteList(
   did: string,
-  { cursor, hideLabelled }: { cursor?: string; hideLabelled?: boolean } = {},
+  { cursor, labelled }: { cursor?: string; labelled: LabelledFilter },
 ): Promise<Page<RouteListItem>> {
   const [page, format] = await Promise.all([
-    fetchRoutesByAuthor(did, {
+    loadRoutes({
+      author: did,
+      labelled,
       cursor,
       limit: ROUTES_PAGE_SIZE,
-      hideLabelled,
     }),
     getFormatter(),
   ]);
