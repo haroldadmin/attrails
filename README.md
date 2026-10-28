@@ -1,5 +1,7 @@
 # ATTrails
 
+![Header](./assets/attrails-readme-header.png)
+
 ATTrails is an ATProto app for sharing cycling, running, and hiking routes. It helps you share your collection and discover routes uploaded by others.
 
 ## Features
