@@ -103,7 +103,9 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
           name="gpx"
           type="file"
           className="absolute inset-0 cursor-pointer opacity-0"
-          accept=".gpx,application/gpx+xml"
+          // No `accept`: iOS maps it to file types it knows, and it knows no
+          // type for GPX, so it would disable every file in the picker. The
+          // file's contents are checked once it's chosen instead.
           aria-invalid={error ? true : undefined}
           aria-describedby="gpx-hint"
           onChange={handleChange}
