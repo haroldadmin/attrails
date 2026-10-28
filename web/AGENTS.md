@@ -18,3 +18,9 @@ Domain modules in `src/lib/<domain>/` (starting with `reviews`) are the only way
 - Report expected failures as typed reasons (`{ ok: false, reason }`) and map them to messages in the app, next to the UI that shows them.
 - Database functions take an optional `signal: AbortSignal` and pass it to Kysely with `abortable(signal)`. Lookups that should be cheap default it to `AbortSignal.timeout(CHEAP_QUERY_TIMEOUT_MS)`.
 - Validate input with Zod schemas exported from the domain's `shared` entry point.
+
+## Tests
+
+- Write a few focused tests that check behaviour people rely on, such as "only an account's newest review counts", not implementation details like the exact SQL or which helper was called.
+- Test through a module's entry points, so tests survive refactors behind them.
+- Prefer real dependencies over mocks: database tests run against Postgres with the real migrations (`setUpTestDatabase`, needs Docker). Fake only what's outside the system, such as a user's PDS.
