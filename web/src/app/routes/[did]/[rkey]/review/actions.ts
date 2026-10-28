@@ -79,8 +79,6 @@ export async function deleteRouteReview(
   const routePath = `/routes/${routeDid}/${routeRkey}`;
   const session = await assertSession(`${routePath}/review`);
 
-  // Built from the URL rather than loaded, so reviews of deleted routes can
-  // still be deleted.
   const subject = {
     uri: `at://${routeDid}/${app.attrails.route.$type}/${routeRkey}`,
   };

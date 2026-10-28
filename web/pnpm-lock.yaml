@@ -251,6 +251,9 @@ importers:
         specifier: 4.6.6
         version: 4.6.6
     devDependencies:
+      '@atproto/common-web':
+        specifier: 0.5.15
+        version: 0.5.15
       '@tailwindcss/turbopack':
         specifier: 4.3.3
         version: 4.3.3

@@ -1,4 +1,5 @@
-import type { Agent } from "@atproto/lex";
+import { TID } from "@atproto/common-web";
+import { type Agent, cidForRawBytes } from "@atproto/lex";
 import { sql } from "kysely";
 import { describe, expect, test, vi } from "vitest";
 import { getDb } from "@/db/client";
@@ -20,28 +21,23 @@ vi.mock("next/server", () => ({ connection: async () => {} }));
 
 setUpTestDatabase();
 
-const CID = "bafyreie5737gdxlw5i64vzichcalba3z2v5n6icifvx5xytvske7mr3hpm";
-
 const ROUTE_AUTHOR = "did:plc:routeauthor";
 const ALICE = "did:plc:alice";
 const BOB = "did:plc:bob";
 
-function route(rkey: string, author = ROUTE_AUTHOR): Subject {
-  return { uri: `at://${author}/app.attrails.route/${rkey}`, cid: CID };
+async function newCid(): Promise<string> {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return (await cidForRawBytes(bytes)).toString();
 }
 
-const BASE32_SORTABLE = "234567abcdefghijklmnopqrstuvwxyz";
-
-let reviewCount = 0;
-
-// Review records are keyed by TIDs.
-function nextTid(): string {
-  reviewCount += 1;
-  let tid = "";
-  for (let n = reviewCount; tid.length < 12; n = Math.floor(n / 32)) {
-    tid = BASE32_SORTABLE[n % 32] + tid;
-  }
-  return `3${tid}`;
+async function routeSubject(
+  rkey: string,
+  author = ROUTE_AUTHOR,
+): Promise<Subject> {
+  return {
+    uri: `at://${author}/app.attrails.route/${rkey}`,
+    cid: await newCid(),
+  };
 }
 
 /** Inserts a review as if ingested from `author`'s repository. */
@@ -55,9 +51,9 @@ async function insertReview(
     tombstoned = false,
   }: { day: number; rating?: number; labelled?: boolean; tombstoned?: boolean },
 ) {
-  const rkey = nextTid();
+  const rkey = TID.nextStr();
   const uri = `at://${author}/app.attrails.review/${rkey}`;
-  const cid = `cid${rkey}`;
+  const cid = await newCid();
   const at = sql<Temporal.Instant>`${`2026-01-01T00:00:00Z`}::timestamptz + make_interval(days => ${day})`;
 
   const db = await getDb();
@@ -113,7 +109,7 @@ function fakeAccount(did: string) {
       const rkey = body.rkey ?? "created";
       return Response.json({
         uri: `at://${did}/${body.collection}/${rkey}`,
-        cid: CID,
+        cid: await newCid(),
       });
     },
   };
@@ -123,7 +119,7 @@ function fakeAccount(did: string) {
 
 describe("loading reviews", () => {
   test("counts each account's newest review, never the subject author's own", async () => {
-    const subject = route("coast");
+    const subject = await routeSubject("coast");
     await insertReview(ALICE, subject, { day: 1, rating: 1 });
     await insertReview(ALICE, subject, { day: 2, rating: 4 });
     await insertReview(BOB, subject, { day: 3, rating: 5 });
@@ -150,7 +146,7 @@ describe("loading reviews", () => {
   });
 
   test("filters by moderation labels on the newest review", async () => {
-    const subject = route("hills");
+    const subject = await routeSubject("hills");
     await insertReview(ALICE, subject, { day: 1 });
     const labelled = await insertReview(ALICE, subject, {
       day: 2,
@@ -180,9 +176,11 @@ describe("loading reviews", () => {
   test("pages through an account's reviews, newest first", async () => {
     const uris: string[] = [];
     for (let day = 1; day <= 5; day++) {
-      uris.unshift((await insertReview(ALICE, route(`r${day}`), { day })).uri);
+      uris.unshift(
+        (await insertReview(ALICE, await routeSubject(`r${day}`), { day })).uri,
+      );
     }
-    await insertReview(ALICE, route("own", ALICE), { day: 6 });
+    await insertReview(ALICE, await routeSubject("own", ALICE), { day: 6 });
 
     const loaded: string[] = [];
     let cursor: string | undefined;
@@ -227,7 +225,7 @@ describe("writing reviews", () => {
   const draft = { rating: 5, text: "Worth the climb." };
 
   test("creates a review, then replaces the newest one", async () => {
-    const subject = route("valley");
+    const subject = await routeSubject("valley");
     const { agent, writes } = fakeAccount(ALICE);
 
     expect(await saveReview(agent, subject, draft)).toEqual({
@@ -251,7 +249,7 @@ describe("writing reviews", () => {
   test("refuses to review the account's own record", async () => {
     const { agent, writes } = fakeAccount(ROUTE_AUTHOR);
 
-    expect(await saveReview(agent, route("mine"), draft)).toEqual({
+    expect(await saveReview(agent, await routeSubject("mine"), draft)).toEqual({
       ok: false,
       reason: "self-review",
     });
@@ -259,7 +257,7 @@ describe("writing reviews", () => {
   });
 
   test("deletes the newest review", async () => {
-    const subject = route("ridge");
+    const subject = await routeSubject("ridge");
     const { agent, writes } = fakeAccount(ALICE);
 
     expect(await deleteReview(agent, subject)).toEqual({
