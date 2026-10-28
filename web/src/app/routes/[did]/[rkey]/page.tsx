@@ -18,10 +18,11 @@ import { ReviewRating } from "@/components/review-rating";
 import { RouteMap } from "@/components/route-map";
 import { getSession } from "@/auth/session";
 import { ShareButton } from "@/components/share-button";
+import { loadLabelledUris } from "@/lib/moderation";
 import {
-  fetchUserReview,
-  fetchReviewSummary,
-  fetchReviews,
+  loadReviewSummary,
+  loadReviews,
+  loadViewerReview,
 } from "@/lib/reviews";
 import { fetchRoute, type Route } from "@/lib/routes";
 import { unitsForLocale } from "@/i18n/units";
@@ -136,7 +137,7 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
   const [session, author, reviewSummary, format, locale] = await Promise.all([
     getSession(),
     fetchAuthorProfile(route.did),
-    fetchReviewSummary(route.uri),
+    loadReviewSummary(route, { labelled: "exclude" }),
     getFormatter(),
     getLocale(),
   ]);
@@ -280,20 +281,27 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
 
 async function RouteReviews({ route }: { route: Route }) {
   const session = await getSession();
-  const viewerDid = session?.did;
+  const viewer = session ? { did: session.did } : null;
 
-  const [reviews, viewerReview, format] = await Promise.all([
-    fetchReviews(route.uri, {
-      limit: viewerDid === undefined ? 1 : 10,
-      viewerDid,
+  const [viewerReview, latestReviews, format] = await Promise.all([
+    loadViewerReview(route, viewer, { labelled: "include" }),
+    loadReviews(route, {
+      labelled: "exclude",
+      limit: viewer === null ? 1 : 10,
     }),
-    viewerDid ? fetchUserReview(route.uri, viewerDid) : null,
     getFormatter(),
   ]);
+  const reviews = viewerReview
+    ? [
+        viewerReview,
+        ...latestReviews.filter(({ author }) => author !== viewer?.did),
+      ]
+    : latestReviews;
 
-  const authors = await fetchAuthorProfiles(
-    reviews.map((review) => review.did),
-  );
+  const [authors, labelled] = await Promise.all([
+    fetchAuthorProfiles(reviews.map((review) => review.author)),
+    loadLabelledUris(reviews),
+  ]);
 
   return (
     <section
@@ -305,7 +313,7 @@ async function RouteReviews({ route }: { route: Route }) {
         <h2 id="reviews-heading" className="font-serif text-3xl">
           Reviews
         </h2>
-        {viewerDid && viewerDid !== route.did && !viewerReview && (
+        {viewer && viewer.did !== route.did && !viewerReview && (
           <Link
             href={`/routes/${route.did}/${route.rkey}/review`}
             className="btn btn-neutral rounded-full"
@@ -315,7 +323,7 @@ async function RouteReviews({ route }: { route: Route }) {
         )}
       </div>
 
-      {!viewerDid && (
+      {!viewer && (
         <p>
           <LoginLink className="link">Log in</LoginLink> to review this route
           and to read all reviews.
@@ -327,7 +335,7 @@ async function RouteReviews({ route }: { route: Route }) {
       ) : (
         <ol className="flex flex-col gap-6 max-w-prose">
           {reviews.map((review, index) => (
-            <li key={`${review.did}/${review.rkey}`}>
+            <li key={review.uri}>
               <article className="flex flex-col gap-2">
                 <div className="flex flex-row items-center justify-between gap-4">
                   <Author profile={authors[index]}>
@@ -337,7 +345,7 @@ async function RouteReviews({ route }: { route: Route }) {
                       })}
                     </time>
                   </Author>
-                  {review.did === viewerDid && (
+                  {review.author === viewer?.did && (
                     <Link
                       href={`/routes/${route.did}/${route.rkey}/review`}
                       className="btn btn-ghost btn-sm rounded-full border-base-300"
@@ -346,7 +354,7 @@ async function RouteReviews({ route }: { route: Route }) {
                     </Link>
                   )}
                 </div>
-                {review.labelled && <ReviewModerationNotice />}
+                {labelled.has(review.uri) && <ReviewModerationNotice />}
                 <ReviewRating rating={review.rating} />
                 {review.text && (
                   <p className="whitespace-pre-line">{review.text}</p>

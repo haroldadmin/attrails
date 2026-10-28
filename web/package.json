@@ -20,6 +20,7 @@
     "@atproto/api": "0.29.1",
     "@atproto/lex": "0.3.14",
     "@atproto/oauth-client-node": "0.5.11",
+    "@atproto/syntax": "0.7.7",
     "@observablehq/plot": "0.6.17",
     "@opentelemetry/api": "1.10.0",
     "@opentelemetry/instrumentation-pg": "0.77.0",
@@ -41,10 +42,13 @@
     "react-dom": "19.3.0",
     "server-only": "0.0.1",
     "xast-util-to-xml": "4.0.0",
-    "xastscript": "4.0.0"
+    "xastscript": "4.0.0",
+    "zod": "4.6.6"
   },
   "devDependencies": {
+    "@atproto/common-web": "0.5.15",
     "@tailwindcss/turbopack": "4.3.3",
+    "@testcontainers/postgresql": "12.2.1",
     "@types/d3-geo": "3.1.1",
     "@types/geojson": "7946.0.16",
     "@types/negotiator": "0.6.5",

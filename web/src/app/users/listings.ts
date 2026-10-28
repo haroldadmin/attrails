@@ -1,8 +1,10 @@
 import "server-only";
 
 import { getFormatter } from "next-intl/server";
-import { fetchReviewsByAuthor } from "@/lib/reviews";
-import { fetchRoutesByAuthor } from "@/lib/routes";
+import { AtUri } from "@atproto/syntax";
+import { loadLabelledUris } from "@/lib/moderation";
+import { loadAuthorReviews } from "@/lib/reviews";
+import { fetchRoutesByAuthor, loadRouteNames } from "@/lib/routes";
 import { activityLabel } from "@/lib/labels";
 import type { Page } from "@/lib/pages";
 
@@ -19,7 +21,7 @@ export type RouteListItem = {
 };
 
 export type ReviewListItem = {
-  rkey: string;
+  uri: string;
   rating: number;
   text: string | null;
   createdAt: string;
@@ -64,22 +66,40 @@ export async function fetchReviewList(
   cursor?: string,
 ): Promise<Page<ReviewListItem>> {
   const [page, format] = await Promise.all([
-    fetchReviewsByAuthor(did, { cursor, limit: REVIEWS_PAGE_SIZE }),
+    loadAuthorReviews(did, {
+      labelled: "include",
+      cursor,
+      limit: REVIEWS_PAGE_SIZE,
+    }),
     getFormatter(),
+  ]);
+  const [routeNames, labelled] = await Promise.all([
+    loadRouteNames(page.items.map((review) => review.subject.uri)),
+    loadLabelledUris(page.items),
   ]);
 
   return {
     ...page,
-    items: page.items.map((review) => ({
-      rkey: review.rkey,
-      rating: review.rating,
-      text: review.text,
-      createdAt: review.createdAt.toString(),
-      createdOn: format.dateTime(review.createdAt.epochMilliseconds, {
-        dateStyle: "long",
-      }),
-      labelled: review.labelled,
-      route: review.route,
-    })),
+    // Reviews of routes that have been deleted are left out.
+    items: page.items.flatMap((review) => {
+      const name = routeNames.get(review.subject.uri);
+      if (name === undefined) {
+        return [];
+      }
+
+      const route = new AtUri(review.subject.uri);
+
+      return {
+        uri: review.uri,
+        rating: review.rating,
+        text: review.text,
+        createdAt: review.createdAt.toString(),
+        createdOn: format.dateTime(review.createdAt.epochMilliseconds, {
+          dateStyle: "long",
+        }),
+        labelled: labelled.has(review.uri),
+        route: { did: route.hostname, rkey: route.rkey, name },
+      };
+    }),
   };
 }

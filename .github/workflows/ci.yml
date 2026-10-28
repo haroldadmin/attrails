@@ -78,7 +78,7 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      # No-op until the frontend has a test script.
+      # Database tests start Postgres with Testcontainers, so they need Docker.
       - name: Test
         run: pnpm run --if-present test
 

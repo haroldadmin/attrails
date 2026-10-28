@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { loginHref } from "@/auth/login-href";
-import { getSession } from "@/auth/session";
+import { assertSession } from "@/auth/session";
 import { ReviewModerationNotice } from "@/components/moderation-notice";
-import { fetchUserReview } from "@/lib/reviews";
+import { loadLabelledUris } from "@/lib/moderation";
+import { loadViewerReview } from "@/lib/reviews";
 import { fetchRoute } from "@/lib/routes";
-import { deleteReview, saveReview } from "./actions";
+import { deleteRouteReview, saveRouteReview } from "./actions";
 import { DeleteReview } from "./delete-review";
 import { ReviewForm } from "./review-form";
 
@@ -36,10 +36,7 @@ async function ManageReview({ params }: Pick<ReviewPageProps, "params">) {
   const did = decodeURIComponent(encodedDid);
   const routePath = `/routes/${did}/${rkey}`;
 
-  const session = await getSession();
-  if (!session) {
-    redirect(loginHref(`${routePath}/review`));
-  }
+  const session = await assertSession(`${routePath}/review`);
 
   const route = await fetchRoute(did, rkey);
   if (!route) {
@@ -50,7 +47,14 @@ async function ManageReview({ params }: Pick<ReviewPageProps, "params">) {
     redirect(routePath);
   }
 
-  const review = await fetchUserReview(route.uri, session.did);
+  const review = await loadViewerReview(
+    route,
+    { did: session.did },
+    { labelled: "include" },
+  );
+  const labelled = review
+    ? (await loadLabelledUris([review])).has(review.uri)
+    : false;
 
   return (
     <>
@@ -64,9 +68,9 @@ async function ManageReview({ params }: Pick<ReviewPageProps, "params">) {
         </Link>
         .
       </p>
-      {review?.labelled && <ReviewModerationNotice />}
+      {labelled && <ReviewModerationNotice />}
       <ReviewForm
-        action={saveReview.bind(null, route.did, route.rkey)}
+        action={saveRouteReview.bind(null, route.did, route.rkey)}
         initialValues={{
           rating: review ? String(review.rating) : "",
           text: review?.text ?? "",
@@ -75,7 +79,7 @@ async function ManageReview({ params }: Pick<ReviewPageProps, "params">) {
       />
       {review && (
         <DeleteReview
-          action={deleteReview.bind(null, route.did, route.rkey, review.rkey)}
+          action={deleteRouteReview.bind(null, route.did, route.rkey)}
         />
       )}
     </>

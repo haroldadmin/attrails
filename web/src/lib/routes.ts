@@ -3,7 +3,12 @@ import "server-only";
 import type { LineString, MultiLineString } from "geojson";
 import { sql } from "kysely";
 import { cache } from "react";
-import { type AttrailsDb, getDb } from "@/db/client";
+import {
+  abortable,
+  type AttrailsDb,
+  CHEAP_QUERY_TIMEOUT_MS,
+  getDb,
+} from "@/db/client";
 import type { Location } from "@/lib/location";
 import { isLabelled } from "@/lib/moderation";
 import type { Page } from "@/lib/pages";
@@ -376,4 +381,29 @@ export async function fetchRouteGpx(
     .executeTakeFirst();
 
   return row ?? null;
+}
+
+/**
+ * Loads the names of the routes at `uris`, keyed by URI. Routes that don't
+ * exist are left out.
+ */
+export async function loadRouteNames(
+  uris: string[],
+  {
+    signal = AbortSignal.timeout(CHEAP_QUERY_TIMEOUT_MS),
+  }: { signal?: AbortSignal } = {},
+): Promise<Map<string, string>> {
+  if (uris.length === 0) {
+    return new Map();
+  }
+
+  const db = await getDb();
+  const rows = await db
+    .selectFrom("routes")
+    .select(["uri", "name"])
+    .where("uri", "in", uris)
+    .where("tombstoned", "=", false)
+    .execute(abortable(signal));
+
+  return new Map(rows.map(({ uri, name }) => [uri, name]));
 }

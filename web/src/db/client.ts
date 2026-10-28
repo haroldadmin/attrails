@@ -1,5 +1,10 @@
 import "server-only";
-import { Kysely, PostgresDialect, type LogEvent } from "kysely";
+import {
+  type AbortableQueryOptions,
+  Kysely,
+  PostgresDialect,
+  type LogEvent,
+} from "kysely";
 import { connection } from "next/server";
 import { Pool, types, type CustomTypesConfig } from "pg";
 import type { DB } from "./types";
@@ -10,6 +15,20 @@ export type { DB, Labels, Reviews, Routes, Tracks, Users } from "./types";
 export type AttrailsDb = Kysely<DB>;
 
 const SLOW_QUERY_MS = 250;
+
+/**
+ * Default timeout for queries that should be cheap, such as lookups by key.
+ * Well under the connection's `statement_timeout`.
+ */
+export const CHEAP_QUERY_TIMEOUT_MS = 1_000;
+
+/**
+ * Query options that abort with `signal`, cancelling the query in Postgres
+ * rather than leaving it running.
+ */
+export function abortable(signal?: AbortSignal): AbortableQueryOptions {
+  return { signal, inflightQueryAbortStrategy: "cancel query" };
+}
 
 // Logs query text without parameter values, which may contain user data.
 function logSlowQuery(event: LogEvent): void {
