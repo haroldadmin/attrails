@@ -22,6 +22,12 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 
 FROM base AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
+# Analytics are rendered into the prerendered pages, so they are set at build
+# time. Leave them unset to build without analytics.
+ARG ATTRAILS_UMAMI_SCRIPT_URL
+ARG ATTRAILS_UMAMI_WEBSITE_ID
+ENV ATTRAILS_UMAMI_SCRIPT_URL=${ATTRAILS_UMAMI_SCRIPT_URL}
+ENV ATTRAILS_UMAMI_WEBSITE_ID=${ATTRAILS_UMAMI_WEBSITE_ID}
 COPY --from=deps /app/node_modules node_modules
 COPY . .
 RUN pnpm build

@@ -47,14 +47,26 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <div className="grow w-full max-w-7xl mx-auto">{children}</div>
         <Footer />
-        <Script
-          src="https://umami.haroldadmin.cloud/script.js"
-          data-website-id="95221821-af97-4846-b809-43bf20cb01fc"
-          data-domains="www.attrails.app"
-          data-do-not-track="true"
-          strategy="afterInteractive"
-        />
+        <Analytics />
       </body>
     </html>
+  );
+}
+
+function Analytics() {
+  const src = process.env.ATTRAILS_UMAMI_SCRIPT_URL;
+  const websiteId = process.env.ATTRAILS_UMAMI_WEBSITE_ID;
+  if (!src || !websiteId) {
+    return null;
+  }
+
+  return (
+    <Script
+      src={src}
+      data-website-id={websiteId}
+      data-domains={SITE_URL.hostname}
+      data-do-not-track="true"
+      strategy="afterInteractive"
+    />
   );
 }
