@@ -377,3 +377,25 @@ export async function fetchRouteGpx(
 
   return row ?? null;
 }
+
+/**
+ * Loads the names of the routes at `uris`, keyed by URI. Routes that don't
+ * exist are left out.
+ */
+export async function loadRouteNames(
+  uris: string[],
+): Promise<Map<string, string>> {
+  if (uris.length === 0) {
+    return new Map();
+  }
+
+  const db = await getDb();
+  const rows = await db
+    .selectFrom("routes")
+    .select(["uri", "name"])
+    .where("uri", "in", uris)
+    .where("tombstoned", "=", false)
+    .execute();
+
+  return new Map(rows.map(({ uri, name }) => [uri, name]));
+}
