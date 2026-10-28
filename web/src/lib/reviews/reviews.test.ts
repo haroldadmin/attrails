@@ -1,9 +1,9 @@
 import { TID } from "@atproto/common-web";
-import { type Agent, cidForRawBytes } from "@atproto/lex";
 import { sql } from "kysely";
 import { describe, expect, test, vi } from "vitest";
 import { getDb } from "@/db/client";
 import { loadLabelledUris } from "@/lib/moderation";
+import { fakeAccount, newCid } from "@/test/atproto";
 import { setUpTestDatabase } from "@/test/database";
 import {
   deleteReview,
@@ -24,11 +24,6 @@ setUpTestDatabase();
 const ROUTE_AUTHOR = "did:plc:routeauthor";
 const ALICE = "did:plc:alice";
 const BOB = "did:plc:bob";
-
-async function newCid(): Promise<string> {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return (await cidForRawBytes(bytes)).toString();
-}
 
 async function routeSubject(
   rkey: string,
@@ -90,31 +85,6 @@ async function insertReview(
   }
 
   return { uri, rkey };
-}
-
-/** An account whose repository records the writes made to it. */
-function fakeAccount(did: string) {
-  const writes: { method: string; rkey?: string }[] = [];
-
-  const agent: Agent = {
-    did: did as Agent["did"],
-    async fetchHandler(path, init) {
-      const method = path.replace(/^\/xrpc\//, "").split("?")[0];
-      const body =
-        typeof init.body === "string"
-          ? JSON.parse(init.body)
-          : JSON.parse(new TextDecoder().decode(init.body as Uint8Array));
-      writes.push({ method, rkey: body.rkey });
-
-      const rkey = body.rkey ?? "created";
-      return Response.json({
-        uri: `at://${did}/${body.collection}/${rkey}`,
-        cid: await newCid(),
-      });
-    },
-  };
-
-  return { agent, writes };
 }
 
 describe("loading reviews", () => {
@@ -240,9 +210,9 @@ describe("writing reviews", () => {
       outcome: "updated",
     });
 
-    expect(writes).toEqual([
-      { method: "com.atproto.repo.createRecord", rkey: undefined },
-      { method: "com.atproto.repo.putRecord", rkey: newest.rkey },
+    expect(writes.map(({ method, input }) => [method, input.rkey])).toEqual([
+      ["com.atproto.repo.createRecord", undefined],
+      ["com.atproto.repo.putRecord", newest.rkey],
     ]);
   });
 
@@ -268,8 +238,8 @@ describe("writing reviews", () => {
     await insertReview(ALICE, subject, { day: 1 });
     const newest = await insertReview(ALICE, subject, { day: 2 });
     expect(await deleteReview(agent, subject)).toEqual({ ok: true });
-    expect(writes).toEqual([
-      { method: "com.atproto.repo.deleteRecord", rkey: newest.rkey },
+    expect(writes.map(({ method, input }) => [method, input.rkey])).toEqual([
+      ["com.atproto.repo.deleteRecord", newest.rkey],
     ]);
   });
 });

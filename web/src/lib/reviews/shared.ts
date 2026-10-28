@@ -1,6 +1,7 @@
 // Safe to import from client components. Server code imports `@/lib/reviews`.
 
 import { z } from "zod";
+import { graphemeCount } from "@/lib/text";
 
 /**
  * The record a review is about, as a strong reference. Reviews are of routes
@@ -28,12 +29,6 @@ export type ReviewSummary = {
 
 /** `maxGraphemes` of `text` in the `app.attrails.review` lexicon. */
 export const REVIEW_TEXT_MAX_GRAPHEMES = 3000;
-
-const graphemes = new Intl.Segmenter();
-
-function graphemeCount(text: string): number {
-  return Array.from(graphemes.segment(text)).length;
-}
 
 const RATING_MESSAGE = "Choose a rating from 1 to 5 stars.";
 const TEXT_MESSAGE = "Write a few words about it.";

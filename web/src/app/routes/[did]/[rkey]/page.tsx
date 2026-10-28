@@ -27,8 +27,7 @@ import {
 import { fetchRoute, type Route } from "@/lib/routes";
 import { unitsForLocale } from "@/i18n/units";
 import { activityLabel, difficultyLabel, surfaceLabel } from "@/lib/labels";
-import { profileName } from "@/lib/profile-name";
-import { fetchAuthorProfile, fetchAuthorProfiles } from "@/lib/profiles";
+import { fetchProfile, fetchProfiles, profileName } from "@/lib/profiles";
 import { routeJsonLd } from "@/lib/structured-data";
 import { openGraphDefaults } from "@/app/shared-metadata";
 
@@ -52,7 +51,7 @@ export async function generateMetadata({
   }
 
   const [author, format, locale] = await Promise.all([
-    fetchAuthorProfile(route.did),
+    fetchProfile(route.did),
     getFormatter(),
     getLocale(),
   ]);
@@ -136,7 +135,7 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
 
   const [session, author, reviewSummary, format, locale] = await Promise.all([
     getSession(),
-    fetchAuthorProfile(route.did),
+    fetchProfile(route.did),
     loadReviewSummary(route, { labelled: "exclude" }),
     getFormatter(),
     getLocale(),
@@ -299,7 +298,7 @@ async function RouteReviews({ route }: { route: Route }) {
     : latestReviews;
 
   const [authors, labelled] = await Promise.all([
-    fetchAuthorProfiles(reviews.map((review) => review.author)),
+    fetchProfiles(reviews.map((review) => review.author)),
     loadLabelledUris(reviews),
   ]);
 

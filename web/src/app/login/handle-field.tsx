@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/author";
 import {
-  type ActorSearchItem,
-  MAX_QUERY_LENGTH,
-  MIN_QUERY_LENGTH,
-} from "@/lib/actor-search";
+  ACTOR_QUERY_MAX_LENGTH,
+  ACTOR_QUERY_MIN_LENGTH,
+  type ActorSuggestion,
+} from "@/lib/profiles/shared";
 
 const DEBOUNCE_MS = 200;
 const LIST_ID = "handle-suggestions";
@@ -17,11 +17,11 @@ const LIST_ID = "handle-suggestions";
 export function HandleField({ defaultValue }: { defaultValue: string }) {
   const [handle, setHandle] = useState(defaultValue);
   const [open, setOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<ActorSearchItem[]>([]);
+  const [suggestions, setSuggestions] = useState<ActorSuggestion[]>([]);
   const [active, setActive] = useState(-1);
 
   const query = handle.trim().replace(/^@/, "");
-  const searchable = open && query.length >= MIN_QUERY_LENGTH;
+  const searchable = open && query.length >= ACTOR_QUERY_MIN_LENGTH;
 
   useEffect(() => {
     if (!searchable) {
@@ -53,7 +53,7 @@ export function HandleField({ defaultValue }: { defaultValue: string }) {
 
   const expanded = searchable && suggestions.length > 0;
 
-  const choose = (item: ActorSearchItem) => {
+  const choose = (item: ActorSuggestion) => {
     setHandle(item.handle);
     setOpen(false);
   };
@@ -76,7 +76,7 @@ export function HandleField({ defaultValue }: { defaultValue: string }) {
         autoComplete="username"
         autoCapitalize="none"
         spellCheck={false}
-        maxLength={MAX_QUERY_LENGTH}
+        maxLength={ACTOR_QUERY_MAX_LENGTH}
         value={handle}
         onChange={(event) => {
           setHandle(event.target.value);

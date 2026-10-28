@@ -64,7 +64,7 @@ export function setUpTestDatabase(): void {
 
   beforeEach(async () => {
     const db = await getDb();
-    await sql`TRUNCATE reviews, routes, labels`.execute(db);
+    await sql`TRUNCATE reviews, routes, labels, users`.execute(db);
   });
 
   afterAll(async () => {
