@@ -17,16 +17,18 @@ const sourceSans = Source_Sans_3({
   subsets: ["latin"],
 });
 
+const HOME_TITLE = "ATTrails · Running, cycling & hiking routes on ATProto";
+
 const DESCRIPTION =
   "Discover and share cycling, running, and hiking routes on the open social web.";
 
 export const metadata: Metadata = {
   metadataBase: SITE_URL,
-  title: { default: "ATTrails", template: "%s · ATTrails" },
+  title: { default: HOME_TITLE, template: "%s · ATTrails" },
   description: DESCRIPTION,
   openGraph: {
     ...openGraphDefaults,
-    title: "ATTrails",
+    title: HOME_TITLE,
     description: DESCRIPTION,
   },
   twitter: { card: "summary_large_image" },
