@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
-import { profileName } from "@/lib/profile-name";
-import type { AuthorProfile } from "@/lib/profiles";
+import { type Profile, profileName } from "@/lib/profiles/shared";
 import { Avatar } from "./author";
 
 export type ProfileHeaderProps = {
-  profile: AuthorProfile;
+  profile: Profile;
   /** Actions shown below the bio, e.g. a link to edit the profile. */
   children?: ReactNode;
 };

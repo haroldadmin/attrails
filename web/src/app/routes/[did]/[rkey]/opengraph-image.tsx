@@ -4,8 +4,7 @@ import { getFormatter, getLocale } from "next-intl/server";
 import { OG_SIZE, OgCard, ogColors, ogFonts } from "@/components/og-card";
 import { unitsForLocale } from "@/i18n/units";
 import { activityLabel } from "@/lib/labels";
-import { profileName } from "@/lib/profile-name";
-import { fetchAuthorProfile } from "@/lib/profiles";
+import { fetchProfile, profileName } from "@/lib/profiles";
 import { projectPath } from "@/lib/route-path";
 import { fetchRouteCard, type RouteSummary } from "@/lib/routes";
 import SiteImage from "@/app/opengraph-image";
@@ -32,7 +31,7 @@ export default async function Image({
   }
 
   const [author, format, locale] = await Promise.all([
-    fetchAuthorProfile(route.did),
+    fetchProfile(route.did),
     getFormatter(),
     getLocale(),
   ]);

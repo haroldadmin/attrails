@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Data access
 
-Domain modules in `src/lib/<domain>/` (starting with `reviews`) are the only way the app reads, validates, and writes that domain's data.
+Domain modules in `src/lib/<domain>/` (`reviews` and `profiles` so far) are the only way the app reads, validates, and writes that domain's data.
 
 - Import a domain only through its entry points: `@/lib/<domain>` on the server, or `@/lib/<domain>/shared` from client components. Files behind them are internal.
 - Name functions by what they do: `load*` reads the database, `fetch*` makes network calls, and `assert*` throws (or redirects) when an invariant doesn't hold.

@@ -1,13 +1,12 @@
 "use server";
 
-import { Client, XrpcResponseError } from "@atproto/lex";
 import { redirect } from "next/navigation";
-import { loginHref } from "@/auth/login-href";
-import { getSession } from "@/auth/session";
-import { app } from "@/lexicons";
-import { logger } from "@/lib/logger";
-
-const { profile } = app.attrails.actor;
+import { assertSession } from "@/auth/session";
+import {
+  profileSchema,
+  saveProfile,
+  type SaveProfileError,
+} from "@/lib/profiles";
 
 export type ProfileValues = {
   name: string;
@@ -19,66 +18,39 @@ export type EditProfileState = {
   error?: string;
 };
 
+const SAVE_ERROR_MESSAGES: Record<SaveProfileError, string> = {
+  conflict:
+    "Your profile has changed since you opened this page. Reload the page and try again.",
+  "not-found": "Your profile no longer exists.",
+  invalid: "Check your profile and try again.",
+  "write-failed":
+    "We couldn't save your profile to your account. Please try again.",
+};
+
 /**
  * Saves the edited details over the profile record. `cid` is the version of the
  * record the form was filled in from, so changes made since aren't overwritten.
  */
-export async function saveProfile(
-  cid: string | undefined,
+export async function saveProfileAction(
+  cid: string | null,
   _previous: EditProfileState,
   formData: FormData,
 ): Promise<EditProfileState> {
-  const session = await getSession();
-  if (!session) {
-    redirect(loginHref("/users/me/edit"));
-  }
+  const session = await assertSession("/users/me/edit");
 
   const values: ProfileValues = {
     name: text(formData, "name"),
     bio: text(formData, "bio"),
   };
 
-  if (!values.name) {
-    return { values, error: "Give your profile a name." };
+  const draft = profileSchema.safeParse(values);
+  if (!draft.success) {
+    return { values, error: draft.error.issues[0].message };
   }
 
-  const client = new Client(session);
-  try {
-    // The form doesn't cover every field of the record, such as the profile
-    // picture, so the rest are kept from the record as it is now.
-    const current = await client.get(profile);
-    const record = profile.$safeValidate({
-      ...current.value,
-      name: values.name,
-      bio: values.bio || undefined,
-    });
-    if (!record.success) {
-      return {
-        values,
-        error: `Check your profile: ${record.reason.message}`,
-      };
-    }
-
-    await client.put(profile, record.value, { swapRecord: cid });
-  } catch (error) {
-    if (error instanceof XrpcResponseError) {
-      if (error.error === "InvalidSwap") {
-        return {
-          values,
-          error:
-            "Your profile has changed since you opened this page. Reload the page and try again.",
-        };
-      }
-      if (error.error === "RecordNotFound") {
-        return { values, error: "Your profile no longer exists." };
-      }
-    }
-
-    logger.warn({ err: error, did: session.did }, "profiles:edit");
-    return {
-      values,
-      error: "We couldn't save your profile to your account. Please try again.",
-    };
+  const result = await saveProfile(session, draft.data, { swapCid: cid });
+  if (!result.ok) {
+    return { values, error: SAVE_ERROR_MESSAGES[result.reason] };
   }
 
   redirect("/users/me?notice=profile-updated");

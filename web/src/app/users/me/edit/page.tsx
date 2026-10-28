@@ -1,11 +1,9 @@
-import { Client, XrpcResponseError } from "@atproto/lex";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { loginHref } from "@/auth/login-href";
-import { getSession } from "@/auth/session";
-import { app } from "@/lexicons";
-import { saveProfile } from "./actions";
+import { assertSession } from "@/auth/session";
+import { fetchProfileRecord } from "@/lib/profiles";
+import { saveProfileAction } from "./actions";
 import { EditProfileForm } from "./edit-profile-form";
 
 export const metadata: Metadata = {
@@ -28,36 +26,17 @@ export default function EditProfilePage() {
 }
 
 async function EditProfile() {
-  const session = await getSession();
-  if (!session) {
-    redirect(loginHref("/users/me/edit"));
-  }
+  const session = await assertSession("/users/me/edit");
 
-  // Read from the PDS rather than Postgres so the form starts from the latest
-  // saved values, even before ingestion has caught up.
-  const current = await fetchCurrentProfile(new Client(session));
+  const current = await fetchProfileRecord(session);
+  if (!current) {
+    redirect("/users/me");
+  }
 
   return (
     <EditProfileForm
-      action={saveProfile.bind(null, current.cid)}
-      initialValues={{
-        name: current.value.name,
-        bio: current.value.bio ?? "",
-      }}
+      action={saveProfileAction.bind(null, current.cid)}
+      initialValues={{ name: current.name, bio: current.bio ?? "" }}
     />
   );
-}
-
-async function fetchCurrentProfile(client: Client) {
-  try {
-    return await client.get(app.attrails.actor.profile);
-  } catch (error) {
-    if (
-      error instanceof XrpcResponseError &&
-      error.error === "RecordNotFound"
-    ) {
-      redirect("/users/me");
-    }
-    throw error;
-  }
 }
