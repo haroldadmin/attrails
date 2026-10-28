@@ -70,6 +70,16 @@ export default function AboutPage() {
           </a>{" "}
           on Bluesky.
         </p>
+        <p>
+          You can also open an issue on our Github{" "}
+          <a
+            className="link link-primary"
+            href="https://github.com/haroldadmin/attrails"
+          >
+            repository
+          </a>
+          .
+        </p>
       </section>
 
       <p className="flex flex-row flex-wrap gap-6">
