@@ -2,6 +2,7 @@
 name = "lexicons"
 version = "0.1.0"
 edition = "2024"
+license.workspace = true
 
 [dependencies]
 # Keep in sync with the installed jacquard-lexgen (lex-fetch) version.
