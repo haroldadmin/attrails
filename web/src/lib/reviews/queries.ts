@@ -1,9 +1,14 @@
 import "server-only";
 
+import { AtUri } from "@atproto/syntax";
 import { sql } from "kysely";
-import { cache } from "react";
-import { type AttrailsDb, getDb } from "@/db/client";
-import { parseRecordUri, type Viewer } from "@/lib/identity";
+import {
+  abortable,
+  type AttrailsDb,
+  CHEAP_QUERY_TIMEOUT_MS,
+  getDb,
+} from "@/db/client";
+import type { Viewer } from "@/lib/identity";
 import { type LabelledFilter, matchesLabelled } from "@/lib/moderation";
 import type { Page } from "@/lib/pages";
 import { after, decodeCursor, toPage } from "@/lib/pagination";
@@ -35,7 +40,7 @@ function latestReviews(db: AttrailsDb, subject: SubjectUri) {
     .select(REVIEW_COLUMNS)
     .where("reviews.subject_uri", "=", subject.uri)
     .where("reviews.tombstoned", "=", false)
-    .where("reviews.did", "<>", parseRecordUri(subject.uri)?.did ?? "")
+    .where("reviews.did", "<>", new AtUri(subject.uri).hostname)
     .orderBy("reviews.did")
     .orderBy("reviews.created_at", "desc")
     .orderBy("reviews.rkey", "desc");
@@ -44,7 +49,11 @@ function latestReviews(db: AttrailsDb, subject: SubjectUri) {
 /** Loads the newest review of `subject` by each account, newest first. */
 export async function loadReviews(
   subject: SubjectUri,
-  { labelled, limit }: { labelled: LabelledFilter; limit: number },
+  {
+    labelled,
+    limit,
+    signal,
+  }: { labelled: LabelledFilter; limit: number; signal?: AbortSignal },
 ): Promise<Review[]> {
   const db = await getDb();
 
@@ -55,27 +64,26 @@ export async function loadReviews(
     .orderBy("sortAt", "desc")
     .orderBy("author", "desc")
     .limit(limit)
-    .execute();
+    .execute(abortable(signal));
 }
 
 /** Summarises the ratings of the reviews `loadReviews` would load. */
-export const loadReviewSummary = cache(
-  async (
-    subject: SubjectUri,
-    { labelled }: { labelled: LabelledFilter },
-  ): Promise<ReviewSummary> => {
-    const db = await getDb();
+export async function loadReviewSummary(
+  subject: SubjectUri,
+  { labelled, signal }: { labelled: LabelledFilter; signal?: AbortSignal },
+): Promise<ReviewSummary> {
+  const db = await getDb();
 
-    return db
-      .selectFrom(latestReviews(db, subject).as("latest"))
-      .select([
-        sql<number>`COUNT(*)::int`.as("count"),
-        sql<number | null>`AVG(rating)::float8`.as("averageRating"),
-      ])
-      .where(matchesLabelled(labelled, "latest.uri", "latest.cid"))
-      .executeTakeFirstOrThrow();
-  },
-);
+  const [summary] = await db
+    .selectFrom(latestReviews(db, subject).as("latest"))
+    .select([
+      sql<number>`COUNT(*)::int`.as("count"),
+      sql<number | null>`AVG(rating)::float8`.as("averageRating"),
+    ])
+    .where(matchesLabelled(labelled, "latest.uri", "latest.cid"))
+    .execute(abortable(signal));
+  return summary;
+}
 
 /**
  * Loads the viewer's newest review of `subject`, or `null` if they're signed
@@ -84,7 +92,10 @@ export const loadReviewSummary = cache(
 export async function loadViewerReview(
   subject: SubjectUri,
   viewer: Viewer,
-  { labelled }: { labelled: LabelledFilter },
+  {
+    labelled,
+    signal = AbortSignal.timeout(CHEAP_QUERY_TIMEOUT_MS),
+  }: { labelled: LabelledFilter; signal?: AbortSignal },
 ): Promise<Review | null> {
   if (!viewer) {
     return null;
@@ -105,7 +116,7 @@ export async function loadViewerReview(
     .selectFrom(latest.as("latest"))
     .select(["uri", "cid", "author", "rating", "text", "createdAt"])
     .where(matchesLabelled(labelled, "latest.uri", "latest.cid"))
-    .executeTakeFirst();
+    .executeTakeFirst(abortable(signal));
 
   return row ?? null;
 }
@@ -121,7 +132,13 @@ export async function loadAuthorReviews(
     labelled,
     cursor,
     limit,
-  }: { labelled: LabelledFilter; cursor?: string; limit: number },
+    signal,
+  }: {
+    labelled: LabelledFilter;
+    cursor?: string;
+    limit: number;
+    signal?: AbortSignal;
+  },
 ): Promise<Page<AuthoredReview>> {
   const position = cursor ? decodeCursor(cursor) : undefined;
   if (position === null) {
@@ -159,7 +176,7 @@ export async function loadAuthorReviews(
     .orderBy("author", "desc")
     .orderBy("rkey", "desc")
     .limit(limit + 1)
-    .execute();
+    .execute(abortable(signal));
 
   const page = toPage(rows, limit, ({ sortAt, author, rkey }) => ({
     sortAt,

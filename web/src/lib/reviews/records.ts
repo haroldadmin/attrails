@@ -1,8 +1,8 @@
 import "server-only";
 
 import { type Agent, Client, currentDatetimeString } from "@atproto/lex";
+import { AtUri } from "@atproto/syntax";
 import { app } from "@/lexicons";
-import { parseRecordUri } from "@/lib/identity";
 import { logger } from "@/lib/logger";
 import { loadViewerReview } from "./queries";
 import type { ReviewDraft, Subject } from "./shared";
@@ -26,7 +26,7 @@ export async function saveReview(
 ): Promise<SaveReviewResult> {
   const client = new Client(agent);
   const did = client.assertDid;
-  if (parseRecordUri(subject.uri)?.did === did) {
+  if (new AtUri(subject.uri).hostname === did) {
     return { ok: false, reason: "self-review" };
   }
 
@@ -47,8 +47,8 @@ export async function saveReview(
       { did },
       { labelled: "include" },
     );
-    const rkey = latest && parseRecordUri(latest.uri)?.rkey;
-    if (rkey) {
+    if (latest) {
+      const { rkey } = new AtUri(latest.uri);
       await client.put(review, record.value, { rkey });
       return { ok: true, outcome: "updated" };
     }
@@ -83,11 +83,11 @@ export async function deleteReview(
       { did },
       { labelled: "include" },
     );
-    const rkey = latest && parseRecordUri(latest.uri)?.rkey;
-    if (!rkey) {
+    if (!latest) {
       return { ok: false, reason: "not-found" };
     }
 
+    const { rkey } = new AtUri(latest.uri);
     await client.delete(review, { rkey });
     return { ok: true };
   } catch (error) {

@@ -5,23 +5,6 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  {
-    rules: {
-      // Each domain module is used only through its entry points.
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["@/lib/reviews/*", "!@/lib/reviews/shared"],
-              message:
-                "Import from `@/lib/reviews`, or `@/lib/reviews/shared` in client components.",
-            },
-          ],
-        },
-      ],
-    },
-  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

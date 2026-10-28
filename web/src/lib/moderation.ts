@@ -1,7 +1,7 @@
 import "server-only";
 
 import { type RawBuilder, sql } from "kysely";
-import { getDb } from "@/db/client";
+import { abortable, CHEAP_QUERY_TIMEOUT_MS, getDb } from "@/db/client";
 
 /**
  * Which records to keep based on their moderation labels: all of them, only
@@ -47,6 +47,9 @@ export function matchesLabelled(
  */
 export async function loadLabelledUris(
   records: readonly { uri: string; cid: string }[],
+  {
+    signal = AbortSignal.timeout(CHEAP_QUERY_TIMEOUT_MS),
+  }: { signal?: AbortSignal } = {},
 ): Promise<Set<string>> {
   if (records.length === 0) {
     return new Set();
@@ -64,7 +67,7 @@ export async function loadLabelledUris(
         records.map(({ uri, cid }) => eb.tuple(uri, cid)),
       ),
     )
-    .execute();
+    .execute(abortable(signal));
 
   return new Set(rows.map((row) => row.uri));
 }

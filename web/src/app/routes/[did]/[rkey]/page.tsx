@@ -23,7 +23,6 @@ import {
   loadReviewSummary,
   loadReviews,
   loadViewerReview,
-  type Review,
 } from "@/lib/reviews";
 import { fetchRoute, type Route } from "@/lib/routes";
 import { unitsForLocale } from "@/i18n/units";
@@ -284,15 +283,20 @@ async function RouteReviews({ route }: { route: Route }) {
   const session = await getSession();
   const viewer = session ? { did: session.did } : null;
 
-  const [othersReviews, viewerReview, format] = await Promise.all([
+  const [viewerReview, latestReviews, format] = await Promise.all([
+    loadViewerReview(route, viewer, { labelled: "include" }),
     loadReviews(route, {
       labelled: "exclude",
       limit: viewer === null ? 1 : 10,
     }),
-    loadViewerReview(route, viewer, { labelled: "include" }),
     getFormatter(),
   ]);
-  const reviews = withViewerReview(othersReviews, viewerReview);
+  const reviews = viewerReview
+    ? [
+        viewerReview,
+        ...latestReviews.filter(({ author }) => author !== viewer?.did),
+      ]
+    : latestReviews;
 
   const [authors, labelled] = await Promise.all([
     fetchAuthorProfiles(reviews.map((review) => review.author)),
@@ -361,17 +365,6 @@ async function RouteReviews({ route }: { route: Route }) {
         </ol>
       )}
     </section>
-  );
-}
-
-// The viewer always sees their own review, even when it has moderation labels.
-function withViewerReview(reviews: Review[], viewerReview: Review | null) {
-  if (!viewerReview || reviews.some(({ uri }) => uri === viewerReview.uri)) {
-    return reviews;
-  }
-
-  return [...reviews, viewerReview].sort((a, b) =>
-    Temporal.Instant.compare(b.createdAt, a.createdAt),
   );
 }
 

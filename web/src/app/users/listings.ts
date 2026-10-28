@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getFormatter } from "next-intl/server";
-import { parseRecordUri } from "@/lib/identity";
+import { AtUri } from "@atproto/syntax";
 import { loadLabelledUris } from "@/lib/moderation";
 import { loadAuthorReviews } from "@/lib/reviews";
 import { fetchRoutesByAuthor, loadRouteNames } from "@/lib/routes";
@@ -82,11 +82,12 @@ export async function fetchReviewList(
     ...page,
     // Reviews of routes that have been deleted are left out.
     items: page.items.flatMap((review) => {
-      const route = parseRecordUri(review.subject.uri);
       const name = routeNames.get(review.subject.uri);
-      if (!route || name === undefined) {
+      if (name === undefined) {
         return [];
       }
+
+      const route = new AtUri(review.subject.uri);
 
       return {
         uri: review.uri,
@@ -97,7 +98,7 @@ export async function fetchReviewList(
           dateStyle: "long",
         }),
         labelled: labelled.has(review.uri),
-        route: { did: route.did, rkey: route.rkey, name },
+        route: { did: route.hostname, rkey: route.rkey, name },
       };
     }),
   };

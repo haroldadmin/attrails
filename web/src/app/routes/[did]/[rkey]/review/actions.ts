@@ -1,5 +1,6 @@
 "use server";
 
+import { AtUri } from "@atproto/syntax";
 import { redirect } from "next/navigation";
 import { assertSession } from "@/auth/session";
 import { app } from "@/lexicons";
@@ -79,10 +80,8 @@ export async function deleteRouteReview(
   const routePath = `/routes/${routeDid}/${routeRkey}`;
   const session = await assertSession(`${routePath}/review`);
 
-  const subject = {
-    uri: `at://${routeDid}/${app.attrails.route.$type}/${routeRkey}`,
-  };
-  const result = await deleteReview(session, subject);
+  const subject = AtUri.make(routeDid, app.attrails.route.$type, routeRkey);
+  const result = await deleteReview(session, { uri: subject.toString() });
   if (!result.ok) {
     return { error: DELETE_ERROR_MESSAGES[result.reason] };
   }
