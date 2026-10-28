@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { type ChangeEvent, useState, useSyncExternalStore } from "react";
+import { type ChangeEvent, useState } from "react";
 import {
   GPX_MAX_SIZE_BYTES,
   type Gpx,
@@ -25,7 +25,6 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const ios = useSyncExternalStore(subscribeToNothing, isIos, () => false);
 
   async function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
@@ -104,7 +103,9 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
           name="gpx"
           type="file"
           className="absolute inset-0 cursor-pointer opacity-0"
-          accept={ios ? undefined : ".gpx,application/gpx+xml"}
+          // Only the extension: on iOS, a MIME type here can match a type an
+          // installed app declares for GPX, which then disables GPX files.
+          accept=".gpx"
           aria-invalid={error ? true : undefined}
           aria-describedby="gpx-hint"
           onChange={handleChange}
@@ -122,23 +123,6 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
         {error ?? "Export your route as a GPX file from your app or device."}
       </p>
     </fieldset>
-  );
-}
-
-function subscribeToNothing() {
-  return () => {};
-}
-
-/**
- * Whether the file picker is iOS's. It turns `accept` into file types, and
- * GPX has no built-in one (only what installed apps declare), so it can
- * disable GPX files. The file's contents are checked once it's chosen anyway.
- */
-function isIos() {
-  return (
-    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-    // iPadOS reports itself as a Mac.
-    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
   );
 }
 
