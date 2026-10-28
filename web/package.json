@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
+    "@tailwindcss/typography": "0.5.20",
     "@types/d3-geo": "3.1.1",
     "@types/geojson": "7946.0.16",
     "@types/negotiator": "0.6.5",
