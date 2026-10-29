@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/author";
 import {
   ACTOR_QUERY_MAX_LENGTH,
@@ -10,6 +10,8 @@ import {
 
 const DEBOUNCE_MS = 200;
 const LIST_ID = "handle-suggestions";
+// How far a finger may move (px) and still count as a tap rather than a scroll.
+const TAP_SLOP = 10;
 
 /**
  * Handle input that suggests matching Bluesky accounts as the reader types.
@@ -19,6 +21,7 @@ export function HandleField({ defaultValue }: { defaultValue: string }) {
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<ActorSuggestion[]>([]);
   const [active, setActive] = useState(-1);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const query = handle.trim().replace(/^@/, "");
   const searchable = open && query.length >= ACTOR_QUERY_MIN_LENGTH;
@@ -129,6 +132,27 @@ export function HandleField({ defaultValue }: { defaultValue: string }) {
             aria-selected={index === active}
             className="flex items-center gap-3 rounded-field px-3 py-2 cursor-pointer hover:bg-base-200/60 aria-selected:bg-base-200/60"
             onPointerDown={(event) => event.preventDefault()}
+            onTouchStart={(event) => {
+              const touch = event.touches[0];
+              touchStart.current = { x: touch.clientX, y: touch.clientY };
+            }}
+            onTouchEnd={(event) => {
+              // Mobile browsers blur the input on tap even when pointerdown is
+              // cancelled, hiding the list before the click lands. Choose on
+              // touchend instead and cancel the blur and the follow-up click.
+              const start = touchStart.current;
+              const touch = event.changedTouches[0];
+              touchStart.current = null;
+              if (
+                !start ||
+                Math.hypot(touch.clientX - start.x, touch.clientY - start.y) >
+                  TAP_SLOP
+              ) {
+                return;
+              }
+              event.preventDefault();
+              choose(item);
+            }}
             onClick={() => choose(item)}
           >
             <Avatar profile={item} />
