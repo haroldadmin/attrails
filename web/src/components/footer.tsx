@@ -2,77 +2,57 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="w-full max-w-7xl mx-auto px-4 sm:px-16">
-      <nav aria-label="Footer" className="py-4 border-t border-base-300">
-        <ul className="flex flex-row flex-wrap gap-x-6 gap-y-2 text-sm">
-          <li>
-            <Link className="link-hover" href="/">
-              Home
-            </Link>
-          </li>
-          <li>
-            <Link className="link-hover" href="/routes?activity=running">
-              Running
-            </Link>
-          </li>
-          <li>
-            <Link className="link-hover" href="/routes?activity=cycling">
-              Cycling
-            </Link>
-          </li>
-          <li>
-            <Link className="link-hover" href="/routes?activity=hiking">
-              Hiking
-            </Link>
-          </li>
-          <li>
-            <Link className="link-hover" href="/routes?activity=walking">
-              Walking
-            </Link>
-          </li>
-          <li>
-            <Link className="link-hover" href="/about">
-              About
-            </Link>
-          </li>
-          <li>
-            <Link className="link-hover" href="/moderation">
-              Moderation
-            </Link>
-          </li>
-          <li>
-            <Link className="link-hover" href="/faq">
-              FAQ
-            </Link>
-          </li>
-          <li>
-            <Link className="link-hover" href="/privacy">
-              Privacy
-            </Link>
-          </li>
-          <li>
-            <Link className="link-hover" href="/terms">
-              Terms
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="link-hover"
-              href="https://github.com/haroldadmin/attrails"
-              target="_blank"
-            >
-              Source code
-            </Link>
-          </li>
-          <li>
-            <a
-              className="link-hover"
-              href="https://bsky.app/profile/attrails.app"
-            >
-              @attrails.app on Bluesky
-            </a>
-          </li>
+    <footer className="footer sm:footer-horizontal p-10 max-w-7xl mx-auto px-4 sm:px-16 ">
+      <nav>
+        <h6 className="footer-title">Explore</h6>
+        <ul className="flex flex-col gap-y-4 text-sm">
+          <Link className="link link-hover" href="/routes?activity=running">
+            Running
+          </Link>
+          <Link className="link link-hover" href="/routes?activity=cycling">
+            Cycling
+          </Link>
+          <Link className="link link-hover" href="/routes?activity=hiking">
+            Hiking
+          </Link>
+          <Link className="link link-hover" href="/routes?activity=walking">
+            Walking
+          </Link>
         </ul>
+      </nav>
+      <nav>
+        <h6 className="footer-title">Resources</h6>
+        <Link className="link link-hover" href="/about">
+          About
+        </Link>
+        <Link className="link link-hover" href="/moderation">
+          Moderation
+        </Link>
+        <Link className="link link-hover" href="/faq">
+          FAQ
+        </Link>
+        <Link className="link link-hover" href="/privacy">
+          Privacy
+        </Link>
+        <Link className="link link-hover" href="/terms">
+          Terms
+        </Link>
+      </nav>
+      <nav>
+        <h6 className="footer-title">About</h6>
+        <Link
+          className="link link-hover"
+          href="https://github.com/haroldadmin/attrails"
+          target="_blank"
+        >
+          Source code
+        </Link>
+        <a
+          className="link link-hover"
+          href="https://bsky.app/profile/attrails.app"
+        >
+          @attrails.app
+        </a>
       </nav>
     </footer>
   );
