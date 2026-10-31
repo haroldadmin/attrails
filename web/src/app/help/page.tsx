@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { EXPORT_SOURCES, exportGuideHref } from "./export/sources";
+import { EXPORT_GUIDES } from "./export-guides";
 
 export const metadata: Metadata = {
   title: "Help",
@@ -18,17 +18,39 @@ export default function HelpPage() {
           <h2 id="export-heading">Bring routes from other apps</h2>
           <p>
             ATTrails shares routes as GPX files. Most route and fitness apps can
-            export one:
+            export one, and explain how in their own help:
           </p>
           <ul>
-            {EXPORT_SOURCES.map((source) => (
-              <li key={source.slug}>
-                <Link href={exportGuideHref(source)}>
-                  Export a route from {source.name}
-                </Link>
+            {EXPORT_GUIDES.map((guide) => (
+              <li key={guide.name}>
+                <a href={guide.href}>Export a route from {guide.name}</a>
               </li>
             ))}
           </ul>
+        </section>
+
+        <section aria-labelledby="before-heading">
+          <h2 id="before-heading">Before you share</h2>
+          <ul>
+            <li>
+              Only share routes you made or have permission to share. See our{" "}
+              <Link href="/terms">Terms of Service</Link>.
+            </li>
+            <li>
+              Recorded activities often start and end at home. Check where your
+              route starts and finishes, and leave out anything you&apos;d
+              rather keep private.
+            </li>
+          </ul>
+          <p>
+            Once you have the GPX file, upload it with a name and a few details.
+            It&apos;s saved to your own account.
+          </p>
+          <p className="not-prose">
+            <Link className="btn btn-primary" href="/routes/new">
+              Share a route
+            </Link>
+          </p>
         </section>
 
         <section aria-labelledby="contact-heading">

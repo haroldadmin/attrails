@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { type ChangeEvent, Fragment, useState } from "react";
-import { EXPORT_SOURCES, exportGuideHref } from "@/app/help/export/sources";
+import { EXPORT_GUIDES } from "@/app/help/export-guides";
 import {
   GPX_MAX_SIZE_BYTES,
   type Gpx,
@@ -127,17 +127,17 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
         {/* One flex item, so `label` doesn't space out the commas. */}
         <span>
           How to export from{" "}
-          {EXPORT_SOURCES.map((source, index) => (
-            <Fragment key={source.slug}>
-              {index > 0 && (index < EXPORT_SOURCES.length - 1 ? ", " : " or ")}
+          {EXPORT_GUIDES.map((guide, index) => (
+            <Fragment key={guide.name}>
+              {index > 0 && (index < EXPORT_GUIDES.length - 1 ? ", " : " or ")}
               {/* A new tab, so the form keeps what's been filled in. */}
               <a
                 className="link"
-                href={exportGuideHref(source)}
+                href={guide.href}
                 target="_blank"
                 rel="noopener"
               >
-                {source.name}
+                {guide.name}
               </a>
             </Fragment>
           ))}
