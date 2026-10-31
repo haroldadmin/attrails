@@ -49,6 +49,7 @@
   "devDependencies": {
     "@atproto/common-web": "0.5.15",
     "@tailwindcss/turbopack": "4.3.3",
+    "@tailwindcss/typography": "0.5.20",
     "@testcontainers/postgresql": "12.2.1",
     "@types/d3-geo": "3.1.1",
     "@types/geojson": "7946.0.16",

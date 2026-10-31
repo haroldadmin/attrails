@@ -9,6 +9,25 @@
   themes: light --default;
 }
 
+/* daisyUI maps the `prose` colours to the theme. */
+@plugin "@tailwindcss/typography";
+
+/*
+ * Matches `prose` to the rest of ATTrails: serif page and section headings,
+ * and links in the primary colour. `:is()` outranks the plugin's `:where()`.
+ */
+@utility prose-attrails {
+  & :is(h1, h2):not(:where([class~="not-prose"] *)) {
+    font-family: var(--font-serif);
+    font-weight: 400;
+  }
+
+  & :is(a):not(:where([class~="not-prose"] *)) {
+    color: var(--color-primary);
+    font-weight: inherit;
+  }
+}
+
 @plugin "daisyui/theme" {
   name: "attrails";
   default: true;
