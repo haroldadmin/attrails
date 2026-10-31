@@ -9,6 +9,7 @@ import {
   isGpxLoop,
   parseGpx,
   serializeGpx,
+  trimGpx,
 } from ".";
 
 // One degree of latitude, in meters.
@@ -179,6 +180,111 @@ describe("derived values", () => {
         [2, 2],
       ],
     ]);
+  });
+});
+
+describe("trimGpx", () => {
+  function meters(lat: number): number {
+    return lat * DEGREE;
+  }
+
+  function line(fromM: number, toM: number): string[] {
+    return [trkpt(fromM / DEGREE, 0), trkpt(toM / DEGREE, 0)];
+  }
+
+  test("cuts exactly 200 m from each end of a path", () => {
+    const gpx = trimGpx(parseGpx(gpx11(track(line(0, 1000)))))!;
+
+    const [points] = gpx.tracks[0].segments;
+    expect(points).toHaveLength(2);
+    expect(meters(points[0].lat)).toBeCloseTo(200, 1);
+    expect(meters(points[1].lat)).toBeCloseTo(800, 1);
+    expect(gpxDistance(gpx)).toBeCloseTo(600, 1);
+  });
+
+  test("interpolates elevation at the cuts", () => {
+    const gpx = trimGpx(
+      parseGpx(gpx11(track([trkpt(0, 0, 100), trkpt(1000 / DEGREE, 0, 200)]))),
+    )!;
+
+    const [points] = gpx.tracks[0].segments;
+    expect(points[0].ele).toBeCloseTo(120);
+    expect(points[1].ele).toBeCloseTo(180);
+  });
+
+  test("leaves no point from the hidden ends of a track and a route of the same path", () => {
+    const route = `<rte><rtept lat="0" lon="0"/><rtept lat="${1000 / DEGREE}" lon="0"/></rte>`;
+    const gpx = trimGpx(parseGpx(gpx11(track(line(0, 1000)) + route)))!;
+
+    const lats = gpxPath(gpx)
+      .coordinates.flat()
+      .map(([, lat]) => meters(lat));
+    expect(Math.min(...lats)).toBeCloseTo(200, 1);
+    expect(Math.max(...lats)).toBeCloseTo(800, 1);
+  });
+
+  test("walks across segments, dropping those it covers entirely", () => {
+    const gpx = trimGpx(
+      parseGpx(gpx11(track(line(0, 150), line(1000, 1300), line(2000, 2150)))),
+    )!;
+
+    const [points] = gpx.tracks[0].segments;
+    expect(gpx.tracks[0].segments).toHaveLength(1);
+    expect(meters(points[0].lat)).toBeCloseTo(1050, 1);
+    expect(meters(points[1].lat)).toBeCloseTo(1250, 1);
+  });
+
+  test("drops paths too short to have anything left", () => {
+    const gpx = trimGpx(
+      parseGpx(gpx11(track(line(0, 300)) + track(line(1000, 2000)))),
+    )!;
+
+    expect(gpx.tracks).toHaveLength(1);
+    expect(gpxDistance(gpx)).toBeCloseTo(600, 1);
+  });
+
+  test("removes waypoints near the ends and keeps the others", () => {
+    const wpt = (name: string, m: number) =>
+      `<wpt lat="${m / DEGREE}" lon="0"><name>${name}</name></wpt>`;
+    const gpx = trimGpx(
+      parseGpx(
+        gpx11(wpt("Home", 100) + wpt("Viewpoint", 500) + track(line(0, 1000))),
+      ),
+    )!;
+
+    expect(gpx.waypoints.map(({ name }) => name)).toEqual(["Viewpoint"]);
+  });
+
+  test("needs a route of at least 500 m", () => {
+    expect(trimGpx(parseGpx(gpx11(track(line(0, 499)))))).toBeUndefined();
+    expect(trimGpx(parseGpx(gpx11(track(line(0, 501)))))).toBeDefined();
+  });
+
+  test("needs something to be left", () => {
+    const gpx = parseGpx(gpx11(track(line(0, 300)) + track(line(1000, 1300))));
+
+    expect(gpxDistance(gpx)).toBeGreaterThan(500);
+    expect(trimGpx(gpx)).toBeUndefined();
+  });
+
+  test("survives serializing", () => {
+    const gpx = trimGpx(parseGpx(gpx11(track(line(0, 1000)))))!;
+
+    expect(gpxDistance(parseGpx(serializeGpx(gpx)))).toBeCloseTo(600, 0);
+  });
+
+  test("can bring a route under the size limit", () => {
+    const idle = Array.from({ length: 40_000 }, (_, index) =>
+      trkpt(51 + index / 40_000_000, 1),
+    );
+    const gpx = parseGpx(gpx11(track([...idle, trkpt(51.1, 1)])));
+    expect(new Blob([serializeGpx(gpx)]).size).toBeGreaterThan(
+      GPX_MAX_SIZE_BYTES,
+    );
+
+    expect(new Blob([serializeGpx(trimGpx(gpx)!)]).size).toBeLessThan(
+      GPX_MAX_SIZE_BYTES,
+    );
   });
 });
 

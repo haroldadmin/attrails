@@ -78,6 +78,6 @@ function lines(gpx: Gpx): (readonly GpxPoint[])[] {
   ];
 }
 
-function distanceBetween(a: GpxPoint, b: GpxPoint): number {
+export function distanceBetween(a: GpxPoint, b: GpxPoint): number {
   return geoDistance([a.lon, a.lat], [b.lon, b.lat]) * EARTH_RADIUS_METERS;
 }

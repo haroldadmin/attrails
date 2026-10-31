@@ -7,6 +7,7 @@ export {
   gpxPath,
   isGpxLoop,
 } from "./derive";
+export { GPX_TRIM_METERS, GPX_TRIM_MIN_METERS, trimGpx } from "./trim";
 export {
   type Gpx,
   GpxError,

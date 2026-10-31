@@ -88,7 +88,11 @@ export function UploadRouteForm({
       </div>
 
       <div className="flex flex-col gap-4 lg:sticky lg:top-8 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        <GpxFileInput onChange={handleGpxChange} />
+        <GpxFileInput
+          onChange={handleGpxChange}
+          locale={locale}
+          units={units}
+        />
         {gpx && <GpxPreview gpx={gpx} locale={locale} units={units} />}
       </div>
 
