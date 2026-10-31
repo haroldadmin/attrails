@@ -1,31 +1,78 @@
 "use client";
 
 import clsx from "clsx";
-import { type ChangeEvent, Fragment, useState } from "react";
+import convert from "convert";
+import type { MultiLineString } from "geojson";
+import { type ChangeEvent, Fragment, useRef, useState } from "react";
 import { EXPORT_GUIDES } from "@/app/faq/export-guides";
+import { createFormats } from "@/i18n/formats";
+import type { Units } from "@/i18n/units";
 import {
   GPX_MAX_SIZE_BYTES,
+  GPX_TRIM_METERS,
+  GPX_TRIM_MIN_METERS,
   type Gpx,
   GpxError,
   parseGpx,
   serializeGpx,
+  type TrimmedGpx,
+  trimGpx,
 } from "@/lib/gpx";
 import { GPX_TOO_LARGE_MESSAGE, gpxErrorMessage } from "./gpx-messages";
 
+export type GpxUpload = { gpx: Gpx; removed?: MultiLineString };
+
 export type GpxFileInputProps = {
-  /** Called with the chosen file once it's read, or `null` when it's cleared. */
-  onChange: (gpx: Gpx | null) => void;
+  onChange: (upload: GpxUpload | null) => void;
+  locale: string;
+  units: Units;
+};
+
+type Source = {
+  file: File;
+  gpx: Gpx;
+  trimmed: TrimmedGpx | undefined;
 };
 
 /**
- * A file input for GPX files that users can also drop a file onto. Files over
- * the size limit are replaced with a compact copy when that fits.
+ * A file input for GPX files that users can also drop a file onto. It always
+ * holds the file to upload, which is a compact copy if the route is trimmed or
+ * over the size limit.
  */
-export function GpxFileInput({ onChange }: GpxFileInputProps) {
+export function GpxFileInput({ onChange, locale, units }: GpxFileInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [source, setSource] = useState<Source | null>(null);
+  const [trim, setTrim] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const loaded = source !== null;
+
+  function prepareUpload(
+    input: HTMLInputElement,
+    { file, gpx, trimmed }: Source,
+    trim: boolean,
+  ) {
+    const upload: GpxUpload = (trim && trimmed) || { gpx };
+    const uploadFile =
+      upload.gpx === gpx && file.size <= GPX_MAX_SIZE_BYTES
+        ? file
+        : new File([serializeGpx(upload.gpx)], file.name, {
+            type: "application/gpx+xml",
+          });
+
+    if (input.files?.[0] !== uploadFile) {
+      const transfer = new DataTransfer();
+      transfer.items.add(uploadFile);
+      input.files = transfer.files;
+    }
+
+    const message =
+      uploadFile.size > GPX_MAX_SIZE_BYTES ? GPX_TOO_LARGE_MESSAGE : null;
+    input.setCustomValidity(message ?? "");
+    setError(message);
+    onChange(upload);
+  }
 
   async function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
@@ -33,30 +80,37 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
     setDragging(false);
     setFileName(file?.name ?? null);
     setError(null);
-    setLoaded(false);
-    input.setCustomValidity("");
+    setSource(null);
+    // The checkbox may still be on, so the raw file mustn't be submitted yet.
+    input.setCustomValidity(file ? "This file is still being read." : "");
     onChange(null);
 
-    const result = file ? await readGpxFile(file) : null;
+    if (!file) {
+      return;
+    }
+
+    const result = await readGpxFile(file);
     // A newer file may have been chosen while this one was being read.
     if (input.files?.[0] !== file) {
       return;
     }
 
-    const message = result && "error" in result ? result.error : null;
-    input.setCustomValidity(message ?? "");
-    setError(message);
-    if (!result || "error" in result) {
+    if ("error" in result) {
+      input.setCustomValidity(result.error);
+      setError(result.error);
       return;
     }
 
-    if (result.file !== file) {
-      const transfer = new DataTransfer();
-      transfer.items.add(result.file);
-      input.files = transfer.files;
+    const source = { file, gpx: result.gpx, trimmed: trimGpx(result.gpx) };
+    setSource(source);
+    prepareUpload(input, source, trim);
+  }
+
+  function handleTrimChange(event: ChangeEvent<HTMLInputElement>) {
+    setTrim(event.currentTarget.checked);
+    if (source && inputRef.current) {
+      prepareUpload(inputRef.current, source, event.currentTarget.checked);
     }
-    setLoaded(true);
-    onChange(result.gpx);
   }
 
   return (
@@ -100,6 +154,7 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
           )}
         </p>
         <input
+          ref={inputRef}
           id="gpx"
           name="gpx"
           type="file"
@@ -123,6 +178,26 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
       >
         {error ?? "Export your route as a GPX file from your app or device."}
       </p>
+      {source && (
+        <>
+          <label className="label mt-2 whitespace-normal text-base-content">
+            <input
+              type="checkbox"
+              className="checkbox"
+              checked={trim && source.trimmed !== undefined}
+              disabled={!source.trimmed}
+              aria-describedby="trim-hint"
+              onChange={handleTrimChange}
+            />
+            Hide where I start and finish
+          </label>
+          <p id="trim-hint" className="label whitespace-normal">
+            {source.trimmed
+              ? `Removes ${formatLength(GPX_TRIM_METERS, locale, units)} from each end of your route. You can't add them back later.`
+              : `Only available for routes of ${formatLength(GPX_TRIM_MIN_METERS, locale, units)} or more.`}
+          </p>
+        </>
+      )}
       {!loaded && (
         <div role="note" className="alert alert-info mt-2">
           <p>
@@ -150,12 +225,24 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
   );
 }
 
-type ReadResult = { gpx: Gpx; file: File } | { error: string };
+function formatLength(meters: number, locale: string, units: Units): string {
+  const { distance, elevation } = createFormats(units).number;
+  const length = convert(meters, "meters");
+  if (units.elevation === "meter") {
+    return new Intl.NumberFormat(locale, elevation).format(meters);
+  }
+
+  const feet = length.to(units.elevation);
+  return feet < 1000
+    ? `about ${new Intl.NumberFormat(locale, elevation).format(Math.round(feet / 50) * 50)}`
+    : `about ${new Intl.NumberFormat(locale, distance).format(length.to(units.distance))}`;
+}
+
+type ReadResult = { gpx: Gpx } | { error: string };
 
 async function readGpxFile(file: File): Promise<ReadResult> {
-  let gpx;
   try {
-    gpx = parseGpx(await file.text());
+    return { gpx: parseGpx(await file.text()) };
   } catch (error) {
     if (!(error instanceof GpxError)) {
       console.error(error);
@@ -166,15 +253,4 @@ async function readGpxFile(file: File): Promise<ReadResult> {
       ),
     };
   }
-
-  if (file.size <= GPX_MAX_SIZE_BYTES) {
-    return { gpx, file };
-  }
-
-  const compact = new File([serializeGpx(gpx)], file.name, {
-    type: "application/gpx+xml",
-  });
-  return compact.size <= GPX_MAX_SIZE_BYTES
-    ? { gpx, file: compact }
-    : { error: GPX_TOO_LARGE_MESSAGE };
 }
