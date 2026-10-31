@@ -1,7 +1,8 @@
 "use client";
 
 import clsx from "clsx";
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, Fragment, useState } from "react";
+import { EXPORT_GUIDES } from "@/app/faq/export-guides";
 import {
   GPX_MAX_SIZE_BYTES,
   type Gpx,
@@ -122,6 +123,29 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
       >
         {error ?? "Export your route as a GPX file from your app or device."}
       </p>
+      {!loaded && (
+        <div role="note" className="alert alert-info mt-2">
+          <p>
+            <strong>Is your route in another app?</strong> Export it as a GPX
+            file first. Here&apos;s how in{" "}
+            {EXPORT_GUIDES.map((guide, index) => (
+              <Fragment key={guide.name}>
+                {index > 0 &&
+                  (index < EXPORT_GUIDES.length - 1 ? ", " : " or ")}
+                <a
+                  className="link"
+                  href={guide.href}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  {guide.name}
+                </a>
+              </Fragment>
+            ))}
+            .
+          </p>
+        </div>
+      )}
     </fieldset>
   );
 }
