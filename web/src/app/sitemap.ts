@@ -15,7 +15,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
     { url: url("/about"), changeFrequency: "monthly", priority: 0.5 },
     { url: url("/moderation"), changeFrequency: "monthly", priority: 0.5 },
-    { url: url("/help"), changeFrequency: "monthly", priority: 0.5 },
+    { url: url("/faq"), changeFrequency: "monthly", priority: 0.5 },
     { url: url("/privacy"), changeFrequency: "yearly", priority: 0.3 },
     { url: url("/terms"), changeFrequency: "yearly", priority: 0.3 },
   ];

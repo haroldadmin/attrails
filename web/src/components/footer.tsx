@@ -41,8 +41,8 @@ export function Footer() {
             </Link>
           </li>
           <li>
-            <Link className="link-hover" href="/help">
-              Help
+            <Link className="link-hover" href="/faq">
+              FAQ
             </Link>
           </li>
           <li>
