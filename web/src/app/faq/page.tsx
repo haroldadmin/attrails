@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EXPORT_GUIDES } from "./export-guides";
-import { FaqItem } from "./faq-item";
-import { OpenLinkedFaq } from "./open-linked-faq";
 
 export const metadata: Metadata = {
   title: "FAQ",
@@ -12,18 +10,25 @@ export const metadata: Metadata = {
 
 export default function FaqPage() {
   return (
-    <main className="flex flex-col gap-8 px-4 py-8 sm:p-16">
-      <div className="prose prose-attrails">
-        <h1>Frequently asked questions</h1>
-      </div>
+    <main className="px-4 py-8 sm:p-16">
+      <article className="prose prose-attrails">
+        <hgroup>
+          <h1>Frequently asked questions</h1>
+          <p className="lead">
+            How ATTrails works, what happens to your data, and where to get
+            help.
+          </p>
+        </hgroup>
 
-      <div className="flex max-w-prose flex-col gap-2">
-        <FaqItem id="decentralised" question="How is ATTrails decentralised?">
+        <section aria-labelledby="decentralised">
+          <h2 id="decentralised">How is ATTrails decentralised?</h2>
           <p>
             ATTrails is built on the{" "}
-            <a href="https://atproto.com">AT Protocol</a>, the open network
-            behind Bluesky. Your account lives on a Personal Data Server (PDS):
-            Bluesky&apos;s, another provider&apos;s, or one you run yourself.
+            <a href="https://atproto.com" target="_blank" rel="noopener">
+              AT Protocol
+            </a>
+            , an open network for social apps. Your account lives on a Personal
+            Data Server (PDS), run by a provider you choose or by yourself.
           </p>
           <p>
             Routes and reviews are saved to your account and published to the
@@ -31,9 +36,10 @@ export default function FaqPage() {
             can show, search and map them. Any other app can do the same, so no
             single app controls them.
           </p>
-        </FaqItem>
+        </section>
 
-        <FaqItem id="data-ownership" question="Who owns my routes and reviews?">
+        <section aria-labelledby="data-ownership">
+          <h2 id="data-ownership">Who owns my routes and reviews?</h2>
           <p>
             You do. They&apos;re saved to your own account, not to ATTrails. You
             can edit or delete them whenever you like, and the changes reach
@@ -45,12 +51,12 @@ export default function FaqPage() {
             account. Our <Link href="/privacy">Privacy Policy</Link> explains
             what ATTrails itself keeps.
           </p>
-        </FaqItem>
+        </section>
 
-        <FaqItem
-          id="export-from-other-apps"
-          question="How do I share a route from Strava, Komoot or AllTrails?"
-        >
+        <section aria-labelledby="export-from-other-apps">
+          <h2 id="export-from-other-apps">
+            How do I share a route from Strava, Komoot or AllTrails?
+          </h2>
           <p>
             ATTrails supports GPX files for routes. Most route and fitness apps
             can export one, and explain how in their own help:
@@ -58,7 +64,9 @@ export default function FaqPage() {
           <ul>
             {EXPORT_GUIDES.map((guide) => (
               <li key={guide.name}>
-                <a href={guide.href}>Export a route from {guide.name}</a>
+                <a href={guide.href} target="_blank" rel="noopener">
+                  Export a route from {guide.name}
+                </a>
               </li>
             ))}
           </ul>
@@ -66,14 +74,25 @@ export default function FaqPage() {
             Then upload the file on the{" "}
             <Link href="/routes/new">Share a route</Link> page.
           </p>
-        </FaqItem>
+        </section>
 
-        <FaqItem id="report-issues" question="How do I report a problem?">
+        <section aria-labelledby="report-issues">
+          <h2 id="report-issues">How do I report a problem?</h2>
           <p>
             For bugs and feedback, message{" "}
-            <a href="https://bsky.app/profile/attrails.app">@attrails.app</a> on
-            Bluesky, or open an issue on our{" "}
-            <a href="https://github.com/haroldadmin/attrails/issues">
+            <a
+              href="https://bsky.app/profile/attrails.app"
+              target="_blank"
+              rel="noopener"
+            >
+              @attrails.app
+            </a>{" "}
+            on Bluesky, or open an issue on our{" "}
+            <a
+              href="https://github.com/haroldadmin/attrails/issues"
+              target="_blank"
+              rel="noopener"
+            >
               GitHub repository
             </a>
             .
@@ -85,15 +104,17 @@ export default function FaqPage() {
           </p>
           <p>
             Please report security vulnerabilities privately, through{" "}
-            <a href="https://github.com/haroldadmin/attrails/security/advisories/new">
+            <a
+              href="https://github.com/haroldadmin/attrails/security/advisories/new"
+              target="_blank"
+              rel="noopener"
+            >
               GitHub&apos;s private vulnerability reporting
             </a>
             , not in a public issue.
           </p>
-        </FaqItem>
-      </div>
-
-      <OpenLinkedFaq />
+        </section>
+      </article>
     </main>
   );
 }

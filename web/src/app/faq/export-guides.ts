@@ -1,4 +1,3 @@
-// Apps' own help articles on exporting a route as a GPX file.
 export const EXPORT_GUIDES = [
   {
     name: "Strava",
