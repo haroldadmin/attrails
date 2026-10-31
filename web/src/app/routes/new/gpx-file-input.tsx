@@ -125,7 +125,6 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
       </p>
       {!loaded && (
         <div role="note" className="alert alert-info mt-2">
-          {/* One grid item, so `alert` doesn't space out the commas. */}
           <p>
             <strong>Is your route in another app?</strong> Export it as a GPX
             file first. Here&apos;s how in{" "}
@@ -133,7 +132,6 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
               <Fragment key={guide.name}>
                 {index > 0 &&
                   (index < EXPORT_GUIDES.length - 1 ? ", " : " or ")}
-                {/* A new tab, so the form keeps what's been filled in. */}
                 <a
                   className="link"
                   href={guide.href}

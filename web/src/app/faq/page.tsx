@@ -14,7 +14,7 @@ export default function FaqPage() {
       <article className="prose prose-attrails">
         <hgroup>
           <h1>Frequently asked questions</h1>
-          <p className="lead">
+          <p>
             How ATTrails works, what happens to your data, and where to get
             help.
           </p>
@@ -98,9 +98,16 @@ export default function FaqPage() {
             .
           </p>
           <p>
-            To flag a route or review, mention @attrails.app on Bluesky. Our{" "}
-            <Link href="/moderation">moderation page</Link> explains what
-            happens next.
+            To flag a route or review, mention{" "}
+            <a
+              href="https://bsky.app/profile/attrails.app"
+              target="_blank"
+              rel="noopener"
+            >
+              @attrails.app
+            </a>{" "}
+            on Bluesky. Our <Link href="/moderation">moderation page</Link>{" "}
+            explains what happens next.
           </p>
           <p>
             Please report security vulnerabilities privately, through{" "}
