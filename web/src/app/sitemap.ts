@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { ACTIVITY_FILTERS, activitySlug } from "@/lib/routes";
+import { EXPORT_SOURCES, exportGuideHref } from "./help/export/sources";
 import { SITE_URL } from "./shared-metadata";
 
 const url = (path: string) => new URL(path, SITE_URL).href;
@@ -15,6 +16,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
     { url: url("/about"), changeFrequency: "monthly", priority: 0.5 },
     { url: url("/moderation"), changeFrequency: "monthly", priority: 0.5 },
+    { url: url("/help"), changeFrequency: "monthly", priority: 0.5 },
+    ...EXPORT_SOURCES.map((source) => ({
+      url: url(exportGuideHref(source)),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    })),
     { url: url("/privacy"), changeFrequency: "yearly", priority: 0.3 },
     { url: url("/terms"), changeFrequency: "yearly", priority: 0.3 },
   ];

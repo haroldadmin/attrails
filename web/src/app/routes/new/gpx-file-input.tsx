@@ -1,7 +1,8 @@
 "use client";
 
 import clsx from "clsx";
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, Fragment, useState } from "react";
+import { EXPORT_SOURCES, exportGuideHref } from "@/app/help/export/sources";
 import {
   GPX_MAX_SIZE_BYTES,
   type Gpx,
@@ -121,6 +122,26 @@ export function GpxFileInput({ onChange }: GpxFileInputProps) {
         aria-live="polite"
       >
         {error ?? "Export your route as a GPX file from your app or device."}
+      </p>
+      <p className="label whitespace-normal">
+        {/* One flex item, so `label` doesn't space out the commas. */}
+        <span>
+          How to export from{" "}
+          {EXPORT_SOURCES.map((source, index) => (
+            <Fragment key={source.slug}>
+              {index > 0 && (index < EXPORT_SOURCES.length - 1 ? ", " : " or ")}
+              {/* A new tab, so the form keeps what's been filled in. */}
+              <a
+                className="link"
+                href={exportGuideHref(source)}
+                target="_blank"
+                rel="noopener"
+              >
+                {source.name}
+              </a>
+            </Fragment>
+          ))}
+        </span>
       </p>
     </fieldset>
   );
