@@ -10,10 +10,10 @@ import {
 } from "react";
 import { RouteFields } from "@/components/route-fields";
 import type { Units } from "@/i18n/units";
-import { type Gpx, gpxName } from "@/lib/gpx";
+import { gpxName } from "@/lib/gpx";
 import type { Option } from "@/lib/routes/shared";
 import { uploadRoute, type UploadRouteState } from "./actions";
-import { GpxFileInput } from "./gpx-file-input";
+import { GpxFileInput, type GpxUpload } from "./gpx-file-input";
 
 const GpxPreview = dynamic(() => import("./gpx-preview"), {
   ssr: false,
@@ -51,13 +51,13 @@ export function UploadRouteForm({
     initialState,
   );
   const formRef = useRef<HTMLFormElement>(null);
-  const [gpx, setGpx] = useState<Gpx | null>(null);
+  const [upload, setUpload] = useState<GpxUpload | null>(null);
 
-  function handleGpxChange(gpx: Gpx | null) {
-    setGpx(gpx);
+  function handleGpxChange(upload: GpxUpload | null) {
+    setUpload(upload);
 
     const name = formRef.current?.elements.namedItem("name");
-    const routeName = gpx && gpxName(gpx);
+    const routeName = upload && gpxName(upload.gpx);
     if (name instanceof HTMLInputElement && !name.value && routeName) {
       name.value = routeName.slice(0, name.maxLength);
     }
@@ -93,7 +93,14 @@ export function UploadRouteForm({
           locale={locale}
           units={units}
         />
-        {gpx && <GpxPreview gpx={gpx} locale={locale} units={units} />}
+        {upload && (
+          <GpxPreview
+            gpx={upload.gpx}
+            removed={upload.removed}
+            locale={locale}
+            units={units}
+          />
+        )}
       </div>
 
       <div className="flex flex-col gap-4">

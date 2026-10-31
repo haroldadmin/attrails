@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import convert from "convert";
+import type { MultiLineString } from "geojson";
 import { type ChangeEvent, Fragment, useRef, useState } from "react";
 import { EXPORT_GUIDES } from "@/app/faq/export-guides";
 import { createFormats } from "@/i18n/formats";
@@ -14,13 +15,15 @@ import {
   GpxError,
   parseGpx,
   serializeGpx,
+  type TrimmedGpx,
   trimGpx,
 } from "@/lib/gpx";
 import { GPX_TOO_LARGE_MESSAGE, gpxErrorMessage } from "./gpx-messages";
 
+export type GpxUpload = { gpx: Gpx; removed?: MultiLineString };
+
 export type GpxFileInputProps = {
-  /** Called with the route as it will be uploaded, or `null` if there's none. */
-  onChange: (gpx: Gpx | null) => void;
+  onChange: (upload: GpxUpload | null) => void;
   locale: string;
   units: Units;
 };
@@ -28,7 +31,7 @@ export type GpxFileInputProps = {
 type Source = {
   file: File;
   gpx: Gpx;
-  trimmed: Gpx | undefined;
+  trimmed: TrimmedGpx | undefined;
 };
 
 /**
@@ -45,37 +48,30 @@ export function GpxFileInput({ onChange, locale, units }: GpxFileInputProps) {
   const [dragging, setDragging] = useState(false);
   const loaded = source !== null;
 
-  const length = new Intl.NumberFormat(
-    locale,
-    createFormats(units).number.elevation,
-  );
-  const inLocalUnits = (meters: number) =>
-    length.format(convert(meters, "meters").to(units.elevation));
-
   function prepareUpload(
     input: HTMLInputElement,
     { file, gpx, trimmed }: Source,
     trim: boolean,
   ) {
-    const route = (trim && trimmed) || gpx;
-    const upload =
-      route === gpx && file.size <= GPX_MAX_SIZE_BYTES
+    const upload: GpxUpload = (trim && trimmed) || { gpx };
+    const uploadFile =
+      upload.gpx === gpx && file.size <= GPX_MAX_SIZE_BYTES
         ? file
-        : new File([serializeGpx(route)], file.name, {
+        : new File([serializeGpx(upload.gpx)], file.name, {
             type: "application/gpx+xml",
           });
 
-    if (input.files?.[0] !== upload) {
+    if (input.files?.[0] !== uploadFile) {
       const transfer = new DataTransfer();
-      transfer.items.add(upload);
+      transfer.items.add(uploadFile);
       input.files = transfer.files;
     }
 
     const message =
-      upload.size > GPX_MAX_SIZE_BYTES ? GPX_TOO_LARGE_MESSAGE : null;
+      uploadFile.size > GPX_MAX_SIZE_BYTES ? GPX_TOO_LARGE_MESSAGE : null;
     input.setCustomValidity(message ?? "");
     setError(message);
-    onChange(route);
+    onChange(upload);
   }
 
   async function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -193,12 +189,12 @@ export function GpxFileInput({ onChange, locale, units }: GpxFileInputProps) {
               aria-describedby="trim-hint"
               onChange={handleTrimChange}
             />
-            Hide the start and end of the route
+            Hide where I start and finish
           </label>
           <p id="trim-hint" className="label whitespace-normal">
             {source.trimmed
-              ? `Removes ${inLocalUnits(GPX_TRIM_METERS)} from each end before uploading, so the route doesn't show exactly where you started or finished.`
-              : `Only available for routes of ${inLocalUnits(GPX_TRIM_MIN_METERS)} or more.`}
+              ? `Removes ${formatLength(GPX_TRIM_METERS, locale, units)} from each end of your route. You can't add them back later.`
+              : `Only available for routes of ${formatLength(GPX_TRIM_MIN_METERS, locale, units)} or more.`}
           </p>
         </>
       )}
@@ -227,6 +223,19 @@ export function GpxFileInput({ onChange, locale, units }: GpxFileInputProps) {
       )}
     </fieldset>
   );
+}
+
+function formatLength(meters: number, locale: string, units: Units): string {
+  const { distance, elevation } = createFormats(units).number;
+  const length = convert(meters, "meters");
+  if (units.elevation === "meter") {
+    return new Intl.NumberFormat(locale, elevation).format(meters);
+  }
+
+  const feet = length.to(units.elevation);
+  return feet < 1000
+    ? `about ${new Intl.NumberFormat(locale, elevation).format(Math.round(feet / 50) * 50)}`
+    : `about ${new Intl.NumberFormat(locale, distance).format(length.to(units.distance))}`;
 }
 
 type ReadResult = { gpx: Gpx } | { error: string };

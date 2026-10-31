@@ -193,7 +193,7 @@ describe("trimGpx", () => {
   }
 
   test("cuts exactly 200 m from each end of a path", () => {
-    const gpx = trimGpx(parseGpx(gpx11(track(line(0, 1000)))))!;
+    const { gpx } = trimGpx(parseGpx(gpx11(track(line(0, 1000)))))!;
 
     const [points] = gpx.tracks[0].segments;
     expect(points).toHaveLength(2);
@@ -203,7 +203,7 @@ describe("trimGpx", () => {
   });
 
   test("interpolates elevation at the cuts", () => {
-    const gpx = trimGpx(
+    const { gpx } = trimGpx(
       parseGpx(gpx11(track([trkpt(0, 0, 100), trkpt(1000 / DEGREE, 0, 200)]))),
     )!;
 
@@ -214,7 +214,7 @@ describe("trimGpx", () => {
 
   test("leaves no point from the hidden ends of a track and a route of the same path", () => {
     const route = `<rte><rtept lat="0" lon="0"/><rtept lat="${1000 / DEGREE}" lon="0"/></rte>`;
-    const gpx = trimGpx(parseGpx(gpx11(track(line(0, 1000)) + route)))!;
+    const { gpx } = trimGpx(parseGpx(gpx11(track(line(0, 1000)) + route)))!;
 
     const lats = gpxPath(gpx)
       .coordinates.flat()
@@ -224,7 +224,7 @@ describe("trimGpx", () => {
   });
 
   test("walks across segments, dropping those it covers entirely", () => {
-    const gpx = trimGpx(
+    const { gpx } = trimGpx(
       parseGpx(gpx11(track(line(0, 150), line(1000, 1300), line(2000, 2150)))),
     )!;
 
@@ -235,7 +235,7 @@ describe("trimGpx", () => {
   });
 
   test("drops paths too short to have anything left", () => {
-    const gpx = trimGpx(
+    const { gpx } = trimGpx(
       parseGpx(gpx11(track(line(0, 300)) + track(line(1000, 2000)))),
     )!;
 
@@ -246,13 +246,28 @@ describe("trimGpx", () => {
   test("removes waypoints near the ends and keeps the others", () => {
     const wpt = (name: string, m: number) =>
       `<wpt lat="${m / DEGREE}" lon="0"><name>${name}</name></wpt>`;
-    const gpx = trimGpx(
+    const { gpx } = trimGpx(
       parseGpx(
         gpx11(wpt("Home", 100) + wpt("Viewpoint", 500) + track(line(0, 1000))),
       ),
     )!;
 
     expect(gpx.waypoints.map(({ name }) => name)).toEqual(["Viewpoint"]);
+  });
+
+  test("reports the sections it removed", () => {
+    const { removed } = trimGpx(
+      parseGpx(gpx11(track(line(0, 100), line(150, 1000)))),
+    )!;
+
+    const sections = removed.coordinates.map((section) =>
+      section.map(([, lat]) => Math.round(meters(lat))),
+    );
+    expect(sections).toEqual([
+      [0, 100],
+      [150, 250],
+      [800, 1000],
+    ]);
   });
 
   test("needs a route of at least 500 m", () => {
@@ -268,7 +283,7 @@ describe("trimGpx", () => {
   });
 
   test("survives serializing", () => {
-    const gpx = trimGpx(parseGpx(gpx11(track(line(0, 1000)))))!;
+    const { gpx } = trimGpx(parseGpx(gpx11(track(line(0, 1000)))))!;
 
     expect(gpxDistance(parseGpx(serializeGpx(gpx)))).toBeCloseTo(600, 0);
   });
@@ -282,7 +297,7 @@ describe("trimGpx", () => {
       GPX_MAX_SIZE_BYTES,
     );
 
-    expect(new Blob([serializeGpx(trimGpx(gpx)!)]).size).toBeLessThan(
+    expect(new Blob([serializeGpx(trimGpx(gpx)!.gpx)]).size).toBeLessThan(
       GPX_MAX_SIZE_BYTES,
     );
   });
