@@ -17,8 +17,8 @@ export default function HelpPage() {
         <section aria-labelledby="export-heading">
           <h2 id="export-heading">Bring routes from other apps</h2>
           <p>
-            ATTrails shares routes as GPX files. Most route and fitness apps can
-            export one, and explain how in their own help:
+            ATTrails supports GPX files for routes. Most route and fitness apps
+            can export one, and explain how in their own help:
           </p>
           <ul>
             {EXPORT_GUIDES.map((guide) => (
@@ -31,17 +31,10 @@ export default function HelpPage() {
 
         <section aria-labelledby="before-heading">
           <h2 id="before-heading">Before you share</h2>
-          <ul>
-            <li>
-              Only share routes you made or have permission to share. See our{" "}
-              <Link href="/terms">Terms of Service</Link>.
-            </li>
-            <li>
-              Recorded activities often start and end at home. Check where your
-              route starts and finishes, and leave out anything you&apos;d
-              rather keep private.
-            </li>
-          </ul>
+          <p>
+            Only share routes you made or have permission to share. See our{" "}
+            <Link href="/terms">Terms of Service</Link>.
+          </p>
           <p>
             Once you have the GPX file, upload it with a name and a few details.
             It&apos;s saved to your own account.
