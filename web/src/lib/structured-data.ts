@@ -8,11 +8,9 @@ import type {
   ProfilePage,
   WithContext,
 } from "schema-dts";
-import { activityLabel } from "@/lib/labels";
-import { profileName } from "@/lib/profile-name";
-import type { AuthorProfile } from "@/lib/profiles";
+import { type Profile, profileName } from "@/lib/profiles";
 import type { ReviewSummary } from "@/lib/reviews";
-import type { Route } from "@/lib/routes";
+import { activityLabel, type Route } from "@/lib/routes";
 
 export type JsonLdNode = WithContext<CreativeWork> | WithContext<ProfilePage>;
 
@@ -36,7 +34,7 @@ function distanceText(meters: number): string {
 }
 
 function personJsonLd(
-  profile: AuthorProfile,
+  profile: Profile,
   { includeBio = false }: { includeBio?: boolean } = {},
 ): Person {
   const url = `${SITE_URL}/users/${profile.did}`;
@@ -63,7 +61,7 @@ function personJsonLd(
  */
 export function routeJsonLd(
   route: Route,
-  author: AuthorProfile,
+  author: Profile,
   reviewSummary: ReviewSummary,
 ): WithContext<CreativeWork> {
   const url = `${SITE_URL}/routes/${route.did}/${route.rkey}`;
@@ -104,9 +102,7 @@ export function routeJsonLd(
 }
 
 /** Describes a public user profile page and the ATProto identity it belongs to. */
-export function profileJsonLd(
-  profile: AuthorProfile,
-): WithContext<ProfilePage> {
+export function profileJsonLd(profile: Profile): WithContext<ProfilePage> {
   const url = `${SITE_URL}/users/${profile.did}`;
 
   return {

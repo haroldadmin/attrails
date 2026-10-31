@@ -11,7 +11,7 @@ import {
 import { RouteFields } from "@/components/route-fields";
 import type { Units } from "@/i18n/units";
 import { type Gpx, gpxName } from "@/lib/gpx";
-import type { Option } from "@/lib/labels";
+import type { Option } from "@/lib/routes/shared";
 import { uploadRoute, type UploadRouteState } from "./actions";
 import { GpxFileInput } from "./gpx-file-input";
 

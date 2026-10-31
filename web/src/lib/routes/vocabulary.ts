@@ -1,8 +1,9 @@
+import "server-only";
+
 import { app } from "@/lexicons";
+import type { Option } from "./shared";
 
 const { defs } = app.attrails;
-
-export type Option = readonly [value: string, label: string];
 
 export const ACTIVITIES: readonly Option[] = [
   [defs.Cycling, "Cycling"],

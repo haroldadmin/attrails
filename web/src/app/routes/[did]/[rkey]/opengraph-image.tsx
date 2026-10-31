@@ -3,11 +3,13 @@ import { ImageResponse } from "next/og";
 import { getFormatter, getLocale } from "next-intl/server";
 import { OG_SIZE, OgCard, ogColors, ogFonts } from "@/components/og-card";
 import { unitsForLocale } from "@/i18n/units";
-import { activityLabel } from "@/lib/labels";
-import { profileName } from "@/lib/profile-name";
-import { fetchAuthorProfile } from "@/lib/profiles";
+import { fetchProfile, profileName } from "@/lib/profiles";
 import { projectPath } from "@/lib/route-path";
-import { fetchRouteCard, type RouteSummary } from "@/lib/routes";
+import {
+  activityLabel,
+  loadRouteSummary,
+  type RouteSummary,
+} from "@/lib/routes";
 import SiteImage from "@/app/opengraph-image";
 
 const PANEL_WIDTH = 520;
@@ -24,7 +26,10 @@ export default async function Image({
   params: Promise<{ did: string; rkey: string }>;
 }) {
   const { did, rkey } = await params;
-  const route = await fetchRouteCard(decodeURIComponent(did), rkey);
+  const route = await loadRouteSummary(
+    { did: decodeURIComponent(did), rkey },
+    { labelled: "exclude" },
+  );
   // Routes with moderation labels don't get link previews, so they share the
   // site's image.
   if (!route) {
@@ -32,7 +37,7 @@ export default async function Image({
   }
 
   const [author, format, locale] = await Promise.all([
-    fetchAuthorProfile(route.did),
+    fetchProfile(route.did),
     getFormatter(),
     getLocale(),
   ]);

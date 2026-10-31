@@ -23,7 +23,7 @@ export function ReviewList({ firstPage }: ReviewListProps) {
           const routePath = `/routes/${review.route.did}/${review.route.rkey}`;
 
           return (
-            <li key={review.rkey}>
+            <li key={review.uri}>
               <article className="flex flex-col gap-2">
                 <div className="flex flex-row items-center justify-between gap-4">
                   <div className="flex flex-col min-w-0">

@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
 import { unitsForLocale } from "@/i18n/units";
-import { ACTIVITIES, DIFFICULTIES, SURFACES } from "@/lib/labels";
+import { ACTIVITIES, DIFFICULTIES, SURFACES } from "@/lib/routes";
 import { UploadRouteForm } from "./upload-route-form";
 
 export const metadata: Metadata = {

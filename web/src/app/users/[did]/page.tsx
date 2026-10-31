@@ -8,8 +8,7 @@ import {
   ProfileHeader,
   ProfileHeaderSkeleton,
 } from "@/components/profile-header";
-import { profileName } from "@/lib/profile-name";
-import { type AuthorProfile, fetchUserProfile } from "@/lib/profiles";
+import { fetchUserProfile, type Profile, profileName } from "@/lib/profiles";
 import { profileJsonLd } from "@/lib/structured-data";
 import { fetchRouteList } from "../listings";
 import { RouteList, RouteListSkeleton } from "../route-list";
@@ -75,8 +74,8 @@ async function Profile({ params }: Pick<UserPageProps, "params">) {
   );
 }
 
-async function UserRoutes({ profile }: { profile: AuthorProfile }) {
-  const firstPage = await fetchRouteList(profile.did, { hideLabelled: true });
+async function UserRoutes({ profile }: { profile: Profile }) {
+  const firstPage = await fetchRouteList(profile.did, { labelled: "exclude" });
   if (firstPage.items.length === 0) {
     return <p>{profileName(profile)} hasn&apos;t shared any routes yet.</p>;
   }

@@ -4,9 +4,11 @@ import { createHash, randomBytes } from "node:crypto";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { sql } from "kysely";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getDb } from "@/db/client";
 import { getOAuthClient, getWebUrl, OAUTH_SCOPE } from "./client";
+import { loginHref } from "./login-href";
 import { logger } from "@/lib/logger";
 
 const SESSION_COOKIE = "attrails_session";
@@ -59,6 +61,18 @@ export const getSession = cache(async (): Promise<OAuthSession | undefined> => {
 
   return session;
 });
+
+/**
+ * Returns the signed-in account's OAuth session. When signed out, redirects to
+ * the login page, set up to come back to `returnTo`, by throwing.
+ */
+export async function assertSession(returnTo: string): Promise<OAuthSession> {
+  const session = await getSession();
+  if (!session) {
+    redirect(loginHref(returnTo));
+  }
+  return session;
+}
 
 /**
  * Signs this browser in as `did`. Call only from a Server Function or Route

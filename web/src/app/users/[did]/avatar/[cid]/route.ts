@@ -1,51 +1,36 @@
-import { fetchBlob } from "@/lib/blobs";
-import { fetchAvatarMimeType } from "@/lib/profiles";
-import { logger } from "@/lib/logger";
+import { type AvatarError, fetchAvatar } from "@/lib/profiles";
 
-// Raster formats only: an SVG served from our origin could run scripts.
-const IMAGE_TYPES = new Set([
-  "image/avif",
-  "image/gif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
+const ERRORS: Record<AvatarError, { status: number; message: string }> = {
+  "not-found": { status: 404, message: "Profile picture not found." },
+  unsupported: { status: 415, message: "Unsupported profile picture." },
+  "fetch-failed": {
+    status: 502,
+    message: "We couldn't fetch the profile picture.",
+  },
+};
 
 export async function GET(
   _request: Request,
   { params }: RouteContext<"/users/[did]/avatar/[cid]">,
 ) {
-  const { did: encodedDid, cid } = await params;
-  const did = decodeURIComponent(encodedDid);
+  const { did, cid } = await params;
 
-  const mimeType = await fetchAvatarMimeType(did, cid);
-  if (!mimeType) {
-    return new Response("Profile picture not found.", { status: 404 });
-  }
-  if (!IMAGE_TYPES.has(mimeType)) {
-    return new Response("Unsupported profile picture.", { status: 415 });
-  }
-
-  let blob: Response;
-  try {
-    blob = await fetchBlob(did, cid);
-  } catch (error) {
-    logger.warn({ err: error, did, cid }, "users:avatar");
-    return new Response("We couldn't fetch the profile picture.", {
-      status: 502,
-    });
+  const avatar = await fetchAvatar(decodeURIComponent(did), cid);
+  if (!avatar.ok) {
+    const { status, message } = ERRORS[avatar.reason];
+    return new Response(message, { status });
   }
 
   const headers = new Headers({
-    "Content-Type": mimeType,
+    "Content-Type": avatar.mimeType,
     "Cache-Control": "public, max-age=3600, immutable",
     "X-Content-Type-Options": "nosniff",
   });
 
-  const length = blob.headers.get("Content-Length");
+  const length = avatar.blob.headers.get("Content-Length");
   if (length) {
     headers.set("Content-Length", length);
   }
 
-  return new Response(blob.body, { headers });
+  return new Response(avatar.blob.body, { headers });
 }

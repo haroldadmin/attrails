@@ -9,8 +9,8 @@ import {
   activityLabel,
   activitySlug,
   DEFAULT_ACTIVITY,
-} from "@/lib/labels";
-import { fetchRoutesPage } from "@/lib/routes";
+  loadRoutes,
+} from "@/lib/routes";
 
 export const metadata: Metadata = {
   title: "All routes",
@@ -46,8 +46,9 @@ async function RoutesContent({ searchParams }: RoutesContentProps) {
     ) ?? DEFAULT_ACTIVITY;
   const cursorParam = typeof cursor === "string" ? cursor : undefined;
 
-  const page = await fetchRoutesPage({
+  const page = await loadRoutes({
     activity,
+    labelled: "exclude",
     cursor: cursorParam,
     limit: ROUTES_PAGE_SIZE,
   });

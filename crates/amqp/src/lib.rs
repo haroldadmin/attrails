@@ -202,7 +202,12 @@ where
         }
         Err(error) => {
             error!(%error,"failed to process message");
-            let _ = delivery.nack(BasicNackOptions::default()).await;
+            let _ = delivery
+                .nack(BasicNackOptions {
+                    requeue: true,
+                    ..Default::default()
+                })
+                .await;
         }
     }
 }

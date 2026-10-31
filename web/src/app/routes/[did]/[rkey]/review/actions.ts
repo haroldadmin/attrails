@@ -1,15 +1,17 @@
 "use server";
 
-import { Client, currentDatetimeString } from "@atproto/lex";
+import { AtUri } from "@atproto/syntax";
 import { redirect } from "next/navigation";
-import { loginHref } from "@/auth/login-href";
-import { getSession } from "@/auth/session";
-import { fetchUserReview } from "@/lib/reviews";
-import { fetchRoute } from "@/lib/routes";
+import { assertSession } from "@/auth/session";
 import { app } from "@/lexicons";
-import { logger } from "@/lib/logger";
-
-const { review } = app.attrails;
+import {
+  deleteReview,
+  type DeleteReviewError,
+  reviewSchema,
+  saveReview,
+  type SaveReviewError,
+} from "@/lib/reviews";
+import { loadRoute } from "@/lib/routes";
 
 export type ReviewValues = {
   rating: string;
@@ -21,102 +23,73 @@ export type ReviewState = {
   error?: string;
 };
 
-export async function saveReview(
+const SAVE_ERROR_MESSAGES: Record<SaveReviewError, string> = {
+  "self-review": "You can't review your own route.",
+  invalid: "Check your review and try again.",
+  "write-failed":
+    "We couldn't save your review to your account. Please try again.",
+};
+
+export async function saveRouteReview(
   routeDid: string,
   routeRkey: string,
   _previous: ReviewState,
   formData: FormData,
 ): Promise<ReviewState> {
-  const session = await getSession();
-  if (!session) {
-    redirect(loginHref(`/routes/${routeDid}/${routeRkey}/review`));
-  }
+  const routePath = `/routes/${routeDid}/${routeRkey}`;
+  const session = await assertSession(`${routePath}/review`);
 
   const values: ReviewValues = {
     rating: text(formData, "rating"),
     text: text(formData, "text"),
   };
 
-  const route = await fetchRoute(routeDid, routeRkey);
+  const route = await loadRoute(
+    { did: routeDid, rkey: routeRkey },
+    { labelled: "include" },
+  );
   if (!route) {
     return { values, error: "This route no longer exists." };
   }
-  if (route.did === session.did) {
-    return { values, error: "You can't review your own route." };
+
+  const draft = reviewSchema.safeParse(values);
+  if (!draft.success) {
+    return { values, error: draft.error.issues[0].message };
   }
 
-  const rating = Number(values.rating);
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return { values, error: "Choose a rating from 1 to 5 stars." };
-  }
-  if (!values.text) {
-    return { values, error: "Write a few words about the route." };
+  const result = await saveReview(session, route, draft.data);
+  if (!result.ok) {
+    return { values, error: SAVE_ERROR_MESSAGES[result.reason] };
   }
 
-  const record = review.$safeValidate({
-    $type: review.$type,
-    subject: { uri: route.uri, cid: route.cid },
-    rating,
-    text: values.text,
-    createdAt: currentDatetimeString(),
-  });
-  if (!record.success) {
-    return { values, error: `Check your review: ${record.reason.message}` };
-  }
-
-  const client = new Client(session);
-  let latest;
-  try {
-    latest = await fetchUserReview(route.uri, session.did);
-    if (latest) {
-      await client.put(review, record.value, { rkey: latest.rkey });
-    } else {
-      await client.create(review, record.value);
-    }
-  } catch (error) {
-    logger.warn(
-      { err: error, did: session.did, route: route.uri },
-      "reviews:save",
-    );
-    return {
-      values,
-      error: "We couldn't save your review to your account. Please try again.",
-    };
-  }
-
-  const notice = latest ? "review-updated" : "review-posted";
-  redirect(`/routes/${route.did}/${route.rkey}?notice=${notice}`);
+  const notice = result.outcome === "created" ? "posted" : "updated";
+  redirect(`${routePath}?notice=review-${notice}`);
 }
 
 export type DeleteReviewState = {
   error?: string;
 };
 
-export async function deleteReview(
+const DELETE_ERROR_MESSAGES: Record<DeleteReviewError, string> = {
+  "not-found": "You haven't reviewed this route.",
+  "write-failed":
+    "We couldn't delete your review from your account. Please try again.",
+};
+
+export async function deleteRouteReview(
   routeDid: string,
   routeRkey: string,
-  reviewRkey: string,
 ): Promise<DeleteReviewState> {
-  const session = await getSession();
-  if (!session) {
-    redirect(loginHref(`/routes/${routeDid}/${routeRkey}/review`));
+  const routePath = `/routes/${routeDid}/${routeRkey}`;
+  const session = await assertSession(`${routePath}/review`);
+
+  const subject = AtUri.make(routeDid, app.attrails.route.$type, routeRkey);
+  const result = await deleteReview(session, { uri: subject.toString() });
+  if (!result.ok) {
+    return { error: DELETE_ERROR_MESSAGES[result.reason] };
   }
 
-  const client = new Client(session);
-  try {
-    await client.delete(review, { rkey: reviewRkey });
-  } catch (error) {
-    logger.warn(
-      { err: error, did: session.did, rkey: reviewRkey },
-      "reviews:delete",
-    );
-    return {
-      error:
-        "We couldn't delete your review from your account. Please try again.",
-    };
-  }
-
-  redirect(`/routes/${routeDid}/${routeRkey}?notice=review-deleted`);
+  redirect(`${routePath}?notice=review-deleted`);
 }
 
 function text(formData: FormData, key: string): string {

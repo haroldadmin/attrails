@@ -52,6 +52,10 @@ export default function AboutPage() {
             <a href="https://bsky.app/profile/attrails.app">@attrails.app</a> on
             Bluesky.
           </p>
+          <p>
+            You can also open an issue on our Github{" "}
+            <a href="https://github.com/haroldadmin/attrails">repository</a>.
+          </p>
         </section>
 
         <p className="not-prose mt-10 flex flex-row flex-wrap gap-6">

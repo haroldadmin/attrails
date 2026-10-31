@@ -1,11 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { profileName } from "@/lib/profile-name";
-import type { AuthorProfile } from "@/lib/profiles";
+import { type Profile, profileName } from "@/lib/profiles/shared";
 
 export type AuthorProps = {
-  profile: AuthorProfile;
+  profile: Profile;
   children?: ReactNode;
 };
 
@@ -39,7 +38,7 @@ const AVATAR_SIZES = {
 };
 
 export type AvatarProps = {
-  profile: Pick<AuthorProfile, "displayName" | "handle" | "avatarUrl">;
+  profile: Pick<Profile, "displayName" | "handle" | "avatarUrl">;
   size?: keyof typeof AVATAR_SIZES;
 };
 

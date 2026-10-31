@@ -10,7 +10,7 @@ import {
   ProfileHeader,
   ProfileHeaderSkeleton,
 } from "@/components/profile-header";
-import { fetchAuthorProfile } from "@/lib/profiles";
+import { fetchProfile } from "@/lib/profiles";
 import { fetchReviewList, fetchRouteList } from "../listings";
 import { RouteList, RouteListSkeleton } from "../route-list";
 import { loadRoutes } from "./actions";
@@ -36,7 +36,7 @@ async function Profile() {
     redirect(loginHref("/users/me"));
   }
 
-  const profile = await fetchAuthorProfile(session.did);
+  const profile = await fetchProfile(session.did);
 
   return (
     <>
@@ -89,7 +89,7 @@ async function Profile() {
 }
 
 async function YourRoutes({ did }: { did: string }) {
-  const firstPage = await fetchRouteList(did);
+  const firstPage = await fetchRouteList(did, { labelled: "include" });
   if (firstPage.items.length === 0) {
     return (
       <p>

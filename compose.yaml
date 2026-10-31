@@ -1,6 +1,24 @@
 name: attrails
 
 services:
+  # postgis/postgis only publishes amd64 images; this is the same image built
+  # for arm64 too, by one of its maintainers.
+  postgres:
+    image: imresamu/postgis:18-3.6
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: attrails
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "app", "-d", "attrails"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   rabbitmq:
     image: rabbitmq:4.2-management
     environment:
@@ -54,13 +72,15 @@ services:
     build:
       context: .
       dockerfile: crates/ingest-consumer/Dockerfile
-    # Postgres is not part of this file; its connection uri comes from .env.
     env_file: .env
     environment:
+      ATTRAILS_POSTGRES_CONNECTION_URI: postgresql://app:app@postgres:5432/attrails
       ATTRAILS_RABBITMQ_HOST: amqp://app:app@rabbitmq:5672
     ports:
       - "8081:8081"
     depends_on:
+      postgres:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
 
@@ -70,5 +90,13 @@ services:
       context: web
       dockerfile: Dockerfile
     env_file: .env
+    environment:
+      ATTRAILS_POSTGRES_CONNECTION_URI: postgresql://app:app@postgres:5432/attrails
     ports:
       - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres:

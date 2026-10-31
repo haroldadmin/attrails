@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { ACTIVITY_FILTERS, activitySlug } from "@/lib/labels";
+import { ACTIVITY_FILTERS, activitySlug } from "@/lib/routes";
 import { SITE_URL } from "./shared-metadata";
 
 const url = (path: string) => new URL(path, SITE_URL).href;

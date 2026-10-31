@@ -51,6 +51,15 @@ export function Footer() {
             </Link>
           </li>
           <li>
+            <Link
+              className="link-hover"
+              href="https://github.com/haroldadmin/attrails"
+              target="_blank"
+            >
+              Source code
+            </Link>
+          </li>
+          <li>
             <a
               className="link-hover"
               href="https://bsky.app/profile/attrails.app"
