@@ -25,7 +25,6 @@ use lifecycle::{
     shutdown::Shutdown,
 };
 use moderation::{Moderator, ModeratorConfig};
-use serde_json::json;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, info_span, warn};

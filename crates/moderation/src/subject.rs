@@ -24,7 +24,7 @@ impl Subject {
         }
     }
 
-    fn text_content(&self) -> Vec<&str> {
+    pub(crate) fn text_content(&self) -> Vec<&str> {
         match self {
             Subject::Route {
                 name,

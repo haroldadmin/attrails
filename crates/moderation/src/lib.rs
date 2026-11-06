@@ -7,8 +7,8 @@ use crate::{
     verdict::{ContentLabel, Source, Verdict},
 };
 
-mod fast_path;
 mod questions;
+mod rustrict;
 mod subject;
 mod typesafe;
 mod verdict;
@@ -58,11 +58,9 @@ impl Moderator {
     /// answer to any question.
     #[instrument(skip(self, subject))]
     pub async fn moderate(&self, subject: &Subject) -> Result<Verdict> {
-        let state = subject.to_state();
-        let fast = fast_path::record_labels(&state);
-        if !fast.is_empty() {
-            debug!(?fast, "rustrict fast path applied");
-            return Ok(Verdict::new(fast, Source::Rustrict));
+        let rustrict_labels = rustrict::screen(&subject.text_content());
+        if let Some(labels) = rustrict_labels {
+            return Ok(Verdict::new(labels, Source::Rustrict));
         }
 
         let probabilities = self.judge(subject).await?;
