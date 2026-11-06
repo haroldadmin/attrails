@@ -85,7 +85,7 @@ fn find(parent: &mut [usize], mut i: usize) -> usize {
 }
 
 #[allow(clippy::cast_possible_truncation)]
-fn cluster(records: Vec<Record>) -> Vec<Record> {
+pub fn cluster(records: Vec<Record>) -> Vec<Record> {
     let mut groups: HashMap<(String, String), Vec<usize>> = HashMap::new();
     for (i, r) in records.iter().enumerate() {
         if clusterable(&r.kind) {
@@ -151,7 +151,7 @@ fn cluster(records: Vec<Record>) -> Vec<Record> {
         .collect()
 }
 
-fn context_label(r: &Record, countries: &HashMap<String, String>) -> String {
+pub fn context_label(r: &Record, countries: &HashMap<String, String>) -> String {
     let mut parts: Vec<String> = Vec::new();
     let mut add = |s: Option<&str>| {
         if let Some(s) = s.filter(|s| *s != r.name && !parts.iter().any(|p| p == s)) {
@@ -177,11 +177,30 @@ fn context_label(r: &Record, countries: &HashMap<String, String>) -> String {
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss
 )]
-pub fn run(out_dir: &Path, inputs: &[String]) -> Result<()> {
-    std::fs::create_dir_all(out_dir)?;
+/// Searchable context: the label, local names ("Tirol" for "Tyrol") and the
+/// country code, normalised.
+pub fn context_norm(r: &Record, label: &str) -> String {
+    let mut norm = tokens(label);
+    for alt in &r.context_alt {
+        norm.extend(tokens(alt));
+    }
+    norm.extend(r.cc.clone());
+    norm.join(" ")
+}
+
+/// Loads filtered records from `.parquet` or `.jsonl.zst` files, merges
+/// duplicates and sorts them by importance (most important first).
+pub fn load(inputs: &[String]) -> Result<(Vec<Record>, HashMap<String, String>)> {
+    let start = std::time::Instant::now();
     let mut records = Vec::new();
     let mut countries = HashMap::new();
     for input in inputs {
+        if input.ends_with(".parquet") {
+            let (r, c) = crate::parquet_io::read(Path::new(input))?;
+            records.extend(r);
+            countries.extend(c);
+            continue;
+        }
         let f = File::open(input).with_context(|| format!("opening {input}"))?;
         for line in BufReader::new(zstd::Decoder::new(f)?).lines() {
             match serde_json::from_str::<Item>(&line?)? {
@@ -191,12 +210,16 @@ pub fn run(out_dir: &Path, inputs: &[String]) -> Result<()> {
         }
     }
     let loaded = records.len();
+    eprintln!("load: {loaded} records read in {:?}", start.elapsed());
     let mut records = cluster(records);
-    eprintln!(
-        "build: {loaded} records, {} after clustering",
-        records.len()
-    );
+    eprintln!("load: {} after clustering", records.len());
     records.sort_by(|a, b| b.importance.total_cmp(&a.importance));
+    Ok((records, countries))
+}
+
+pub fn run(out_dir: &Path, inputs: &[String]) -> Result<()> {
+    std::fs::create_dir_all(out_dir)?;
+    let (records, countries) = load(inputs)?;
 
     let mut kinds: Vec<String> = Vec::new();
     let mut kind_ids: HashMap<String, u16> = HashMap::new();
@@ -213,14 +236,7 @@ pub fn run(out_dir: &Path, inputs: &[String]) -> Result<()> {
             (kinds.len() - 1) as u16
         });
         let label = context_label(r, &countries);
-        // Searchable context: the label, local names ("Tirol" for "Tyrol")
-        // and the country code.
-        let mut norm = tokens(&label);
-        for alt in &r.context_alt {
-            norm.extend(tokens(alt));
-        }
-        norm.extend(r.cc.clone());
-        let norm = norm.join(" ");
+        let norm = context_norm(r, &label);
         let ctx = *contexts
             .entry((label.clone(), norm.clone()))
             .or_insert_with(|| {

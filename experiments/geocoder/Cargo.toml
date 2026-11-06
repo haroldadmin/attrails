@@ -11,14 +11,18 @@ description = "Prototype: a small, read-only forward geocoder for ATTrails built
 
 [dependencies]
 anyhow = "1"
+arrow-array = "60.1.0"
+arrow-schema = "60.1.0"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
 fst = "0.4"
 memchr = "2"
 memmap2 = "0.9"
+parquet = { version = "60.1.0", default-features = false, features = ["arrow", "zstd", "snap"] }
 rand = "0.9"
 rayon = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
+tantivy = "0.27.0"
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
 unicode-normalization = "0.1"
 zstd = "0.13"

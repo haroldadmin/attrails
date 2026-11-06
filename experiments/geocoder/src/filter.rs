@@ -329,9 +329,50 @@ fn process(line: &[u8]) -> Vec<Item> {
     }
 }
 
+/// Where kept places go: zstd JSON lines, or Parquet when the output path
+/// ends in `.parquet`.
+enum Sink {
+    Jsonl(zstd::stream::AutoFinishEncoder<'static, Box<dyn Write>>),
+    Parquet(crate::parquet_io::Writer),
+}
+
+impl Sink {
+    fn open(path: &str) -> Result<Self> {
+        if path.ends_with(".parquet") {
+            return Ok(Self::Parquet(crate::parquet_io::Writer::create(
+                std::path::Path::new(path),
+            )?));
+        }
+        let out: Box<dyn Write> = match path {
+            "-" => Box::new(std::io::stdout()),
+            path => Box::new(std::fs::File::create(path)?),
+        };
+        Ok(Self::Jsonl(zstd::Encoder::new(out, 6)?.auto_finish()))
+    }
+
+    fn push(&mut self, item: Item) -> Result<()> {
+        match self {
+            Self::Jsonl(out) => {
+                serde_json::to_writer(&mut *out, &item)?;
+                out.write_all(b"\n")?;
+            }
+            Self::Parquet(w) => w.push(item)?,
+        }
+        Ok(())
+    }
+
+    fn finish(self) -> Result<()> {
+        match self {
+            Self::Jsonl(out) => drop(out),
+            Self::Parquet(w) => w.finish()?,
+        }
+        Ok(())
+    }
+}
+
 /// Reads a (zstd-compressed) Photon dump from `input` and writes kept
-/// places as zstd-compressed JSON lines to `output`.
-pub fn run(input: impl Read + Send + 'static, output: impl Write) -> Result<()> {
+/// places to `output` (see [`Sink`]).
+pub fn run(input: impl Read + Send + 'static, output: &str) -> Result<()> {
     const BATCH: usize = 20_000;
     let (tx, rx) = sync_channel::<Vec<Vec<u8>>>(8);
     let reader = std::thread::spawn(move || -> Result<()> {
@@ -352,7 +393,7 @@ pub fn run(input: impl Read + Send + 'static, output: impl Write) -> Result<()> 
         }
     });
 
-    let mut out = zstd::Encoder::new(output, 6)?.auto_finish();
+    let mut out = Sink::open(output)?;
     let (mut lines, mut kept) = (0u64, 0u64);
     let mut by_kind: BTreeMap<String, u64> = BTreeMap::new();
     for batch in rx {
@@ -363,14 +404,14 @@ pub fn run(input: impl Read + Send + 'static, output: impl Write) -> Result<()> 
                 kept += 1;
                 *by_kind.entry(r.kind.clone()).or_default() += 1;
             }
-            serde_json::to_writer(&mut out, &item)?;
-            out.write_all(b"\n")?;
+            out.push(item)?;
         }
         if lines % 5_000_000 < BATCH as u64 {
             eprintln!("filter: {lines} lines read, {kept} places kept");
         }
     }
     reader.join().expect("reader thread panicked")?;
+    out.finish()?;
     eprintln!("filter: done. {lines} lines read, {kept} places kept");
     let mut kinds: Vec<_> = by_kind.into_iter().collect();
     kinds.sort_by_key(|(_, n)| std::cmp::Reverse(*n));

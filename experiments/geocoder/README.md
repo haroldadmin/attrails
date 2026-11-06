@@ -9,7 +9,13 @@ places worldwide in 1.2 GB** and answers search-as-you-type queries in
 384 MB of total memory.
 
 > Status: prototype. It sits outside the Cargo workspace on purpose, so it
-> does not affect CI or the main build.
+> does not affect CI or the main build. Not intended to be merged; the
+> findings feed a production implementation.
+
+> **Update (spike 2):** a Tantivy-based engine, with the index sorted by
+> importance, beat the custom index: **p95 1.3 ms** and much better
+> behaviour under memory pressure. Parquet is a good fit for the hand-off
+> between filter and build. See [Spike 2](#spike-2-tantivy-and-parquet).
 
 ---
 
@@ -216,8 +222,122 @@ Known gaps, all fixable:
 | **Pelias** | Elasticsearch + several services. Too heavy |
 | **Pelias Placeholder** | Small (SQLite), but only admin areas (Who's On First). No peaks, parks or trails |
 | **Typesense / Meilisearch** | Easy to run, but Typesense keeps everything in RAM, and both would need tuning at 11M docs. Less control over geo-biased ranking |
-| **Tantivy** (Rust Lucene) | Good alternative engine, also mmap-based. But its BM25-style scoring has to score every match, so 1–2 letter prefixes would be slow without the same tricks used here |
+| **Tantivy** (Rust Lucene) | **Recommended** after spike 2. Scoring every match is too slow, but with the index sorted by importance and early termination it beats the custom index. See [Spike 2](#spike-2-tantivy-and-parquet) |
 | **Custom FST + importance-ordered postings (this)** | Small, fast, predictable. We own ~1,300 lines of Rust (including the benchmark) |
+
+---
+
+## Spike 2: Tantivy and Parquet
+
+Same data (the filtered planet, 11.2M places after merging), same
+benchmark (100k search-as-you-type queries on 2 pinned cores), same final
+reranker. Only candidate retrieval differs.
+
+### Three engines
+
+| Engine | How candidates are found |
+|---|---|
+| **Custom** (`src/index.rs`) | FST + importance-ordered postings. Reads the first N ids per query token, globally and per grid cell, then verifies all tokens |
+| **Tantivy, scored** (`tantivy-build`) | Edge n-gram field for the word being typed. A `BooleanQuery` requires all tokens; `TopDocs::tweak_score` scores **every** match by importance + kind + distance |
+| **Tantivy, sorted** (`tantivy-build --sorted`) | Same fields and query, but `IndexSettings::sort_by_field = importance desc`, so doc order is rank order. Walks the matching docs and **stops** after 300 globally plus 200 within the user's grid cells (a `cell` term field) |
+
+All three rerank their top 50 with the same text scoring (`text_score`)
+and the same importance/kind/distance score (`static_score`).
+
+### Results (planet, warm page cache, 2 cores)
+
+| Engine | Index size | p50 | p95 | p99 | Throughput | Recall@5 |
+|---|---|---|---|---|---|---|
+| Custom | 1.2 GB | 0.62 ms | 3.9 ms | 4.7 ms | 1,700 q/s | 97.7% |
+| **Tantivy, sorted** | 1.5 GB | **0.35 ms** | **1.3 ms** | **2.5 ms** | **4,400 q/s** | **98.2%** |
+| Tantivy, scored | 1.5 GB | 0.47 ms | 57 ms | 135 ms | 216 q/s | 98.3% |
+
+### Under memory pressure (cold start, cgroup cap counts page cache)
+
+| Cap | Custom p95 | Tantivy sorted p95 |
+|---|---|---|
+| 2 GB | 4.0 ms | 1.5 ms |
+| 768 MB | 10.2 ms | 3.8 ms |
+| 384 MB | 48 ms | **9.3 ms** |
+
+The cap was verified (the cgroup peak reached each limit). Tantivy-sorted
+stays fast with less memory, most likely because sorting by importance puts
+the popular places at the start of every file, so the hot set is small and
+contiguous.
+
+### Why each result came out this way
+
+- **Scored is slow at the tail.** A 1–2 letter prefix matches millions of
+  docs, and every one is scored. p50 is fine; p95/p99 is not.
+- **Sorted wins because:**
+  - Edge n-grams turn the typed prefix into one term lookup, with no FST
+    expansion (which was ~50% of the custom engine's CPU).
+  - The AND query is more selective than the custom engine's
+    "one token drives, verify the rest".
+  - Early termination gives the same "first N = best N" trick.
+- **Cost:** the index is ~25% bigger (1.5 vs 1.2 GB), mostly the
+  LZ4 document store (790 MB) and edge n-gram postings.
+
+### Pitfalls found (worth knowing for production)
+
+1. **Open fast-field columns once, not per query.** Opening a column
+   decodes its block index. Doing that per query cost ~35 ms. Cache the
+   `Arc<dyn ColumnValues>` per segment at startup (`SegCols`).
+2. **Disable the background merge policy** (`NoMergePolicy`) when doing one
+   explicit final merge. Otherwise the two race:
+   "segments that were merged could not be found", plus orphaned segment
+   files that tripled the index size on disk.
+3. **Early termination isn't a collector feature.** Walk the `DocSet` from
+   `weight.scorer(...)` and stop yourself. Collectors visit every match.
+
+### Parquet as the filter → build hand-off
+
+| | zstd JSON lines | Parquet (zstd) |
+|---|---|---|
+| Size (12.8M places) | 472 MB | 528 MB |
+| Read into records | 20 s | **12.5 s** (1.6× faster) |
+| Writer peak RAM | n/a | 186 MB (streamed in 64k-row groups) |
+| Queryable with SQL | no | **yes (DuckDB, < 0.1 s per query)** |
+
+- `filter` writes Parquet when the output ends in `.parquet`, and both
+  builders read either format. Country names travel in the Parquet
+  key-value metadata.
+- The planet Parquet was produced with `convert` from the filtered JSON
+  lines, since there wasn't disk for another 27 GB dump. The
+  filter → Parquet path itself was verified end to end on Andorra.
+- Read time is dominated by turning columns into owned `Record` structs.
+  Reading Arrow columns directly would be faster still.
+
+**DuckDB is the bigger win.** It makes the allowlist and ranking easy to
+audit. For example:
+
+```sql
+SELECT kind, count(*) FROM 'planet.parquet' GROUP BY 1 ORDER BY 2 DESC;
+SELECT name, cc, importance FROM 'planet.parquet'
+  WHERE kind = 'natural=peak' ORDER BY importance DESC LIMIT 5;
+```
+
+The second query immediately surfaced a data-quality question: "El Cabezo"
+(Spain) and "Soum d'Ypy" (France) have the same importance as Mont Blanc.
+
+### The build machine's memory goes to loading, not indexing
+
+Loading + clustering the 12.8M records peaks at **11.4 GB** whichever
+format they come from. Building either index adds little on top. So the
+production build should not materialise every record as a Rust struct.
+Doing the duplicate merging in DuckDB (SQL over Parquet) and streaming
+rows into Tantivy would likely cut this by an order of magnitude. Not
+tested.
+
+### Recommendation for production
+
+- **Engine:** Tantivy with the index sorted by importance, edge n-grams and
+  early termination.
+- **Pipeline:** Photon dump → `filter` → Parquet → (DuckDB: audit, merge
+  duplicates) → Tantivy index.
+- **Next to try:** Tantivy's fuzzy (Levenshtein) term queries for typo
+  tolerance, and whether `docstore_compression: none` or a smaller block
+  size helps the rerank fetch.
 
 ---
 
@@ -291,6 +411,33 @@ Try one query (optionally with a latitude/longitude bias):
 
 ```bash
 ./target/release/geocoder query index "hallst" 47.8 13.0
+```
+
+Filter straight to Parquet, or convert existing JSON lines:
+
+```bash
+./target/release/geocoder filter photon-dump-planet-1.0-latest.jsonl.zst planet.parquet
+```
+
+```bash
+./target/release/geocoder convert planet.places.zst planet.parquet
+```
+
+Build the Tantivy index (sorted by importance) and query it:
+
+```bash
+./target/release/geocoder tantivy-build tindex --sorted planet.parquet
+```
+
+```bash
+./target/release/geocoder tantivy-query tindex "hallst" 47.8 13.0
+```
+
+Benchmark Tantivy with the same queries as the custom index (the custom
+index generates the queries):
+
+```bash
+taskset -c 0,1 ./target/release/geocoder bench index 100000 2 tindex
 ```
 
 Run the benchmark on 2 cores:

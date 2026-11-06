@@ -106,7 +106,7 @@ fn u32_at(b: &[u8], at: usize) -> u32 {
     u32::from_le_bytes(b[at..at + 4].try_into().expect("4 bytes"))
 }
 
-fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+pub fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let (p1, p2) = (lat1.to_radians(), lat2.to_radians());
     let dp = p2 - p1;
     let dl = (lon2 - lon1).to_radians();
@@ -116,7 +116,7 @@ fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
 
 /// Small nudges so a query like "zermatt" prefers the town over a hut
 /// named after it.
-fn kind_boost(kind: &str) -> f32 {
+pub fn kind_boost(kind: &str) -> f32 {
     match kind {
         "place=country" | "place=state" | "place=city" | "boundary=national_park" => 0.15,
         "place=town" | "place=island" | "natural=mountain_range" => 0.10,
@@ -131,6 +131,68 @@ fn map(dir: &Path, name: &str) -> Result<Mmap> {
     // SAFETY: the index is written once by `build` and never modified while
     // being served.
     Ok(unsafe { Mmap::map(&f)? })
+}
+
+/// How well the query text matches a place: every query token must match a
+/// name token or a context token, and at least one must be in the name.
+/// `names` are normalised names (tokens joined by spaces). Returns `None`
+/// when the place does not match. Shared by both engines.
+#[allow(clippy::cast_precision_loss)]
+pub fn text_score<'n>(
+    names: impl Iterator<Item = &'n str>,
+    ctx_norm: &str,
+    qt: &[String],
+    last_prefix: bool,
+) -> Option<f32> {
+    let matches = |q: &str, i: usize, t: &str| {
+        t == q || (last_prefix && i == qt.len() - 1 && t.starts_with(q))
+    };
+    let mut best: Option<f32> = None;
+    for name in names {
+        let nt: Vec<&str> = name.split(' ').collect();
+        let mut in_name = 0;
+        let mut ok = true;
+        for (i, q) in qt.iter().enumerate() {
+            if nt.iter().any(|t| matches(q, i, t)) {
+                in_name += 1;
+            } else if !ctx_norm.split(' ').any(|t| matches(q, i, t)) {
+                ok = false;
+                break;
+            }
+        }
+        if !ok || in_name == 0 {
+            continue;
+        }
+        let mut text = in_name as f32 / qt.len() as f32;
+        if in_name == qt.len() && in_name == nt.len() {
+            text += 0.5; // The whole name was typed.
+        }
+        if matches(&qt[0], 0, nt[0]) {
+            text += 0.2; // Typed from the start of the name.
+        }
+        if best.is_none_or(|s| text > s) {
+            best = Some(text);
+        }
+    }
+    best
+}
+
+/// The query-independent part of the score: importance, kind and distance
+/// to the user. Shared by both engines.
+#[allow(clippy::cast_possible_truncation)]
+pub fn static_score(
+    importance: f32,
+    kind: &str,
+    lat: f32,
+    lon: f32,
+    focus: Option<(f64, f64)>,
+) -> f32 {
+    let mut score = importance + kind_boost(kind);
+    if let Some((flat, flon)) = focus {
+        let d = haversine_km(flat, flon, f64::from(lat), f64::from(lon));
+        score += 0.6 * (-d / FOCUS_SCALE_KM).exp() as f32;
+    }
+    score
 }
 
 pub struct Query<'a> {
@@ -323,7 +385,6 @@ impl Index {
         hits
     }
 
-    #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
     fn score(
         &self,
         id: u32,
@@ -334,46 +395,9 @@ impl Index {
         let doc = self.doc(id);
         let p = self.payload(doc.payload);
         let (label, ctx_norm) = self.context(doc.context);
-        let matches = |q: &str, i: usize, t: &str| {
-            t == q || (last_prefix && i == qt.len() - 1 && t.starts_with(q))
-        };
-
-        // Best name: the one matching the most query tokens.
-        let mut best: Option<(usize, f32)> = None;
-        for name in &p.names {
-            let nt: Vec<&str> = name.split(' ').collect();
-            let mut in_name = 0;
-            let mut ok = true;
-            for (i, q) in qt.iter().enumerate() {
-                if nt.iter().any(|t| matches(q, i, t)) {
-                    in_name += 1;
-                } else if !ctx_norm.split(' ').any(|t| matches(q, i, t)) {
-                    ok = false;
-                    break;
-                }
-            }
-            if !ok || in_name == 0 {
-                continue;
-            }
-            let mut text = in_name as f32 / qt.len() as f32;
-            if in_name == qt.len() && in_name == nt.len() {
-                text += 0.5; // The whole name was typed.
-            }
-            if matches(&qt[0], 0, nt[0]) {
-                text += 0.2; // Typed from the start of the name.
-            }
-            if best.is_none_or(|(_, s)| text > s) {
-                best = Some((in_name, text));
-            }
-        }
-        let (_, text) = best?;
-
+        let text = text_score(p.names.iter().copied(), ctx_norm, qt, last_prefix)?;
         let kind = &self.meta.kinds[doc.kind as usize];
-        let mut score = text + doc.importance + kind_boost(kind);
-        if let Some((lat, lon)) = focus {
-            let d = haversine_km(lat, lon, f64::from(doc.lat), f64::from(doc.lon));
-            score += 0.6 * (-d / FOCUS_SCALE_KM).exp() as f32;
-        }
+        let score = text + static_score(doc.importance, kind, doc.lat, doc.lon, focus);
         Some(Hit {
             name: p.name.to_owned(),
             context: label.to_owned(),
@@ -388,8 +412,9 @@ impl Index {
     }
 
     /// The display name of a doc (used to generate benchmark queries).
-    pub fn name_of(&self, id: u32) -> (String, f32, f32) {
+    pub fn name_of(&self, id: u32) -> (String, String, f32, f32) {
         let d = self.doc(id);
-        (self.payload(d.payload).name.to_owned(), d.lat, d.lon)
+        let p = self.payload(d.payload);
+        (p.name.to_owned(), p.osm.to_owned(), d.lat, d.lon)
     }
 }

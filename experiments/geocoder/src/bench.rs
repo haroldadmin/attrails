@@ -15,12 +15,13 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use rand::{Rng, SeedableRng, rngs::StdRng};
 
-use crate::index::{Index, Query};
+use crate::index::{Hit, Index, Query};
+use crate::tantivy_engine::TantivyEngine;
 
 struct Case {
     text: String,
     focus: Option<(f64, f64)>,
-    target: u32,
+    target: String,
     full: bool,
 }
 
@@ -33,7 +34,7 @@ fn cases(idx: &Index, n: usize) -> Vec<Case> {
         } else {
             rng.random_range(0..idx.len())
         };
-        let (name, lat, lon) = idx.name_of(id);
+        let (name, osm, lat, lon) = idx.name_of(id);
         let focus = rng.random_bool(0.5).then(|| {
             // Cloudflare's location is city-level; jitter by up to ~30 km.
             (
@@ -46,7 +47,7 @@ fn cases(idx: &Index, n: usize) -> Vec<Case> {
             out.push(Case {
                 text: chars[..len].iter().collect(),
                 focus,
-                target: id,
+                target: osm.clone(),
                 full: len == chars.len(),
             });
         }
@@ -65,7 +66,10 @@ fn pct(sorted: &[Duration], p: f64) -> Duration {
     sorted[i]
 }
 
-pub fn run(dir: &Path, n: usize, threads: usize) -> Result<()> {
+/// Benchmarks the custom index in `dir`, or the Tantivy index in `tantivy`
+/// when given. Queries are always generated from the custom index so both
+/// engines answer exactly the same ones.
+pub fn run(dir: &Path, n: usize, threads: usize, tantivy: Option<&Path>) -> Result<()> {
     let start = Instant::now();
     let idx = Index::open(dir)?;
     eprintln!(
@@ -74,23 +78,33 @@ pub fn run(dir: &Path, n: usize, threads: usize) -> Result<()> {
         start.elapsed()
     );
     let cases = cases(&idx, n);
+    let tantivy = tantivy.map(TantivyEngine::open).transpose()?;
+    if let Some(t) = &tantivy {
+        eprintln!("bench: tantivy engine, {} segment(s)", t.segments());
+    }
+    let search = |q: &Query<'_>| -> Vec<Hit> {
+        match &tantivy {
+            Some(t) => t.search(q),
+            None => idx.search(q),
+        }
+    };
     let chunk = cases.len().div_ceil(threads);
     let wall = Instant::now();
     let results: Vec<(Duration, bool, bool)> = std::thread::scope(|s| {
         let handles: Vec<_> = cases
             .chunks(chunk)
             .map(|part| {
-                let idx = &idx;
+                let search = &search;
                 s.spawn(move || {
                     part.iter()
                         .map(|c| {
                             let t = Instant::now();
-                            let hits = idx.search(&Query {
+                            let hits = search(&Query {
                                 text: &c.text,
                                 focus: c.focus,
                                 limit: 5,
                             });
-                            let found = hits.iter().any(|h| h.doc == c.target);
+                            let found = hits.iter().any(|h| h.osm == c.target);
                             (t.elapsed(), c.full && c.focus.is_some(), found)
                         })
                         .collect::<Vec<_>>()
