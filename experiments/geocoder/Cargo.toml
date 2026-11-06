@@ -1,0 +1,27 @@
+[package]
+name = "geocoder"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+description = "Prototype: a small, read-only forward geocoder for ATTrails built from Photon JSON dumps."
+
+# Standalone on purpose: this is an experiment and is not part of the main workspace.
+[workspace]
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
+fst = "0.4"
+memchr = "2"
+memmap2 = "0.9"
+rand = "0.9"
+rayon = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
+unicode-normalization = "0.1"
+zstd = "0.13"
+
+[profile.release]
+debug = 1
