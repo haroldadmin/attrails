@@ -15,7 +15,7 @@ mod generated;
 pub use generated::{Answer, State};
 
 pub(crate) struct Client {
-    base_url: reqwest::Url,
+    system_one_url: reqwest::Url,
     client: reqwest::Client,
 }
 
@@ -37,8 +37,11 @@ impl Client {
             .default_headers(headers)
             .build()?;
 
+        let base_url: reqwest::Url = conf.base_url.parse()?;
+        let system_one_url = base_url.join("v1/systemone")?;
+
         Ok(Self {
-            base_url: conf.base_url.parse()?,
+            system_one_url,
             client,
         })
     }
@@ -57,10 +60,9 @@ impl Client {
         let body = serde_json::to_string(&req)?;
         debug!(%body, "decisions api request");
 
-        let url = self.base_url.join("/v1/systemone")?;
         let res = self
             .client
-            .post(url)
+            .post(self.system_one_url.clone())
             .header(CONTENT_TYPE, "application/json")
             .body(body)
             .send()
