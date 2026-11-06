@@ -80,18 +80,16 @@ impl Moderator {
     ///
     /// Returns an error if the request fails, or the response is missing an
     /// answer to any question.
-    async fn judge(&self, subject: &Subject) -> Result<HashMap<ContentLabel, f32>> {
-        let state = subject.to_state();
+    async fn judge(&self, subject: &Subject) -> Result<HashMap<ContentLabel, f64>> {
+        let state = typesafe::State::Object(subject.to_state());
         let questions = JUDGMENTS
             .iter()
             .map(|judgment| {
-                let question = typesafe::Question::Noul {
-                    instructions: judgment.instructions(subject.key()),
-                    criteria: typesafe::NoulCriteria {
-                        when_true: judgment.when_true(),
-                        when_false: judgment.when_false(),
-                    },
-                };
+                let question = typesafe::noul(
+                    judgment.instructions(subject.key()),
+                    String::from(judgment.when_true()),
+                    String::from(judgment.when_false()),
+                );
                 (judgment.label.as_str().to_owned(), question)
             })
             .collect();
@@ -100,7 +98,8 @@ impl Moderator {
         let probabilities = JUDGMENTS
             .iter()
             .map(|judgment| match answers.get(judgment.label.as_str()) {
-                Some(typesafe::Answer::Noul { noul }) => Ok((judgment.label, *noul)),
+                Some(typesafe::Answer::NoulAnswer(noul)) => Ok((judgment.label, noul.noul)),
+                Some(_) => Err(anyhow!("expected noul answer")),
                 None => Err(anyhow!(
                     "no answer for {} in decisions api response",
                     judgment.label

@@ -2,9 +2,17 @@ use std::{collections::HashMap, time::Duration};
 
 use anyhow::{Result, anyhow};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use tracing::debug;
+
+use crate::typesafe::generated::{
+    False, Instructions, NoulCriteria, NoulQuestion, Question, SystemOneRequest, SystemOneResponse,
+    True,
+};
+
+#[allow(clippy::all, clippy::pedantic, dead_code)]
+mod generated;
+
+pub use generated::{Answer, State};
 
 pub(crate) struct Client {
     base_url: reqwest::Url,
@@ -15,41 +23,6 @@ pub(crate) struct Config {
     pub api_key: String,
     pub base_url: String,
     pub timeout: Duration,
-}
-
-#[derive(Serialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub(crate) enum Question {
-    Noul {
-        instructions: String,
-        criteria: NoulCriteria,
-    },
-}
-
-#[derive(Serialize)]
-pub(crate) struct NoulCriteria {
-    #[serde(rename = "true")]
-    pub when_true: &'static str,
-    #[serde(rename = "false")]
-    pub when_false: &'static str,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub(crate) enum Answer {
-    Noul { noul: f32 },
-}
-
-#[derive(Serialize)]
-struct Request {
-    model: &'static str,
-    state: Value,
-    questions: HashMap<String, Question>,
-}
-
-#[derive(Deserialize)]
-struct Response {
-    answers: HashMap<String, Answer>,
 }
 
 impl Client {
@@ -72,13 +45,14 @@ impl Client {
 
     pub(crate) async fn query(
         &self,
-        state: Value,
+        state: State,
         questions: HashMap<String, Question>,
     ) -> Result<HashMap<String, Answer>> {
-        let req = Request {
-            model: "jev-latest",
+        let req = SystemOneRequest {
+            model: String::from("jev-latest"),
             state,
             questions,
+            assets: HashMap::new(),
         };
         let body = serde_json::to_string(&req)?;
         debug!(%body, "decisions api request");
@@ -98,6 +72,17 @@ impl Client {
             return Err(anyhow!("decisions api returned {status}: {detail}"));
         }
 
-        Ok(res.json::<Response>().await?.answers)
+        Ok(res.json::<SystemOneResponse>().await?.answers)
     }
+}
+
+pub fn noul(instructions: String, when_true: String, when_false: String) -> Question {
+    Question::NoulQuestion(NoulQuestion {
+        criteria: Some(NoulCriteria {
+            true_: Some(True::String(when_true)),
+            false_: Some(False::String(when_false)),
+        }),
+        instructions: Some(Instructions::String(instructions)),
+        type_: String::from("noul"),
+    })
 }

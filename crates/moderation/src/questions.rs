@@ -1,7 +1,7 @@
 use crate::verdict::ContentLabel;
 
 /// Probability above which a judgment counts as true.
-pub(crate) const TRUE_THRESHOLD: f32 = 0.7;
+pub(crate) const TRUE_THRESHOLD: f64 = 0.7;
 
 /// A yes/no judgment about a record that, when true, applies `label`.
 pub(crate) struct Judgment {

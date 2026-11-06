@@ -53,30 +53,33 @@ impl Subject {
     }
 
     #[must_use]
-    pub(crate) fn to_state(&self) -> serde_json::Value {
+    pub(crate) fn to_state(&self) -> serde_json::Map<String, serde_json::Value> {
         match self {
             Subject::Route {
                 name,
                 description,
                 tags,
-            } => serde_json::json!({
-                "route": {
+            } => serde_json::map::Map::from_iter([(
+                String::from("route"),
+                serde_json::json!({
                     "name": name,
                     "description": description,
                     "tags": tags
-                }
-            }),
-            Subject::Review { text } => serde_json::json!({
-                "review": {
+                }),
+            )]),
+            Subject::Review { text } => serde_json::map::Map::from_iter([(
+                String::from("review"),
+                serde_json::json!({
                     "text": text
-                }
-            }),
-            Subject::Profile { name, bio } => serde_json::json!({
-                "profile": {
-                    "name": name,
-                    "bio": bio,
-                }
-            }),
+                }),
+            )]),
+            Subject::Profile { name, bio } => serde_json::map::Map::from_iter([(
+                String::from("profile"),
+                serde_json::json!({
+                        "name": name,
+                        "bio": bio,
+                }),
+            )]),
         }
     }
 }
@@ -92,7 +95,7 @@ mod tests {
         };
 
         assert_eq!(
-            review.to_state(),
+            serde_json::to_value(review.to_state()).expect("failed to serialise value"),
             serde_json::json!({"review": { "text": "test" }})
         );
     }
@@ -106,7 +109,7 @@ mod tests {
         };
 
         assert_eq!(
-            route.to_state(),
+            serde_json::to_value(route.to_state()).expect("failed to serialise value"),
             serde_json::json!({
                 "route": {
                     "name": "test-route",
@@ -125,7 +128,7 @@ mod tests {
         };
 
         assert_eq!(
-            profile.to_state(),
+            serde_json::to_value(profile.to_state()).expect("failed to serialise value"),
             serde_json::json!({
                 "profile": {
                     "name": "test-name",
