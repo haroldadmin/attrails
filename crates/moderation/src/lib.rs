@@ -1,5 +1,4 @@
 use anyhow::{Result, anyhow};
-use serde_json::{Map, Value};
 use std::{collections::HashMap, time::Duration};
 use tracing::{debug, instrument};
 
@@ -10,8 +9,11 @@ use crate::{
 
 mod fast_path;
 mod questions;
+mod subject;
 mod typesafe;
 mod verdict;
+
+pub use subject::Subject;
 
 pub struct ModeratorConfig {
     pub decisions_api_base_url: String,
@@ -54,15 +56,16 @@ impl Moderator {
     ///
     /// Returns an error if the request fails, or the response is missing an
     /// answer to any question.
-    #[instrument(skip(self, record))]
-    pub async fn infer_labels(&self, subject: &str, record: Value) -> Result<Verdict> {
-        let fast = fast_path::record_labels(&record);
+    #[instrument(skip(self, subject))]
+    pub async fn moderate(&self, subject: &Subject) -> Result<Verdict> {
+        let state = subject.to_state();
+        let fast = fast_path::record_labels(&state);
         if !fast.is_empty() {
             debug!(?fast, "rustrict fast path applied");
             return Ok(Verdict::new(fast, Source::Rustrict));
         }
 
-        let probabilities = self.judge(subject, record).await?;
+        let probabilities = self.judge(subject).await?;
         let labels: Vec<ContentLabel> = probabilities
             .iter()
             .filter(|(_, p)| **p >= TRUE_THRESHOLD)
@@ -79,13 +82,13 @@ impl Moderator {
     ///
     /// Returns an error if the request fails, or the response is missing an
     /// answer to any question.
-    async fn judge(&self, subject: &str, record: Value) -> Result<HashMap<ContentLabel, f32>> {
-        let state = Value::Object(Map::from_iter([(subject.to_owned(), record)]));
+    async fn judge(&self, subject: &Subject) -> Result<HashMap<ContentLabel, f32>> {
+        let state = subject.to_state();
         let questions = JUDGMENTS
             .iter()
             .map(|judgment| {
                 let question = typesafe::Question::Noul {
-                    instructions: judgment.instructions(subject),
+                    instructions: judgment.instructions(subject.key()),
                     criteria: typesafe::NoulCriteria {
                         when_true: judgment.when_true(),
                         when_false: judgment.when_false(),

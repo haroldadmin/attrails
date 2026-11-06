@@ -434,14 +434,11 @@ async fn consume_labels(
                         return Ok(());
                     };
                     moderator
-                        .infer_labels(
-                            "route",
-                            json!({
-                                "name": route.name,
-                                "description": route.description,
-                                "tags": route.tags,
-                            }),
-                        )
+                        .moderate(&moderation::Subject::Route {
+                            name: route.name,
+                            description: route.description,
+                            tags: route.tags,
+                        })
                         .await?
                 }
                 Some(ReviewRecord::NSID) => {
@@ -460,7 +457,7 @@ async fn consume_labels(
                         return Ok(());
                     };
                     moderator
-                        .infer_labels("review", json!({ "text": body }))
+                        .moderate(&moderation::Subject::Review { text: body })
                         .await?
                 }
                 Some(ProfileRecord::NSID) => {
@@ -472,7 +469,10 @@ async fn consume_labels(
                         return Ok(());
                     };
                     moderator
-                        .infer_labels("profile", json!({ "name": user.name, "bio": user.bio }))
+                        .moderate(&moderation::Subject::Profile {
+                            name: user.name,
+                            bio: user.bio,
+                        })
                         .await?
                 }
                 _ => {
