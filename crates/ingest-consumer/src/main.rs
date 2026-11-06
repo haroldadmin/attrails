@@ -25,7 +25,6 @@ use lifecycle::{
     shutdown::Shutdown,
 };
 use moderation::{Moderator, ModeratorConfig};
-use serde_json::json;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, info_span, warn};
@@ -424,7 +423,7 @@ async fn consume_labels(
             // Only the version of a record that is currently indexed is
             // moderated. Older versions are skipped, since a later message
             // covers the newer one.
-            let inference = match collection.as_deref() {
+            let verdict = match collection.as_deref() {
                 Some(RouteRecord::NSID) => {
                     let Some(route) = fetch_route_moderation_view(pool, &uri)
                         .await?
@@ -434,14 +433,11 @@ async fn consume_labels(
                         return Ok(());
                     };
                     moderator
-                        .infer_labels(
-                            "route",
-                            json!({
-                                "name": route.name,
-                                "description": route.description,
-                                "tags": route.tags,
-                            }),
-                        )
+                        .moderate(&moderation::Subject::Route {
+                            name: route.name,
+                            description: route.description,
+                            tags: route.tags,
+                        })
                         .await?
                 }
                 Some(ReviewRecord::NSID) => {
@@ -460,7 +456,7 @@ async fn consume_labels(
                         return Ok(());
                     };
                     moderator
-                        .infer_labels("review", json!({ "text": body }))
+                        .moderate(&moderation::Subject::Review { text: body })
                         .await?
                 }
                 Some(ProfileRecord::NSID) => {
@@ -472,7 +468,10 @@ async fn consume_labels(
                         return Ok(());
                     };
                     moderator
-                        .infer_labels("profile", json!({ "name": user.name, "bio": user.bio }))
+                        .moderate(&moderation::Subject::Profile {
+                            name: user.name,
+                            bio: user.bio,
+                        })
                         .await?
                 }
                 _ => {
@@ -481,7 +480,8 @@ async fn consume_labels(
                 }
             };
 
-            if inference.labels.is_empty() {
+            let labels = verdict.vals();
+            if labels.is_empty() {
                 info!(uri, cid, "no labels applied");
                 return Ok(());
             }
@@ -489,9 +489,9 @@ async fn consume_labels(
             let labels = NewLabels {
                 uri,
                 cid,
-                vals: inference.labels.iter().map(ToString::to_string).collect(),
+                vals: labels.iter().map(ToString::to_string).collect(),
                 cts: Timestamp::now(),
-                source: inference.source.as_str().to_owned(),
+                source: verdict.source.as_str().to_owned(),
             };
             database::labels::insert_labels(pool, &labels).await?;
             info!(uri = labels.uri, cid = labels.cid, vals = ?labels.vals, "labels applied");

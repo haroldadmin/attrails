@@ -1,0 +1,140 @@
+#[derive(PartialEq)]
+pub enum Subject {
+    Route {
+        name: String,
+        description: Option<String>,
+        tags: Vec<String>,
+    },
+    Review {
+        text: String,
+    },
+    Profile {
+        name: String,
+        bio: Option<String>,
+    },
+}
+
+impl Subject {
+    #[must_use]
+    pub(crate) fn key(&self) -> &'static str {
+        match self {
+            Subject::Route { .. } => "route",
+            Subject::Review { .. } => "review",
+            Subject::Profile { .. } => "profile",
+        }
+    }
+
+    pub(crate) fn text_content(&self) -> Vec<&str> {
+        match self {
+            Subject::Route {
+                name,
+                description,
+                tags,
+            } => {
+                let mut texts: Vec<&str> = vec![name];
+                if let Some(description) = description {
+                    texts.push(description);
+                }
+                for tag in tags {
+                    texts.push(tag);
+                }
+                texts
+            }
+            Subject::Review { text } => vec![text],
+            Subject::Profile { name, bio } => {
+                let mut texts: Vec<&str> = vec![name];
+                if let Some(bio) = bio {
+                    texts.push(bio);
+                }
+
+                texts
+            }
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn to_state(&self) -> serde_json::Map<String, serde_json::Value> {
+        match self {
+            Subject::Route {
+                name,
+                description,
+                tags,
+            } => serde_json::map::Map::from_iter([(
+                String::from("route"),
+                serde_json::json!({
+                    "name": name,
+                    "description": description,
+                    "tags": tags
+                }),
+            )]),
+            Subject::Review { text } => serde_json::map::Map::from_iter([(
+                String::from("review"),
+                serde_json::json!({
+                    "text": text
+                }),
+            )]),
+            Subject::Profile { name, bio } => serde_json::map::Map::from_iter([(
+                String::from("profile"),
+                serde_json::json!({
+                        "name": name,
+                        "bio": bio,
+                }),
+            )]),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Subject;
+
+    #[test]
+    fn review_state_should_accurately_describe_it() {
+        let review = Subject::Review {
+            text: String::from("test"),
+        };
+
+        assert_eq!(
+            serde_json::to_value(review.to_state()).expect("failed to serialise value"),
+            serde_json::json!({"review": { "text": "test" }})
+        );
+    }
+
+    #[test]
+    fn route_state_should_accurately_describe_it() {
+        let route = Subject::Route {
+            name: String::from("test-route"),
+            description: Some(String::from("test-description")),
+            tags: vec![String::from("test-tag")],
+        };
+
+        assert_eq!(
+            serde_json::to_value(route.to_state()).expect("failed to serialise value"),
+            serde_json::json!({
+                "route": {
+                    "name": "test-route",
+                    "description": "test-description",
+                    "tags": ["test-tag"]
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn profile_state_should_accurately_describe_it() {
+        let profile = Subject::Profile {
+            name: String::from("test-name"),
+            bio: Some(String::from("test-bio")),
+        };
+
+        assert_eq!(
+            serde_json::to_value(profile.to_state()).expect("failed to serialise value"),
+            serde_json::json!({
+                "profile": {
+                    "name": "test-name",
+                    "bio": "test-bio",
+                }
+            })
+        );
+    }
+}
