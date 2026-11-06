@@ -1,30 +1,30 @@
 use rustrict::{Censor, Type};
 use serde_json::Value;
 
-use crate::{LabelVal, with_action};
+use crate::verdict::ContentLabel;
 
 /// Only terms rustrict rates as severe may bypass the decisions API.
 const MIN_SEVERITY: Type = Type::SEVERE;
 
 /// A function that returns labels for text, or `None` if the result is
 /// ambiguous and must be decided by the model.
-type LabelCheck = fn(&str) -> Option<Vec<LabelVal>>;
+type LabelCheck = fn(&str) -> Option<Vec<ContentLabel>>;
 
 /// Map a rustrict analysis to labels without involving any real text.
 ///
 /// Severe `mean` matches are ambiguous and return `None`: rustrict uses `mean`
 /// for both ordinary insults and violent language, which need different labels.
-fn labels_for_analysis(analysis: Type) -> Option<Vec<LabelVal>> {
+fn labels_for_analysis(analysis: Type) -> Option<Vec<ContentLabel>> {
     if analysis.is(Type::MEAN & MIN_SEVERITY) {
         return None;
     }
 
     let mut labels = Vec::new();
     if analysis.is((Type::PROFANE | Type::OFFENSIVE) & MIN_SEVERITY) {
-        labels.push(LabelVal::Rude);
+        labels.push(ContentLabel::Rude);
     }
     if analysis.is(Type::SEXUAL & MIN_SEVERITY) {
-        labels.push(LabelVal::Porn);
+        labels.push(ContentLabel::Porn);
     }
 
     Some(labels)
@@ -34,7 +34,7 @@ fn labels_for_analysis(analysis: Type) -> Option<Vec<LabelVal>> {
 ///
 /// Returns `None` when the text contains an ambiguous severe `mean` match.
 #[must_use]
-fn text_labels(text: &str) -> Option<Vec<LabelVal>> {
+fn text_labels(text: &str) -> Option<Vec<ContentLabel>> {
     if text.trim().is_empty() {
         return Some(Vec::new());
     }
@@ -53,17 +53,17 @@ fn text_labels(text: &str) -> Option<Vec<LabelVal>> {
 /// the whole record to skip the decisions API, unless any field has an
 /// ambiguous severe `mean` match.
 #[must_use]
-pub(crate) fn record_labels(record: &Value) -> Vec<LabelVal> {
+pub(crate) fn record_labels(record: &Value) -> Vec<ContentLabel> {
     let mut labels = Vec::new();
     if collect(record, &mut labels, text_labels) {
         return Vec::new();
     }
 
-    with_action(labels)
+    labels
 }
 
 /// Collect labels, returning `true` if any value is ambiguous.
-fn collect(value: &Value, labels: &mut Vec<LabelVal>, check: LabelCheck) -> bool {
+fn collect(value: &Value, labels: &mut Vec<ContentLabel>, check: LabelCheck) -> bool {
     match value {
         Value::String(text) => match check(text) {
             Some(found) => {
@@ -92,7 +92,7 @@ mod tests {
     fn severe_profanity_is_rude() {
         assert_eq!(
             labels_for_analysis(Type::PROFANE & Type::SEVERE),
-            Some(vec![LabelVal::Rude])
+            Some(vec![ContentLabel::Rude])
         );
     }
 
@@ -100,7 +100,7 @@ mod tests {
     fn severe_offensive_is_rude() {
         assert_eq!(
             labels_for_analysis(Type::OFFENSIVE & Type::SEVERE),
-            Some(vec![LabelVal::Rude])
+            Some(vec![ContentLabel::Rude])
         );
     }
 
@@ -108,7 +108,7 @@ mod tests {
     fn severe_sexual_is_porn() {
         assert_eq!(
             labels_for_analysis(Type::SEXUAL & Type::SEVERE),
-            Some(vec![LabelVal::Porn])
+            Some(vec![ContentLabel::Porn])
         );
     }
 
@@ -141,9 +141,9 @@ mod tests {
 
     /// A stand-in for `text_labels` so recursion can be tested without
     /// embedding real moderation terms in the source.
-    fn fake_check(text: &str) -> Option<Vec<LabelVal>> {
+    fn fake_check(text: &str) -> Option<Vec<ContentLabel>> {
         match text {
-            "flagged" => Some(vec![LabelVal::Rude]),
+            "flagged" => Some(vec![ContentLabel::Rude]),
             "unclear" => None,
             _ => Some(Vec::new()),
         }
@@ -158,7 +158,7 @@ mod tests {
             &mut labels,
             fake_check
         ));
-        assert_eq!(labels, vec![LabelVal::Rude]);
+        assert_eq!(labels, vec![ContentLabel::Rude]);
     }
 
     #[test]
