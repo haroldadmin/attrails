@@ -3,6 +3,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ReactNode } from "react";
+import { AtTrailsMark } from "./logo";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
@@ -86,12 +87,15 @@ export function OgCard({
         <div
           style={{
             display: "flex",
+            alignItems: "center",
+            gap: 16,
             fontFamily: "Newsreader",
             fontStyle: "italic",
             fontSize: 40,
           }}
         >
-          ATTrails
+          <AtTrailsMark size={48} color={ogColors.primary} />
+          <span style={{ marginTop: "8px" }}>ATTrails</span>
         </div>
         <div
           style={{
