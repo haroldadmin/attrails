@@ -22,8 +22,10 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 
 FROM base AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
-# Analytics are rendered into the prerendered pages, so they are set at build
-# time. Leave them unset to build without analytics.
+# Analytics config is read when prerendering at build time, and again at
+# request time when the server resumes those pages. Set them as build args,
+# and they are passed to both stages. Leave them unset to build without
+# analytics.
 ARG ATTRAILS_UMAMI_SCRIPT_URL
 ARG ATTRAILS_UMAMI_WEBSITE_ID
 ENV ATTRAILS_UMAMI_SCRIPT_URL=${ATTRAILS_UMAMI_SCRIPT_URL}
@@ -41,6 +43,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 # Bind to all interfaces rather than the container's hostname.
 ENV HOSTNAME=0.0.0.0
+# Without these at runtime, the analytics script is dropped from the RSC
+# payload rendered on each request, so it never runs in the browser.
+ARG ATTRAILS_UMAMI_SCRIPT_URL
+ARG ATTRAILS_UMAMI_WEBSITE_ID
+ENV ATTRAILS_UMAMI_SCRIPT_URL=${ATTRAILS_UMAMI_SCRIPT_URL}
+ENV ATTRAILS_UMAMI_WEBSITE_ID=${ATTRAILS_UMAMI_WEBSITE_ID}
 COPY --from=builder --chown=nonroot:nonroot /app/.next/standalone ./
 COPY --from=builder --chown=nonroot:nonroot /app/.next/static .next/static
 EXPOSE 3000
