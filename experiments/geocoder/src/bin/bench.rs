@@ -75,7 +75,7 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
-        "http" => http(&args[3], &args[4], args[5].parse()?),
+        "http" => http(&index, &args[3], &args[4], args[5].parse()?),
         other => anyhow::bail!("unknown mode {other}"),
     }
 }
@@ -225,19 +225,31 @@ fn run(index: &Index, path: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn http(path: &str, addr: &str, threads: usize) -> anyhow::Result<()> {
+fn http(index: &Index, path: &str, addr: &str, threads: usize) -> anyhow::Result<()> {
     let cases = std::sync::Arc::new(load(path)?);
+    // The OSM id of each case's source place, to look for in the response.
+    let wanted: std::sync::Arc<Vec<String>> = std::sync::Arc::new(
+        cases
+            .iter()
+            .map(|c| {
+                format!(
+                    "\"osm_id\":{}",
+                    index.osm()[c.doc as usize] & 0x00ff_ffff_ffff_ffff
+                )
+            })
+            .collect(),
+    );
     let wall = Instant::now();
     let handles: Vec<_> = (0..threads)
         .map(|t| {
             let cases = cases.clone();
+            let wanted = wanted.clone();
             let addr = addr.to_string();
-            std::thread::spawn(move || -> anyhow::Result<Vec<Duration>> {
+            std::thread::spawn(move || -> anyhow::Result<Vec<(Duration, usize, bool)>> {
                 let mut stream = std::net::TcpStream::connect(&addr)?;
                 stream.set_nodelay(true)?;
                 let mut times = Vec::new();
-                let mut buf = vec![0u8; 1 << 16];
-                for case in cases.iter().skip(t).step_by(threads) {
+                for (i, case) in cases.iter().enumerate().skip(t).step_by(threads) {
                     let mut q = String::new();
                     for b in case.text.bytes() {
                         if b.is_ascii_alphanumeric() {
@@ -252,15 +264,16 @@ fn http(path: &str, addr: &str, threads: usize) -> anyhow::Result<()> {
                     let started = Instant::now();
                     write!(
                         stream,
-                        "GET /api?q={q}{near} HTTP/1.1\r\nHost: bench\r\n\r\n"
+                        "GET /api?q={q}{near}&limit=8 HTTP/1.1\r\nHost: bench\r\n\r\n"
                     )?;
                     // Read headers, then exactly content-length bytes.
-                    let mut have = 0;
+                    let mut buf: Vec<u8> = Vec::with_capacity(1 << 14);
+                    let mut chunk = [0u8; 1 << 14];
                     let body_at = loop {
-                        let n = stream.read(&mut buf[have..])?;
+                        let n = stream.read(&mut chunk)?;
                         anyhow::ensure!(n > 0, "connection closed");
-                        have += n;
-                        if let Some(p) = buf[..have].windows(4).position(|w| w == b"\r\n\r\n") {
+                        buf.extend_from_slice(&chunk[..n]);
+                        if let Some(p) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
                             break p + 4;
                         }
                     };
@@ -271,24 +284,41 @@ fn http(path: &str, addr: &str, threads: usize) -> anyhow::Result<()> {
                         .and_then(|s| s.split("\r\n").next())
                         .and_then(|s| s.parse().ok())
                         .unwrap_or(0);
-                    let mut remaining = (body_at + len).saturating_sub(have);
-                    while remaining > 0 {
-                        let n = stream.read(&mut buf)?;
+                    while buf.len() < body_at + len {
+                        let n = stream.read(&mut chunk)?;
                         anyhow::ensure!(n > 0, "connection closed");
-                        remaining = remaining.saturating_sub(n);
+                        buf.extend_from_slice(&chunk[..n]);
                     }
-                    times.push(started.elapsed());
+                    let took = started.elapsed();
+                    let body = String::from_utf8_lossy(&buf[body_at..]);
+                    // Followed by a non-digit, so id 12 doesn't match 123.
+                    let found = body.match_indices(wanted[i].as_str()).any(|(at, m)| {
+                        !body[at + m.len()..].starts_with(|c: char| c.is_ascii_digit())
+                    });
+                    times.push((took, i, found));
                 }
                 Ok(times)
             })
         })
         .collect();
     let mut all = Vec::new();
+    let mut by_kind: std::collections::BTreeMap<&str, (usize, usize)> = Default::default();
     for h in handles {
-        all.extend(h.join().unwrap()?);
+        for (took, i, found) in h.join().unwrap()? {
+            all.push(took);
+            let e = by_kind.entry(cases[i].kind.as_str()).or_default();
+            e.0 += usize::from(found);
+            e.1 += 1;
+        }
     }
     let wall = wall.elapsed();
     report(&format!("HTTP x{threads}"), &mut all);
     println!("{:.0} requests/s", all.len() as f64 / wall.as_secs_f64());
+    for (kind, (found, total)) in by_kind {
+        println!(
+            "  {kind}: exact source place in top 8: {:.1}%",
+            100.0 * found as f64 / total as f64
+        );
+    }
     Ok(())
 }

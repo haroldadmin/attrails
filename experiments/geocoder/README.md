@@ -4,10 +4,12 @@ A prototype answering one question: can ATTrails serve worldwide place search
 from a small homelab box (under 4 GB RAM, 2 CPUs, p95 under 200 ms) instead of
 running Photon, which recommends 64 GB RAM for the planet?
 
-**Yes.** With the index limited to places people search for in an outdoor-routes
-app, a memory-mapped index file and a small Rust server answer worldwide
-queries at p95 ≈ 18 ms inside a 2 GB / 2 CPU limit, and still at p95 ≈ 50 ms
-inside 512 MB.
+**Yes, two ways.** Limiting the index to places people search for in an
+outdoor-routes app (4% of the planet dump) is what makes it fit:
+
+- Stock Photon fed that filtered dump: p95 ≈ 80 ms inside a 2 GB / 2 CPU limit.
+- The custom server in this directory: p95 ≈ 18 ms inside the same limit, and
+  p95 ≈ 50 ms inside 512 MB.
 
 This is an experiment, not production code. It is a standalone Cargo project,
 outside the main workspace and its CI.
@@ -46,7 +48,9 @@ and other POIs, which make up 96% of the dump, are left out.
 | Build the index (`build-index`) | 4 min 20 s, one thread | 3.3 GB |
 
 The filtered intermediate file is 23.8 GB because it keeps every translation
-of every address part; trimming those would shrink it several times over.
+of every address part. Keeping only the local, English, German, French and
+Italian forms (`scripts/to_photon.py` does this) brings it to 760 MB
+compressed.
 
 ### Query latency
 
@@ -89,12 +93,61 @@ tolerance:
 Short prefixes are the problem: Postgres has to fetch and sort every match
 before it can return the best eight. Table plus indexes took 1.9 GB.
 
+### Stock Photon on the same filtered data
+
+Photon can import a preprocessed JSON dump, so the same 11.1 million places
+were converted back to Photon's dump format (`scripts/to_photon.py`) and
+imported into unmodified Photon 1.0.1 with its embedded OpenSearch.
+
+| | Photon 1.0.1, filtered dump | This prototype |
+| --- | --- | --- |
+| Build time | 29 min | 4 min 20 s |
+| Build peak memory | 3.8 GB (4 GB heap) | 3.3 GB |
+| Size on disk | 4.3 GB | 1.46 GB |
+| Process memory while serving | 350 to 520 MB | 40 to 60 MB |
+| Time until ready | 5 to 7 s | under 1 s |
+
+Same queries, same cgroup caps, 2 CPUs, after a warm-up pass. Photon's heap
+was 1 GB, 768 MB and 512 MB for the three caps.
+
+| Memory cap | Clients | Photon p50 / p95 / p99 | Photon req/s | Prototype p50 / p95 / p99 | Prototype req/s |
+| --- | --- | --- | --- | --- | --- |
+| 4 GB | 2 | 8.9 / 75 / 115 ms | 99 | 0.6 / 17 / 36 ms | 629 |
+| 2 GB | 2 | 10.9 / 79 / 116 ms | 87 | 0.6 / 18 / 36 ms | 614 |
+| 1 GB | 2 | 17.4 / 87 / 141 ms | 67 | 1.0 / 19 / 40 ms | 509 |
+| 2 GB | 8 (saturating) | 89 / 200 / 279 ms | 82 | 3.9 / 63 / 90 ms | 606 |
+
+**Filtered Photon also meets the target.** At light load it stays under 200 ms
+at p95 even inside 1 GB. It runs out of CPU at about 80 to 100 requests per
+second on 2 CPUs, where its p95 reaches 200 ms; the prototype has roughly
+seven times that headroom.
+
+How often the exact place a query was made from is in the top 8 (stricter than
+the same-name measure above, since many places share a name):
+
+| Query kind | Photon | Prototype |
+| --- | --- | --- |
+| Full name | 87.5% | 89.3% |
+| Name plus country | 90.1% | 87.0% |
+| Name with a typo | 58.7% | 72.1% |
+| Prefix (often ambiguous by design) | 44.2% | 52.4% |
+
+The two are comparable on this synthetic measure. It says nothing about which
+ranks better for real searches; Photon's ranking has years of production use
+behind it and the prototype's does not.
+
+### Other projects looked at
+
+- **Cairn** (Rust, tantivy, memory-mapped bundles): closest in spirit, but
+  describes itself as alpha and "not yet production-tested at planet scale".
+  Its published benchmarks use 5,000 synthetic places and a Switzerland
+  bundle. It builds from raw OSM extracts rather than the Photon dump, so it
+  has no Nominatim importance scores to rank with.
+- **Airmail** (Rust, tantivy): README asks for about 16 GB of memory and calls
+  the project early-stage, with admin-area queries and focus points not done.
+
 ### Not measured
 
-- **Photon on the filtered data.** Photon can import a preprocessed JSON dump,
-  so the 12 million filtered objects could be fed to stock Photon. That would
-  likely fit in a few GB, but it still carries a JVM and OpenSearch. It could
-  not be tested here because GitHub release downloads were blocked.
 - **Result quality against real searches.** The workload is synthetic. Spot
   checks look right ("lake tah", "paris texas", "springfield il", "zermat",
   "richmond" near London vs near Virginia), but ranking weights were tuned by
@@ -170,6 +223,16 @@ curl 'localhost:2322/api?q=lake%20tah&lat=39.1&lon=-120.0'
 ```
 
 The response is a GeoJSON FeatureCollection shaped like Photon's `/api`.
+
+To try stock Photon on the same data instead:
+
+```bash
+python3 scripts/to_photon.py planet.ext.jsonl countries.json filtered-photon.jsonl.zst
+```
+
+```bash
+zstd -dc filtered-photon.jsonl.zst | java -Xmx4g -jar photon-1.0.1.jar import -import-file -
+```
 
 Benchmark:
 
