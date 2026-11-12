@@ -1,0 +1,26 @@
+[package]
+name = "geocoder"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio", "query"] }
+crossbeam-channel = "0.5"
+fst = { version = "0.4", features = ["levenshtein"] }
+memchr = "2"
+memmap2 = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["net", "rt-multi-thread", "macros", "signal"] }
+unicode-normalization = "0.1"
+zstd = "0.13"
+
+[profile.release]
+opt-level = 3
+debug = 1
+
+# A standalone experiment, kept out of the main workspace and its CI.
+[workspace]
