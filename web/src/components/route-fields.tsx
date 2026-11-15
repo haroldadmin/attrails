@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { RouteValues } from "@/app/routes/route-values";
 import type { Option } from "@/lib/routes/shared";
 import { TagInput } from "./tag-input";
@@ -7,6 +8,8 @@ export type RouteFieldsProps = {
   activities: readonly Option[];
   surfaces: readonly Option[];
   difficulties: readonly Option[];
+  /** Shown between the activity and surface fields. */
+  afterActivity?: ReactNode;
 };
 
 export function RouteFields({
@@ -14,6 +17,7 @@ export function RouteFields({
   activities,
   surfaces,
   difficulties,
+  afterActivity,
 }: RouteFieldsProps) {
   return (
     <>
@@ -81,6 +85,8 @@ export function RouteFields({
           What activity the route is best suited to.
         </p>
       </fieldset>
+
+      {afterActivity}
 
       <fieldset className="fieldset">
         <label className="fieldset-legend" htmlFor="surface">

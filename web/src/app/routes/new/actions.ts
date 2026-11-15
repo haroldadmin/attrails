@@ -3,9 +3,18 @@
 import { redirect } from "next/navigation";
 import { assertSession } from "@/auth/session";
 import { GPX_MAX_SIZE_BYTES, GpxError, parseGpx } from "@/lib/gpx";
-import { createRoute, type CreateRouteError, routeSchema } from "@/lib/routes";
+import {
+  createRoute,
+  type CreateRouteError,
+  ROUTE_IMAGE_MAX_SIZE_BYTES,
+  routeImagesSchema,
+  routeSchema,
+  type UploadedRouteImage,
+  uploadRouteImage,
+} from "@/lib/routes";
 import { readRouteValues, type RouteValues } from "../route-values";
 import { GPX_TOO_LARGE_MESSAGE, gpxErrorMessage } from "./gpx-messages";
+import { photoErrorMessage } from "./photo-messages";
 
 export type UploadRouteState = {
   values: RouteValues;
@@ -30,6 +39,13 @@ export async function uploadRoute(
     return { values, error: draft.error.issues[0].message };
   }
 
+  const images = routeImagesSchema.safeParse(
+    formData.getAll("images").map(parseJson),
+  );
+  if (!images.success) {
+    return { values, error: images.error.issues[0].message };
+  }
+
   const file = formData.get("gpx");
   if (!(file instanceof File) || file.size === 0) {
     return { values, error: "Choose a GPX file." };
@@ -48,10 +64,43 @@ export async function uploadRoute(
     throw error;
   }
 
-  const result = await createRoute(session, draft.data, gpx);
+  const result = await createRoute(session, draft.data, gpx, images.data);
   if (!result.ok) {
     return { values, error: CREATE_ERROR_MESSAGES[result.reason] };
   }
 
   redirect("/?notice=route-uploaded");
+}
+
+function parseJson(value: FormDataEntryValue): unknown {
+  try {
+    return typeof value === "string" ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+export type UploadRoutePhotoResult =
+  { ok: true; image: UploadedRouteImage } | { ok: false; error: string };
+
+export async function uploadRoutePhoto(
+  formData: FormData,
+): Promise<UploadRoutePhotoResult> {
+  const session = await assertSession("/routes/new");
+
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: photoErrorMessage("unsupported") };
+  }
+  if (file.size > ROUTE_IMAGE_MAX_SIZE_BYTES) {
+    return { ok: false, error: photoErrorMessage("too-large") };
+  }
+
+  const result = await uploadRouteImage(
+    session,
+    new Uint8Array(await file.arrayBuffer()),
+  );
+  return result.ok
+    ? result
+    : { ok: false, error: photoErrorMessage(result.reason) };
 }
