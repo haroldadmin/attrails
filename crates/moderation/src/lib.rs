@@ -1,4 +1,5 @@
 use anyhow::{Result, anyhow};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use std::{collections::HashMap, time::Duration};
 use tracing::{debug, instrument};
 
@@ -7,12 +8,14 @@ use crate::{
     verdict::{ContentLabel, Source, Verdict},
 };
 
+mod image;
 mod questions;
 mod rustrict;
 mod subject;
 mod typesafe;
 mod verdict;
 
+pub use image::Image;
 pub use subject::Subject;
 
 pub struct ModeratorConfig {
@@ -80,6 +83,9 @@ impl Moderator {
     ///
     /// Returns an error if the request fails, or the response is missing an
     /// answer to any question.
+    ///
+    /// Also returns an error if any images in the subject can not be converted
+    /// to a Typesafe AI compatible format.
     async fn judge(&self, subject: &Subject) -> Result<HashMap<ContentLabel, f64>> {
         let state = typesafe::State::Object(subject.to_state());
         let questions = JUDGMENTS
@@ -94,7 +100,21 @@ impl Moderator {
             })
             .collect();
 
-        let answers = self.client.query(state, questions).await?;
+        let assets = subject
+            .images()
+            .iter()
+            .map(|i| {
+                let jpeg = image::prepare(&i.bytes)?;
+                let asset = typesafe::Asset {
+                    format: Some(typesafe::Format::Jpg),
+                    data_base64: Some(BASE64_STANDARD.encode(jpeg)),
+                    ..Default::default()
+                };
+                Ok((i.img_ref(), asset))
+            })
+            .collect::<Result<HashMap<_, _>>>()?;
+
+        let answers = self.client.query(state, questions, assets).await?;
         let probabilities = JUDGMENTS
             .iter()
             .map(|judgment| match answers.get(judgment.label.as_str()) {

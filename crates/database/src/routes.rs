@@ -100,8 +100,10 @@ pub struct RouteModerationView {
     pub uri: String,
     pub cid: String,
     pub name: String,
+    pub did: String,
     pub description: Option<String>,
     pub tags: Vec<String>,
+    pub images: Value,
 }
 
 /// Fetches all the route information relevant for making
@@ -118,7 +120,7 @@ pub async fn fetch_route_moderation_view(
     let route = sqlx::query_as!(
         RouteModerationView,
         r#"
-            SELECT uri, cid, name, description, tags
+            SELECT uri, cid, did, name, description, tags, images
             FROM routes
             WHERE uri = $1
               AND tombstoned = FALSE;

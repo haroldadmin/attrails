@@ -112,6 +112,7 @@ mod tests {
             name: String::from("Ben Nevis"),
             description: Some(String::from("A steep climb with a warning about the drop")),
             tags: vec![String::from("scotland")],
+            images: vec![],
         };
 
         assert_eq!(screen(&subject.text_content()), None);

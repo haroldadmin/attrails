@@ -12,7 +12,7 @@ use crate::typesafe::generated::{
 #[allow(clippy::all, clippy::pedantic, dead_code)]
 mod generated;
 
-pub use generated::{Answer, State};
+pub use generated::{Answer, Asset, Format, State};
 
 pub(crate) struct Client {
     system_one_url: reqwest::Url,
@@ -50,12 +50,14 @@ impl Client {
         &self,
         state: State,
         questions: HashMap<String, Question>,
+        assets: HashMap<String, Asset>,
     ) -> Result<HashMap<String, Answer>> {
+        let has_images = !assets.is_empty();
         let req = SystemOneRequest {
             model: String::from("jev-latest"),
             state,
             questions,
-            assets: HashMap::new(),
+            assets,
         };
         let body = serde_json::to_string(&req)?;
         debug!(%body, "decisions api request");
@@ -64,6 +66,7 @@ impl Client {
             .client
             .post(self.system_one_url.clone())
             .header(CONTENT_TYPE, "application/json")
+            .header("TypeSafe-Danger-Zone-Images", has_images.to_string())
             .body(body)
             .send()
             .await?;

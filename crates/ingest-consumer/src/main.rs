@@ -34,6 +34,7 @@ use crate::blobs::verify_cid;
 
 mod blobs;
 mod config;
+mod images;
 mod profiles;
 mod reviews;
 mod routes;
@@ -91,7 +92,7 @@ async fn main() -> Result<()> {
             consume_profiles(&channel, &pool, &shutdown_token),
             consume_blobs(&channel, &pool, &shutdown_token, &agent),
             consume_identity(&channel, &pool, &shutdown_token),
-            consume_labels(&channel, &pool, &moderator, &shutdown_token),
+            consume_labels(&channel, &pool, &moderator, &shutdown_token, &agent),
         )
     };
     tokio::pin!(consumers);
@@ -407,6 +408,7 @@ async fn consume_labels(
     pool: &PgPool,
     moderator: &Moderator,
     shutdown: &CancellationToken,
+    agent: &BasicClient,
 ) -> Result<()> {
     Queue::Labels
         .consume::<LabelMsg, _>(channel, shutdown, async |msg| {
@@ -432,31 +434,36 @@ async fn consume_labels(
                         info!(uri, cid, "skipping labels for stale or deleted route");
                         return Ok(());
                     };
+                    let images = images::fetch_images(agent, &route.did, route.images).await?;
                     moderator
                         .moderate(&moderation::Subject::Route {
                             name: route.name,
                             description: route.description,
                             tags: route.tags,
+                            images,
                         })
                         .await?
                 }
                 Some(ReviewRecord::NSID) => {
-                    // A review without a body is only a rating, so there is
-                    // nothing to moderate.
-                    let Some(body) = fetch_review_moderation_view(pool, &uri)
+                    let Some(review) = fetch_review_moderation_view(pool, &uri)
                         .await?
                         .filter(|review| review.cid == cid)
-                        .and_then(|review| review.body)
-                        .filter(|body| !body.trim().is_empty())
                     else {
-                        info!(
-                            uri,
-                            cid, "skipping labels for stale, deleted or empty review"
-                        );
+                        info!(uri, cid, "skipping labels for stale or deleted review");
                         return Ok(());
                     };
+                    let text = review.body.unwrap_or_default();
+                    let images = images::fetch_images(agent, &review.did, review.images).await?;
+
+                    // A review without a body or images is only a rating, so
+                    // there is nothing to moderate.
+                    if text.trim().is_empty() && images.is_empty() {
+                        info!(uri, cid, "skipping labels for rating-only review");
+                        return Ok(());
+                    }
+
                     moderator
-                        .moderate(&moderation::Subject::Review { text: body })
+                        .moderate(&moderation::Subject::Review { text, images })
                         .await?
                 }
                 Some(ProfileRecord::NSID) => {
@@ -467,10 +474,14 @@ async fn consume_labels(
                         info!(uri, cid, "skipping labels for stale or deleted profile");
                         return Ok(());
                     };
+                    let image =
+                        images::fetch_profile_picture(agent, &user.did, user.profile_picture_uri)
+                            .await?;
                     moderator
                         .moderate(&moderation::Subject::Profile {
                             name: user.name,
                             bio: user.bio,
+                            image,
                         })
                         .await?
                 }
