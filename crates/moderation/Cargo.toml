@@ -14,6 +14,9 @@ serde = { version = "1.0.229", features = ["derive"] }
 anyhow = "1.0.104"
 tracing = "0.1.44"
 rustrict = { version = "0.7.39", default-features = false, features = ["censor"] }
+bytes = "1.12.1"
+image = "0.25.10"
+base64 = "0.23.1"
 
 [lints]
 workspace = true
