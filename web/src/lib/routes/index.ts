@@ -7,6 +7,7 @@ export * from "./shared";
 export * from "./vocabulary";
 export {
   fetchRouteGpx,
+  fetchRouteImage,
   loadRoute,
   loadRouteNames,
   loadRoutes,
@@ -15,6 +16,8 @@ export {
   loadRouteSummary,
   type RouteGpxError,
   type RouteGpxResult,
+  type RouteImageError,
+  type RouteImageResult,
 } from "./queries";
 export {
   createRoute,
@@ -26,4 +29,7 @@ export {
   saveRoute,
   type SaveRouteError,
   type SaveRouteResult,
+  uploadRouteImage,
+  type UploadRouteImageError,
+  type UploadRouteImageResult,
 } from "./records";

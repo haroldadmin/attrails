@@ -18,6 +18,7 @@ export const OAUTH_SCOPE = [
   "repo:app.attrails.review",
   "repo:app.attrails.actor.profile",
   "blob:application/gpx+xml",
+  "blob:image/*",
 ].join(" ");
 
 export function getWebUrl(): URL {

@@ -1,5 +1,6 @@
 import { TID } from "@atproto/common-web";
 import { sql } from "kysely";
+import sharp from "sharp";
 import { describe, expect, test, vi } from "vitest";
 import { getDb } from "@/db/client";
 import { loadLabelledUris } from "@/lib/moderation";
@@ -8,6 +9,7 @@ import { setUpTestDatabase } from "@/test/database";
 import {
   createRoute,
   deleteRoute,
+  fetchRouteImage,
   loadRoute,
   loadRoutes,
   loadRoutesMatching,
@@ -15,8 +17,10 @@ import {
   parseTags,
   ROUTE_MAX_TAGS,
   ROUTE_TAG_MAX_GRAPHEMES,
+  routeImagesSchema,
   routeSchema,
   saveRoute,
+  uploadRouteImage,
 } from ".";
 
 // `getDb` waits on Next.js to opt out of prerendering, which needs a request.
@@ -41,6 +45,7 @@ async function insertRoute(
     labelled = false,
     tombstoned = false,
     processed = true,
+    images = [],
   }: {
     name?: string;
     activity?: string;
@@ -49,6 +54,7 @@ async function insertRoute(
     labelled?: boolean;
     tombstoned?: boolean;
     processed?: boolean;
+    images?: unknown[];
   } = {},
 ) {
   const rkey = TID.nextStr();
@@ -71,7 +77,7 @@ async function insertRoute(
       surface: null,
       difficulty: null,
       tags: [],
-      images: JSON.stringify([]),
+      images: JSON.stringify(images),
       details: JSON.stringify({}),
       sort_at: at,
       created_at: at,
@@ -195,6 +201,60 @@ describe("loading routes", () => {
   });
 });
 
+async function storedImage(mimeType = "image/webp") {
+  return {
+    image: {
+      $type: "blob",
+      ref: { $link: await newCid() },
+      mimeType,
+      size: 1000,
+    },
+    alt: "The view from the top",
+    aspectRatio: { width: 4, height: 3 },
+  };
+}
+
+describe("loading route photos", () => {
+  test("hides the photos of routes with moderation labels", async () => {
+    const image = await storedImage();
+    const clean = await insertRoute(ALICE, { images: [image] });
+    const labelled = await insertRoute(BOB, {
+      images: [image],
+      labelled: true,
+    });
+
+    expect((await loadRoute(clean, { labelled: "include" }))?.images).toEqual([
+      {
+        cid: image.image.ref.$link,
+        alt: "The view from the top",
+        aspectRatio: { width: 4, height: 3 },
+        url: `/routes/${encodeURIComponent(ALICE)}/${clean.rkey}/images/${image.image.ref.$link}`,
+      },
+    ]);
+    expect(
+      (await loadRoute(labelled, { labelled: "include" }))?.images,
+    ).toEqual([]);
+    expect(await fetchRouteImage(labelled, image.image.ref.$link)).toEqual({
+      ok: false,
+      reason: "not-found",
+    });
+  });
+
+  test("only serves a route's current photos in raster formats", async () => {
+    const svg = await storedImage("image/svg+xml");
+    const route = await insertRoute(ALICE, { images: [svg] });
+
+    expect(await fetchRouteImage(route, await newCid())).toEqual({
+      ok: false,
+      reason: "not-found",
+    });
+    expect(await fetchRouteImage(route, svg.image.ref.$link)).toEqual({
+      ok: false,
+      reason: "unsupported",
+    });
+  });
+});
+
 describe("validating routes", () => {
   const values = {
     name: " Coastal loop ",
@@ -274,7 +334,54 @@ describe("writing routes", () => {
     ]);
   });
 
-  test("saves over the expected version, keeping the track", async () => {
+  test("uploads photos and adds them to a new route", async () => {
+    const { agent, writes } = fakeAccount(ALICE);
+    const photo = await sharp({
+      create: { width: 800, height: 600, channels: 3, background: "#4a7f3c" },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const uploaded = await uploadRouteImage(agent, photo);
+    expect(uploaded).toMatchObject({
+      ok: true,
+      image: { aspectRatio: { width: 800, height: 600 } },
+    });
+    if (!uploaded.ok) return;
+
+    // As the form submits it.
+    const images = routeImagesSchema.parse([
+      JSON.parse(JSON.stringify({ ...uploaded.image, alt: " A lake " })),
+    ]);
+    const result = await createRoute(
+      agent,
+      draft,
+      new TextEncoder().encode("<gpx />"),
+      images,
+    );
+
+    expect(result).toMatchObject({ ok: true });
+    expect(writes.at(-1)).toMatchObject({
+      method: "com.atproto.repo.createRecord",
+      input: {
+        record: {
+          images: [
+            {
+              alt: "A lake",
+              aspectRatio: { width: 800, height: 600 },
+              image: uploaded.image.image,
+            },
+          ],
+        },
+      },
+    });
+    expect(uploaded.image.image).toMatchObject({
+      $type: "blob",
+      mimeType: "image/webp",
+    });
+  });
+
+  test("saves over the expected version, keeping the track and photos", async () => {
     const current = {
       $type: "app.attrails.route",
       name: "Coastal loop",
@@ -285,6 +392,7 @@ describe("writing routes", () => {
         mimeType: "application/gpx+xml",
         size: 100,
       },
+      images: [await storedImage()],
       createdAt: "2026-01-01T00:00:00.000Z",
     };
     const { agent, writes } = fakeAccount(ALICE, {

@@ -44,6 +44,29 @@ export type Route = RouteRef & {
   path: MultiLineString;
   /** Empty if the track has no elevation data. */
   elevationProfile: ElevationSample[];
+  /** Empty if the route has moderation labels. */
+  images: RouteImage[];
+};
+
+export type AspectRatio = { width: number; height: number };
+
+export type RouteImage = {
+  cid: string;
+  alt: string;
+  aspectRatio: AspectRatio | null;
+  url: string;
+};
+
+/** A photo uploaded to the account, ready to add to a new route. */
+export type UploadedRouteImage = {
+  /** The blob ref as JSON. */
+  image: {
+    $type: "blob";
+    ref: { $link: string };
+    mimeType: string;
+    size: number;
+  };
+  aspectRatio: AspectRatio;
 };
 
 export type Option = readonly [value: string, label: string];
@@ -71,6 +94,17 @@ export const ROUTE_NAME_MAX_GRAPHEMES = 100;
 
 /** `maxGraphemes` of `description` in the `app.attrails.route` lexicon. */
 export const ROUTE_DESCRIPTION_MAX_GRAPHEMES = 3000;
+
+/** `maxLength` of `images` in the `app.attrails.route` lexicon. */
+export const ROUTE_MAX_IMAGES = 10;
+
+/** `maxGraphemes` of an image's `alt` in the `app.attrails.defs` lexicon. */
+export const ROUTE_IMAGE_ALT_MAX_GRAPHEMES = 2000;
+
+/** The largest photo people can upload, before it's converted. */
+export const ROUTE_IMAGE_MAX_SIZE_BYTES = 15 * 1024 * 1024;
+
+export const ROUTE_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const graphemes = new Intl.Segmenter();
 
@@ -147,3 +181,32 @@ export const routeSchema = z
   });
 
 export type RouteDraft = z.output<typeof routeSchema>;
+
+const aspectRatioSchema = z.object({
+  width: z.int().positive(),
+  height: z.int().positive(),
+});
+
+/** The photos of a new route, uploaded with `uploadRouteImage`. */
+export const routeImagesSchema = z
+  .array(
+    z.object({
+      image: z.object({
+        $type: z.literal("blob"),
+        ref: z.object({ $link: z.string() }),
+        mimeType: z.string(),
+        size: z.int().nonnegative(),
+      }),
+      alt: z
+        .string()
+        .trim()
+        .refine(
+          (alt) => graphemeCount(alt) <= ROUTE_IMAGE_ALT_MAX_GRAPHEMES,
+          `Keep each photo's description to ${ROUTE_IMAGE_ALT_MAX_GRAPHEMES} characters.`,
+        ),
+      aspectRatio: aspectRatioSchema.optional(),
+    }),
+  )
+  .max(ROUTE_MAX_IMAGES, `Add up to ${ROUTE_MAX_IMAGES} photos.`);
+
+export type RouteImageDraft = z.output<typeof routeImagesSchema>[number];

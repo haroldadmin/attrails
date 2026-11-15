@@ -8,6 +8,15 @@ import {
   isAtprotoDid,
 } from "@atproto-labs/did-resolver";
 
+// Raster formats only: an SVG served from our origin could run scripts.
+export const RASTER_IMAGE_TYPES = new Set([
+  "image/avif",
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
 const safeFetch = safeFetchWrap({
   allowImplicitRedirect: true,
   responseMaxSize: 1_000_000,

@@ -14,6 +14,7 @@ import { gpxName } from "@/lib/gpx";
 import type { Option } from "@/lib/routes/shared";
 import { uploadRoute, type UploadRouteState } from "./actions";
 import { GpxFileInput, type GpxUpload } from "./gpx-file-input";
+import { PhotosInput } from "./photos-input";
 
 const GpxPreview = dynamic(() => import("./gpx-preview"), {
   ssr: false,
@@ -84,6 +85,7 @@ export function UploadRouteForm({
           activities={activities}
           surfaces={surfaces}
           difficulties={difficulties}
+          afterActivity={<PhotosInput />}
         />
       </div>
 

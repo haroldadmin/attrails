@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "kysely";
 import { cache } from "react";
 import { abortable, CHEAP_QUERY_TIMEOUT_MS, getDb } from "@/db/client";
-import { fetchBlob } from "@/lib/blobs";
+import { fetchBlob, RASTER_IMAGE_TYPES } from "@/lib/blobs";
 import { logger } from "@/lib/logger";
 import { fetchHandles } from "./appview";
 import type { Profile } from "./shared";
@@ -102,15 +102,6 @@ export const fetchUserProfile = cache(
   },
 );
 
-// Raster formats only: an SVG served from our origin could run scripts.
-const AVATAR_TYPES = new Set([
-  "image/avif",
-  "image/gif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
-
 export type AvatarError = "not-found" | "unsupported" | "fetch-failed";
 
 export type AvatarResult =
@@ -140,7 +131,7 @@ export async function fetchAvatar(
   if (!row) {
     return { ok: false, reason: "not-found" };
   }
-  if (!AVATAR_TYPES.has(row.mimeType)) {
+  if (!RASTER_IMAGE_TYPES.has(row.mimeType)) {
     return { ok: false, reason: "unsupported" };
   }
 

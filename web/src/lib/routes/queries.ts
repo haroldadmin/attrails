@@ -7,16 +7,22 @@ import {
   CHEAP_QUERY_TIMEOUT_MS,
   getDb,
 } from "@/db/client";
-import { fetchBlob } from "@/lib/blobs";
+import { fetchBlob, RASTER_IMAGE_TYPES } from "@/lib/blobs";
 import type { Location } from "@/lib/location";
 import { logger } from "@/lib/logger";
-import { type LabelledFilter, matchesLabelled } from "@/lib/moderation";
+import {
+  isLabelled,
+  type LabelledFilter,
+  matchesLabelled,
+} from "@/lib/moderation";
 import type { Page } from "@/lib/pages";
 import { after, decodeCursor, toPage } from "@/lib/pagination";
 import type {
+  AspectRatio,
   ElevationSample,
   Route,
   RouteHeadline,
+  RouteImage,
   RouteRef,
   RouteSummary,
 } from "./shared";
@@ -186,9 +192,32 @@ export async function loadRoutesMatching(
     .execute(abortable(signal));
 }
 
+// An `app.attrails.defs#image`, as ingest stores it.
+type StoredImage = {
+  image: { ref: { $link: string } };
+  alt: string;
+  aspectRatio?: AspectRatio;
+};
+
+function toRouteImage(
+  ref: RouteRef,
+  { image, alt, aspectRatio }: StoredImage,
+): RouteImage {
+  const cid = image.ref.$link;
+  return {
+    cid,
+    alt,
+    aspectRatio: aspectRatio
+      ? { width: aspectRatio.width, height: aspectRatio.height }
+      : null,
+    url: `/routes/${encodeURIComponent(ref.did)}/${ref.rkey}/images/${encodeURIComponent(cid)}`,
+  };
+}
+
 /**
  * Loads a route with its full track, or `null` if it doesn't exist, hasn't
- * been processed yet, or `labelled` filters it out.
+ * been processed yet, or `labelled` filters it out. A route with labels comes
+ * without its photos, whatever `labelled` is.
  */
 export async function loadRoute(
   ref: RouteRef,
@@ -222,6 +251,8 @@ export async function loadRoute(
       sql<
         ElevationSample[]
       >`COALESCE(tracks.elevation_profile, '[]'::jsonb)`.as("elevationProfile"),
+      sql<StoredImage[]>`routes.images`.as("images"),
+      isLabelled("routes.uri", "routes.cid").as("labelled"),
     ])
     .where("routes.did", "=", ref.did)
     .where("routes.rkey", "=", ref.rkey)
@@ -234,8 +265,12 @@ export async function loadRoute(
     return null;
   }
 
-  const { pathGeoJson, ...route } = row;
-  return { ...route, path: JSON.parse(pathGeoJson) };
+  const { pathGeoJson, images, labelled: hasLabels, ...route } = row;
+  return {
+    ...route,
+    path: JSON.parse(pathGeoJson),
+    images: hasLabels ? [] : images.map((image) => toRouteImage(ref, image)),
+  };
 }
 
 /** Loads a route's summary, with a simplified track. */
@@ -317,6 +352,60 @@ export async function fetchRouteGpx(
     };
   } catch (error) {
     logger.warn({ err: error, ...ref }, "routes:gpx");
+    return { ok: false, reason: "fetch-failed" };
+  }
+}
+
+export type RouteImageError = "not-found" | "unsupported" | "fetch-failed";
+
+export type RouteImageResult =
+  | { ok: true; mimeType: string; blob: Response }
+  | { ok: false; reason: RouteImageError };
+
+/**
+ * Fetches a route's photo from its author's PDS, if `cid` is one of the
+ * route's current photos, the route has no moderation labels, and the photo
+ * is a format that's safe to serve.
+ */
+export async function fetchRouteImage(
+  ref: RouteRef,
+  cid: string,
+  {
+    signal = AbortSignal.timeout(CHEAP_QUERY_TIMEOUT_MS),
+  }: { signal?: AbortSignal } = {},
+): Promise<RouteImageResult> {
+  const db = await getDb();
+  const row = await db
+    .selectFrom("routes")
+    .select(
+      sql<string | null>`(
+        SELECT image->'image'->>'mimeType'
+        FROM jsonb_array_elements(routes.images) AS image
+        WHERE image->'image'->'ref'->>'$link' = ${cid}
+        LIMIT 1
+      )`.as("mimeType"),
+    )
+    .where("did", "=", ref.did)
+    .where("rkey", "=", ref.rkey)
+    .where("tombstoned", "=", false)
+    .where(matchesLabelled("exclude", "routes.uri", "routes.cid"))
+    .executeTakeFirst(abortable(signal));
+
+  if (!row?.mimeType) {
+    return { ok: false, reason: "not-found" };
+  }
+  if (!RASTER_IMAGE_TYPES.has(row.mimeType)) {
+    return { ok: false, reason: "unsupported" };
+  }
+
+  try {
+    return {
+      ok: true,
+      mimeType: row.mimeType,
+      blob: await fetchBlob(ref.did, cid),
+    };
+  } catch (error) {
+    logger.warn({ err: error, ...ref, cid }, "routes:image");
     return { ok: false, reason: "fetch-failed" };
   }
 }
