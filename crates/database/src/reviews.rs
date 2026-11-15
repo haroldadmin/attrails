@@ -86,7 +86,9 @@ pub async fn tombstone_review(pool: &PgPool, uri: &str) -> Result<()> {
 pub struct ReviewModerationView {
     pub uri: String,
     pub cid: String,
+    pub did: String,
     pub body: Option<String>,
+    pub images: Value,
 }
 
 /// Fetches all the review information relevant for making
@@ -103,7 +105,7 @@ pub async fn fetch_review_moderation_view(
     let review = sqlx::query_as!(
         ReviewModerationView,
         r#"
-            SELECT uri, cid, body
+            SELECT uri, cid, did, body, images
             FROM reviews
             WHERE uri = $1
               AND tombstoned = FALSE;

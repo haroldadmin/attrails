@@ -101,8 +101,10 @@ pub async fn untombstone_user(pool: &PgPool, did: &str) -> Result<()> {
 pub struct UserModerationView {
     pub uri: String,
     pub cid: String,
+    pub did: String,
     pub name: String,
     pub bio: Option<String>,
+    pub profile_picture_uri: Option<Value>,
 }
 
 /// Fetches all the profile information relevant for making
@@ -119,7 +121,7 @@ pub async fn fetch_user_moderation_view(
     let user = sqlx::query_as!(
         UserModerationView,
         r#"
-            SELECT uri, cid, name, bio
+            SELECT uri, cid, did, name, bio, profile_picture_uri
             FROM users
             WHERE uri = $1
               AND tombstoned = FALSE;

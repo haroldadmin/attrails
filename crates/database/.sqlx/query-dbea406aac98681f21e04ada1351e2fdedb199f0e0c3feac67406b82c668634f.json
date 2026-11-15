@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT uri, cid, name, bio\n            FROM users\n            WHERE uri = $1\n              AND tombstoned = FALSE;\n        ",
+  "query": "\n            SELECT uri, cid, did, body, images\n            FROM reviews\n            WHERE uri = $1\n              AND tombstoned = FALSE;\n        ",
   "describe": {
     "columns": [
       {
@@ -9,7 +9,7 @@
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "users",
+            "table": "reviews",
             "name": "uri"
           }
         }
@@ -20,30 +20,41 @@
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "users",
+            "table": "reviews",
             "name": "cid"
           }
         }
       },
       {
         "ordinal": 2,
-        "name": "name",
+        "name": "did",
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "users",
-            "name": "name"
+            "table": "reviews",
+            "name": "did"
           }
         }
       },
       {
         "ordinal": 3,
-        "name": "bio",
+        "name": "body",
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "users",
-            "name": "bio"
+            "table": "reviews",
+            "name": "body"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "images",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "reviews",
+            "name": "images"
           }
         }
       }
@@ -57,8 +68,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "33df6038eb2a4ffd0116f7a881b6ae14f694c4ca993304849f6ad094d787d838"
+  "hash": "dbea406aac98681f21e04ada1351e2fdedb199f0e0c3feac67406b82c668634f"
 }
