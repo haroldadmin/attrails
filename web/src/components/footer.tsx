@@ -39,7 +39,7 @@ export function Footer() {
         </Link>
       </nav>
       <nav>
-        <h6 className="footer-title">About</h6>
+        <h6 className="footer-title">Meta</h6>
         <Link
           className="link link-hover"
           href="https://github.com/haroldadmin/attrails"
