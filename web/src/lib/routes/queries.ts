@@ -362,18 +362,22 @@ export type RouteImageResult =
   | { ok: true; mimeType: string; blob: Response }
   | { ok: false; reason: RouteImageError };
 
+export type RouteImageCheck =
+  | { ok: true; mimeType: string }
+  | { ok: false; reason: Exclude<RouteImageError, "fetch-failed"> };
+
 /**
- * Fetches a route's photo from its author's PDS, if `cid` is one of the
- * route's current photos, the route has no moderation labels, and the photo
- * is a format that's safe to serve.
+ * Checks that `cid` is one of the route's current
+ * photos, the route has no moderation labels, and the photo is a format
+ * that's safe to serve.
  */
-export async function fetchRouteImage(
+export async function checkRouteImage(
   ref: RouteRef,
   cid: string,
   {
     signal = AbortSignal.timeout(CHEAP_QUERY_TIMEOUT_MS),
   }: { signal?: AbortSignal } = {},
-): Promise<RouteImageResult> {
+): Promise<RouteImageCheck> {
   const db = await getDb();
   const row = await db
     .selectFrom("routes")
@@ -397,11 +401,24 @@ export async function fetchRouteImage(
   if (!RASTER_IMAGE_TYPES.has(row.mimeType)) {
     return { ok: false, reason: "unsupported" };
   }
+  return { ok: true, mimeType: row.mimeType };
+}
+
+/** Fetches a route's photo from its author's PDS, after `checkRouteImage`. */
+export async function fetchRouteImage(
+  ref: RouteRef,
+  cid: string,
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<RouteImageResult> {
+  const checked = await checkRouteImage(ref, cid, { signal });
+  if (!checked.ok) {
+    return checked;
+  }
 
   try {
     return {
       ok: true,
-      mimeType: row.mimeType,
+      mimeType: checked.mimeType,
       blob: await fetchBlob(ref.did, cid),
     };
   } catch (error) {

@@ -9,6 +9,7 @@ import { setUpTestDatabase } from "@/test/database";
 import {
   createRoute,
   deleteRoute,
+  checkRouteImage,
   fetchRouteImage,
   loadRoute,
   loadRoutes,
@@ -249,6 +250,47 @@ describe("loading route photos", () => {
       reason: "not-found",
     });
     expect(await fetchRouteImage(route, svg.image.ref.$link)).toEqual({
+      ok: false,
+      reason: "unsupported",
+    });
+  });
+});
+
+describe("checking route photos", () => {
+  test("finds a photo on an unlabelled route", async () => {
+    const image = await storedImage("image/jpeg");
+    const route = await insertRoute(ALICE, { images: [image] });
+
+    expect(await checkRouteImage(route, image.image.ref.$link)).toEqual({
+      ok: true,
+      mimeType: "image/jpeg",
+    });
+  });
+
+  test("doesn't find the photos of labelled routes", async () => {
+    const image = await storedImage();
+    const route = await insertRoute(BOB, { images: [image], labelled: true });
+
+    expect(await checkRouteImage(route, image.image.ref.$link)).toEqual({
+      ok: false,
+      reason: "not-found",
+    });
+  });
+
+  test("doesn't find unknown photos", async () => {
+    const route = await insertRoute(ALICE, { images: [await storedImage()] });
+
+    expect(await checkRouteImage(route, await newCid())).toEqual({
+      ok: false,
+      reason: "not-found",
+    });
+  });
+
+  test("rejects photos in non-raster formats", async () => {
+    const svg = await storedImage("image/svg+xml");
+    const route = await insertRoute(ALICE, { images: [svg] });
+
+    expect(await checkRouteImage(route, svg.image.ref.$link)).toEqual({
       ok: false,
       reason: "unsupported",
     });
