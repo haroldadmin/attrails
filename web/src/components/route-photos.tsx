@@ -30,13 +30,15 @@ const HALF_COLUMN_SIZES =
 
 export type RoutePhotosProps = {
   images: RouteImage[];
+  /** Shows the photos as they are, without `next/image` optimising them. */
+  unoptimized?: boolean;
 };
 
 /**
  * A route's photos: a carousel on small screens, and a mosaic beside the map
  * on large ones. Either opens a full-screen viewer.
  */
-export function RoutePhotos({ images }: RoutePhotosProps) {
+export function RoutePhotos({ images, unoptimized }: RoutePhotosProps) {
   const viewerRef = useRef<PhotoViewerHandle>(null);
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
 
@@ -100,6 +102,7 @@ export function RoutePhotos({ images }: RoutePhotosProps) {
                   {...dimensions(photo)}
                   sizes={`${wide ? COLUMN_SIZES : HALF_COLUMN_SIZES}, min(${Math.round(CAROUSEL_HEIGHT * ratio)}px, ${CAROUSEL_MAX_WIDTH})`}
                   loading={index === 0 ? "eager" : "lazy"}
+                  unoptimized={unoptimized}
                   className="size-full object-cover transition-opacity hover:opacity-90"
                   onError={() => handleError(photo.cid)}
                 />
@@ -121,7 +124,12 @@ export function RoutePhotos({ images }: RoutePhotosProps) {
           );
         })}
       </ul>
-      <PhotoViewer ref={viewerRef} images={photos} onError={handleError} />
+      <PhotoViewer
+        ref={viewerRef}
+        images={photos}
+        unoptimized={unoptimized}
+        onError={handleError}
+      />
     </section>
   );
 }

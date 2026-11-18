@@ -78,7 +78,7 @@ function AltTextEditor({
       <h2 id="photo-alt-heading" className="text-lg font-semibold">
         Alt text for photo {number}
       </h2>
-      {/* eslint-disable-next-line @next/next/no-img-element -- next/image can't optimise local `blob:` URLs. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- next/image can't optimise new photos' local `blob:` URLs. */}
       <img
         src={photo.previewUrl}
         alt=""

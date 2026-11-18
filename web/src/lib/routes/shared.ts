@@ -44,7 +44,12 @@ export type Route = RouteRef & {
   path: MultiLineString;
   /** Empty if the track has no elevation data. */
   elevationProfile: ElevationSample[];
-  /** Empty if the route has moderation labels. */
+  /** Whether the route has moderation labels. */
+  labelled: boolean;
+  /**
+   * Only the author can see the photos of a labelled route, so check
+   * `labelled` before showing them to anyone else.
+   */
   images: RouteImage[];
 };
 
@@ -57,7 +62,7 @@ export type RouteImage = {
   url: string;
 };
 
-/** A photo uploaded to the account, ready to add to a new route. */
+/** A photo uploaded to the account, ready to add to a route. */
 export type UploadedRouteImage = {
   /** The blob ref as JSON. */
   image: {
@@ -187,26 +192,45 @@ const aspectRatioSchema = z.object({
   height: z.int().positive(),
 });
 
+const altSchema = z
+  .string()
+  .trim()
+  .refine(
+    (alt) => graphemeCount(alt) <= ROUTE_IMAGE_ALT_MAX_GRAPHEMES,
+    `Keep each photo's description to ${ROUTE_IMAGE_ALT_MAX_GRAPHEMES} characters.`,
+  );
+
+const uploadedImageSchema = z.object({
+  image: z.object({
+    $type: z.literal("blob"),
+    ref: z.object({ $link: z.string() }),
+    mimeType: z.string(),
+    size: z.int().nonnegative(),
+  }),
+  alt: altSchema,
+  aspectRatio: aspectRatioSchema.optional(),
+});
+
+const MAX_IMAGES_MESSAGE = `Add up to ${ROUTE_MAX_IMAGES} photos.`;
+
 /** The photos of a new route, uploaded with `uploadRouteImage`. */
 export const routeImagesSchema = z
-  .array(
-    z.object({
-      image: z.object({
-        $type: z.literal("blob"),
-        ref: z.object({ $link: z.string() }),
-        mimeType: z.string(),
-        size: z.int().nonnegative(),
-      }),
-      alt: z
-        .string()
-        .trim()
-        .refine(
-          (alt) => graphemeCount(alt) <= ROUTE_IMAGE_ALT_MAX_GRAPHEMES,
-          `Keep each photo's description to ${ROUTE_IMAGE_ALT_MAX_GRAPHEMES} characters.`,
-        ),
-      aspectRatio: aspectRatioSchema.optional(),
-    }),
-  )
-  .max(ROUTE_MAX_IMAGES, `Add up to ${ROUTE_MAX_IMAGES} photos.`);
+  .array(uploadedImageSchema)
+  .max(ROUTE_MAX_IMAGES, MAX_IMAGES_MESSAGE);
 
 export type RouteImageDraft = z.output<typeof routeImagesSchema>[number];
+
+/**
+ * The photos of an edited route, in order: photos it already has, by CID,
+ * and new ones uploaded with `uploadRouteImage`.
+ */
+export const routeImageEditsSchema = z
+  .array(
+    z.union([
+      z.object({ cid: z.string(), alt: altSchema }),
+      uploadedImageSchema,
+    ]),
+  )
+  .max(ROUTE_MAX_IMAGES, MAX_IMAGES_MESSAGE);
+
+export type RouteImageEdit = z.output<typeof routeImageEditsSchema>[number];

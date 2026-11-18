@@ -16,8 +16,10 @@ import {
   loadRoutesMatching,
   loadRoutesNear,
   parseTags,
+  ROUTE_MAX_IMAGES,
   ROUTE_MAX_TAGS,
   ROUTE_TAG_MAX_GRAPHEMES,
+  routeImageEditsSchema,
   routeImagesSchema,
   routeSchema,
   saveRoute,
@@ -216,7 +218,7 @@ async function storedImage(mimeType = "image/webp") {
 }
 
 describe("loading route photos", () => {
-  test("hides the photos of routes with moderation labels", async () => {
+  test("loads a route's photos and whether it has moderation labels", async () => {
     const image = await storedImage();
     const clean = await insertRoute(ALICE, { images: [image] });
     const labelled = await insertRoute(BOB, {
@@ -224,21 +226,39 @@ describe("loading route photos", () => {
       labelled: true,
     });
 
-    expect((await loadRoute(clean, { labelled: "include" }))?.images).toEqual([
-      {
-        cid: image.image.ref.$link,
-        alt: "The view from the top",
-        aspectRatio: { width: 4, height: 3 },
-        url: `/routes/${encodeURIComponent(ALICE)}/${clean.rkey}/images/${image.image.ref.$link}`,
-      },
-    ]);
-    expect(
-      (await loadRoute(labelled, { labelled: "include" }))?.images,
-    ).toEqual([]);
-    expect(await fetchRouteImage(labelled, image.image.ref.$link)).toEqual({
+    expect(await loadRoute(clean, { labelled: "include" })).toMatchObject({
+      labelled: false,
+      images: [
+        {
+          cid: image.image.ref.$link,
+          alt: "The view from the top",
+          aspectRatio: { width: 4, height: 3 },
+          url: `/routes/${encodeURIComponent(ALICE)}/${clean.rkey}/images/${image.image.ref.$link}`,
+        },
+      ],
+    });
+    // Callers only show these to the author.
+    expect(await loadRoute(labelled, { labelled: "include" })).toMatchObject({
+      labelled: true,
+      images: [{ cid: image.image.ref.$link }],
+    });
+  });
+
+  test("only serves the photos of labelled routes when they're included", async () => {
+    const image = await storedImage();
+    const labelled = await insertRoute(BOB, {
+      images: [image],
+      labelled: true,
+    });
+    const cid = image.image.ref.$link;
+
+    expect(await fetchRouteImage(labelled, cid)).toEqual({
       ok: false,
       reason: "not-found",
     });
+    expect(
+      await checkRouteImage(labelled, cid, { labelled: "include" }),
+    ).toEqual({ ok: true, mimeType: "image/webp" });
   });
 
   test("only serves a route's current photos in raster formats", async () => {
@@ -294,6 +314,31 @@ describe("checking route photos", () => {
       ok: false,
       reason: "unsupported",
     });
+  });
+});
+
+describe("validating route photo edits", () => {
+  test("takes saved photos by CID and new uploads", async () => {
+    const uploaded = await storedImage();
+
+    expect(
+      routeImageEditsSchema.parse([
+        { cid: "bafysaved", alt: " Old " },
+        { ...uploaded, alt: " New " },
+      ]),
+    ).toEqual([
+      { cid: "bafysaved", alt: "Old" },
+      { ...uploaded, alt: "New" },
+    ]);
+  });
+
+  test("rejects more photos than the lexicon allows", () => {
+    const photos = Array.from({ length: ROUTE_MAX_IMAGES + 1 }, (_, i) => ({
+      cid: `bafy${i}`,
+      alt: "",
+    }));
+
+    expect(routeImageEditsSchema.safeParse(photos).success).toBe(false);
   });
 });
 
@@ -458,6 +503,102 @@ describe("writing routes", () => {
         }),
       },
     ]);
+  });
+
+  async function currentRoute(images: unknown[]) {
+    return {
+      $type: "app.attrails.route",
+      name: "Coastal loop",
+      activity: RUNNING,
+      track: {
+        $type: "blob",
+        ref: { $link: await newCid() },
+        mimeType: "application/gpx+xml",
+        size: 100,
+      },
+      images,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+  }
+
+  test("replaces photos in order, keeping saved ones with new alt text", async () => {
+    const [removed, kept, uploaded] = await Promise.all([
+      storedImage(),
+      storedImage(),
+      storedImage(),
+    ]);
+    const current = await currentRoute([removed, kept]);
+    const { agent, writes } = fakeAccount(ALICE, {
+      records: { "app.attrails.route": current },
+    });
+
+    const images = routeImageEditsSchema.parse([
+      { ...uploaded, alt: "A lake" },
+      { cid: kept.image.ref.$link, alt: "A hill" },
+    ]);
+    const result = await saveRoute(
+      agent,
+      { did: ALICE, rkey: "3l3qo2vutsw2b" },
+      draft,
+      { swapCid: "expected", images },
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(writes).toEqual([
+      {
+        method: "com.atproto.repo.putRecord",
+        input: expect.objectContaining({
+          record: {
+            ...current,
+            images: [
+              { ...uploaded, alt: "A lake" },
+              { ...kept, alt: "A hill" },
+            ],
+          },
+        }),
+      },
+    ]);
+  });
+
+  test("removes every photo", async () => {
+    const current = await currentRoute([await storedImage()]);
+    const { agent, writes } = fakeAccount(ALICE, {
+      records: { "app.attrails.route": current },
+    });
+
+    const result = await saveRoute(
+      agent,
+      { did: ALICE, rkey: "3l3qo2vutsw2b" },
+      draft,
+      { swapCid: "expected", images: [] },
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(writes).toEqual([
+      {
+        method: "com.atproto.repo.putRecord",
+        input: expect.objectContaining({
+          record: expect.not.objectContaining({ images: expect.anything() }),
+        }),
+      },
+    ]);
+  });
+
+  test("refuses to keep a photo the route no longer has", async () => {
+    const current = await currentRoute([await storedImage()]);
+    const { agent, writes } = fakeAccount(ALICE, {
+      records: { "app.attrails.route": current },
+    });
+
+    const result = await saveRoute(
+      agent,
+      { did: ALICE, rkey: "3l3qo2vutsw2b" },
+      draft,
+      { swapCid: "expected", images: [{ cid: await newCid(), alt: "" }] },
+    );
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+    expect(writes).toEqual([]);
   });
 
   test("refuses to change another account's route", async () => {

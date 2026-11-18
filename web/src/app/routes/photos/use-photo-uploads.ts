@@ -2,12 +2,16 @@ import { useEffect, useReducer, useRef } from "react";
 import {
   ROUTE_IMAGE_MAX_SIZE_BYTES,
   ROUTE_MAX_IMAGES,
+  type RouteImage,
   type UploadedRouteImage,
 } from "@/lib/routes/shared";
-import { uploadRoutePhoto } from "./actions";
 import { photoErrorMessage } from "./photo-messages";
+import type { UploadPhotoResult } from "./upload-photo";
+
+export type UploadPhoto = (formData: FormData) => Promise<UploadPhotoResult>;
 
 export type PhotoStatus =
+  | { state: "saved"; cid: string }
   | { state: "uploading" }
   | { state: "failed"; error: string }
   | { state: "ready"; image: UploadedRouteImage };
@@ -78,7 +82,11 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-async function upload(id: string, file: File): Promise<Action> {
+async function upload(
+  uploadPhoto: UploadPhoto,
+  id: string,
+  file: File,
+): Promise<Action> {
   if (file.size > ROUTE_IMAGE_MAX_SIZE_BYTES) {
     return { type: "failed", id, error: photoErrorMessage("too-large") };
   }
@@ -86,7 +94,7 @@ async function upload(id: string, file: File): Promise<Action> {
   const formData = new FormData();
   formData.set("photo", file);
   try {
-    const result = await uploadRoutePhoto(formData);
+    const result = await uploadPhoto(formData);
     return result.ok
       ? { type: "uploaded", id, image: result.image }
       : { type: "failed", id, error: result.error };
@@ -96,12 +104,27 @@ async function upload(id: string, file: File): Promise<Action> {
   }
 }
 
-/** Photos picked for a new route, each uploaded as soon as it's added. */
-export function usePhotoUploads() {
-  const [{ photos, announcement }, dispatch] = useReducer(reducer, {
-    photos: [],
-    announcement: "",
-  });
+/**
+ * A route's photos: the ones it already has, and new ones, each uploaded with
+ * `uploadPhoto` as soon as it's added.
+ */
+export function usePhotoUploads(
+  uploadPhoto: UploadPhoto,
+  initialPhotos: readonly RouteImage[] = [],
+) {
+  const [{ photos, announcement }, dispatch] = useReducer(
+    reducer,
+    initialPhotos,
+    (images): State => ({
+      photos: images.map(({ cid, url, alt }) => ({
+        id: cid,
+        previewUrl: url,
+        alt,
+        status: { state: "saved", cid },
+      })),
+      announcement: "",
+    }),
+  );
   const previewUrls = useRef(new Set<string>());
 
   useEffect(() => {
@@ -133,13 +156,14 @@ export function usePhotoUploads() {
     });
 
     for (const { file, photo } of added) {
-      upload(photo.id, file).then(dispatch);
+      upload(uploadPhoto, photo.id, file).then(dispatch);
     }
   }
 
   function remove(id: string) {
     const photo = photos.find((photo) => photo.id === id);
-    if (photo) {
+    // Saved photos are previewed from the server, not an object URL.
+    if (photo && previewUrls.current.has(photo.previewUrl)) {
       URL.revokeObjectURL(photo.previewUrl);
       previewUrls.current.delete(photo.previewUrl);
     }

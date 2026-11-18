@@ -2,7 +2,9 @@
 
 import { useActionState } from "react";
 import { RouteFields } from "@/components/route-fields";
-import type { Option } from "@/lib/routes/shared";
+import type { Option, RouteImage } from "@/lib/routes/shared";
+import { PhotosInput } from "../../../photos/photos-input";
+import type { UploadPhoto } from "../../../photos/use-photo-uploads";
 import type { RouteValues } from "../../../route-values";
 import type { EditRouteState } from "./actions";
 
@@ -11,7 +13,11 @@ export type EditRouteFormProps = {
     previous: EditRouteState,
     formData: FormData,
   ) => Promise<EditRouteState>;
+  uploadPhoto: UploadPhoto;
   initialValues: RouteValues;
+  initialPhotos: readonly RouteImage[];
+  /** Shows saved photos as they are, without `next/image` optimising them. */
+  unoptimizedPhotos: boolean;
   activities: readonly Option[];
   surfaces: readonly Option[];
   difficulties: readonly Option[];
@@ -19,7 +25,10 @@ export type EditRouteFormProps = {
 
 export function EditRouteForm({
   action,
+  uploadPhoto,
   initialValues,
+  initialPhotos,
+  unoptimizedPhotos,
   activities,
   surfaces,
   difficulties,
@@ -35,6 +44,13 @@ export function EditRouteForm({
         activities={activities}
         surfaces={surfaces}
         difficulties={difficulties}
+        afterActivity={
+          <PhotosInput
+            upload={uploadPhoto}
+            initialPhotos={initialPhotos}
+            unoptimized={unoptimizedPhotos}
+          />
+        }
       />
 
       {state.error && (

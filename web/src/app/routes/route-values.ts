@@ -27,3 +27,14 @@ function text(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
 }
+
+/** Parses each of the form's `key` values as JSON, or `null` if it isn't. */
+export function readJsonValues(formData: FormData, key: string): unknown[] {
+  return formData.getAll(key).map((value) => {
+    try {
+      return typeof value === "string" ? JSON.parse(value) : null;
+    } catch {
+      return null;
+    }
+  });
+}

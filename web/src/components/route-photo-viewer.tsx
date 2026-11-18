@@ -18,12 +18,19 @@ export type PhotoViewerHandle = {
 
 export type PhotoViewerProps = {
   images: RouteImage[];
+  /** Shows the photos as they are, without `next/image` optimising them. */
+  unoptimized?: boolean;
   onError: (cid: string) => void;
   ref: Ref<PhotoViewerHandle>;
 };
 
 /** A full-screen modal for browsing photos, opened with `ref.show(index)`. */
-export function PhotoViewer({ images, onError, ref }: PhotoViewerProps) {
+export function PhotoViewer({
+  images,
+  unoptimized,
+  onError,
+  ref,
+}: PhotoViewerProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const carouselRef = useRef<HTMLUListElement>(null);
   // The photos render on first open so they aren't fetched before then.
@@ -99,6 +106,7 @@ export function PhotoViewer({ images, onError, ref }: PhotoViewerProps) {
                 alt={image.alt}
                 {...dimensions(image)}
                 sizes="100vw"
+                unoptimized={unoptimized}
                 className="h-auto max-h-full w-auto max-w-full object-contain"
                 onError={() => onError(image.cid)}
               />

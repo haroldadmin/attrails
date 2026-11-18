@@ -4,6 +4,7 @@ import {
   type Agent,
   Client,
   currentDatetimeString,
+  getBlobCidString,
   jsonToLex,
   lexToJson,
   XrpcResponseError,
@@ -15,6 +16,7 @@ import { logger } from "@/lib/logger";
 import type {
   RouteDraft,
   RouteImageDraft,
+  RouteImageEdit,
   RouteRef,
   UploadedRouteImage,
 } from "./shared";
@@ -32,7 +34,7 @@ export type UploadRouteImageResult =
 
 /**
  * Converts a photo with `processPhoto` and uploads it to the account, to add
- * to a route with `createRoute`.
+ * to a route with `createRoute` or `saveRoute`.
  */
 export async function uploadRouteImage(
   agent: Agent,
@@ -121,12 +123,15 @@ export type SaveRouteResult =
  * Saves `draft` over the account's route record, keeping the fields people
  * don't edit, such as the track. `swapCid` is the version the draft was made
  * from: if the record has changed since, nothing is saved.
+ *
+ * With `images`, the route's photos are replaced by them, in order. Without
+ * it, they're kept.
  */
 export async function saveRoute(
   agent: Agent,
   ref: RouteRef,
   draft: RouteDraft,
-  { swapCid }: { swapCid: string },
+  { swapCid, images }: { swapCid: string; images?: RouteImageEdit[] },
 ): Promise<SaveRouteResult> {
   const client = new Client(agent);
   if (ref.did !== client.assertDid) {
@@ -135,7 +140,34 @@ export async function saveRoute(
 
   try {
     const current = await client.get(route, { rkey: ref.rkey });
-    const record = route.$safeValidate({ ...current.value, ...draft });
+    const { images: currentImages = [], ...rest } = current.value;
+
+    let nextImages: unknown[] = currentImages;
+    if (images) {
+      const byCid = new Map(
+        currentImages.map((image) => [getBlobCidString(image.image), image]),
+      );
+      nextImages = [];
+      for (const edit of images) {
+        if ("cid" in edit) {
+          const kept = byCid.get(edit.cid);
+          // The photo was removed since the form was filled in.
+          if (!kept) {
+            return { ok: false, reason: "conflict" };
+          }
+          nextImages.push({ ...kept, alt: edit.alt });
+        } else {
+          nextImages.push({ ...edit, image: jsonToLex(edit.image) });
+        }
+      }
+    }
+
+    // The PDS deletes the blobs of removed photos once nothing references them.
+    const record = route.$safeValidate({
+      ...rest,
+      ...draft,
+      ...(nextImages.length > 0 && { images: nextImages }),
+    });
     if (!record.success) {
       return { ok: false, reason: "invalid" };
     }
