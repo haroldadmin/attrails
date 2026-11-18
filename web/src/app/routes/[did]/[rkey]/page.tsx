@@ -47,19 +47,17 @@ const loadPageRoute = cache(async (did: string, rkey: string) => {
   if (!route) {
     notFound();
   }
-
-  const labelled = (await loadLabelledUris([route])).has(route.uri);
-  return { route, labelled };
+  return route;
 });
 
 export async function generateMetadata({
   params,
 }: RoutePageProps): Promise<Metadata> {
   const { did, rkey } = await params;
-  const { route, labelled } = await loadPageRoute(did, rkey);
+  const route = await loadPageRoute(did, rkey);
 
   // Routes with moderation labels don't get link previews or search listings.
-  if (labelled) {
+  if (route.labelled) {
     return {
       title: route.name,
       robots: { index: false },
@@ -144,7 +142,7 @@ export default function RoutePage({ params }: RoutePageProps) {
 
 async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
   const { did, rkey } = await params;
-  const { route, labelled } = await loadPageRoute(did, rkey);
+  const route = await loadPageRoute(did, rkey);
 
   const [session, author, reviewSummary, format, locale] = await Promise.all([
     getSession(),
@@ -154,14 +152,17 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
     getLocale(),
   ]);
   const units = unitsForLocale(locale);
+  const isAuthor = session?.did === route.did;
 
   const surface = route.surface && surfaceLabel(route.surface);
   const difficulty = route.difficulty && difficultyLabel(route.difficulty);
 
   return (
     <article className="flex flex-col gap-8">
-      {!labelled && <JsonLd data={routeJsonLd(route, author, reviewSummary)} />}
-      {labelled && <LimitedVisibility isAuthor={session?.did === route.did} />}
+      {!route.labelled && (
+        <JsonLd data={routeJsonLd(route, author, reviewSummary)} />
+      )}
+      {route.labelled && <LimitedVisibility isAuthor={isAuthor} />}
       <header className="flex flex-col gap-4">
         <h1 className="font-serif text-4xl sm:text-5xl">{route.name}</h1>
         <div className="flex flex-row flex-wrap items-center justify-between gap-4">
@@ -173,7 +174,7 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
             </time>
           </Author>
           <div className="flex flex-row flex-wrap gap-2">
-            {session?.did === route.did && (
+            {isAuthor && (
               <Link
                 href={`/routes/${route.did}/${route.rkey}/edit`}
                 className="btn btn-ghost rounded-full border-base-300"
@@ -290,7 +291,11 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
           </ul>
         )}
 
-        <RoutePhotos images={route.images} />
+        {/* Only the author sees the photos of a labelled route. The image
+            optimiser doesn't pass on the session that lets them. */}
+        {(!route.labelled || isAuthor) && (
+          <RoutePhotos images={route.images} unoptimized={route.labelled} />
+        )}
 
         <Suspense fallback={<RouteReviewsSkeleton />}>
           <RouteReviews route={route} />
@@ -393,7 +398,7 @@ function LimitedVisibility({ isAuthor }: { isAuthor: boolean }) {
   return (
     <ModerationNotice>
       {isAuthor
-        ? "Automated moderation flagged your route, so it isn't shown in public listings. Anyone with the link can still view it."
+        ? "Automated moderation flagged your route, so it isn't shown in public listings. Anyone with the link can still view it, but only you can see its photos."
         : "Automated moderation flagged this route, so it isn't shown in public listings."}
     </ModerationNotice>
   );

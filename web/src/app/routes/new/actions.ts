@@ -6,15 +6,16 @@ import { GPX_MAX_SIZE_BYTES, GpxError, parseGpx } from "@/lib/gpx";
 import {
   createRoute,
   type CreateRouteError,
-  ROUTE_IMAGE_MAX_SIZE_BYTES,
   routeImagesSchema,
   routeSchema,
-  type UploadedRouteImage,
-  uploadRouteImage,
 } from "@/lib/routes";
-import { readRouteValues, type RouteValues } from "../route-values";
+import { type UploadPhotoResult, uploadPhoto } from "../photos/upload-photo";
+import {
+  readJsonValues,
+  readRouteValues,
+  type RouteValues,
+} from "../route-values";
 import { GPX_TOO_LARGE_MESSAGE, gpxErrorMessage } from "./gpx-messages";
-import { photoErrorMessage } from "./photo-messages";
 
 export type UploadRouteState = {
   values: RouteValues;
@@ -40,7 +41,7 @@ export async function uploadRoute(
   }
 
   const images = routeImagesSchema.safeParse(
-    formData.getAll("images").map(parseJson),
+    readJsonValues(formData, "images"),
   );
   if (!images.success) {
     return { values, error: images.error.issues[0].message };
@@ -72,35 +73,9 @@ export async function uploadRoute(
   redirect("/?notice=route-uploaded");
 }
 
-function parseJson(value: FormDataEntryValue): unknown {
-  try {
-    return typeof value === "string" ? JSON.parse(value) : null;
-  } catch {
-    return null;
-  }
-}
-
-export type UploadRoutePhotoResult =
-  { ok: true; image: UploadedRouteImage } | { ok: false; error: string };
-
 export async function uploadRoutePhoto(
   formData: FormData,
-): Promise<UploadRoutePhotoResult> {
+): Promise<UploadPhotoResult> {
   const session = await assertSession("/routes/new");
-
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) {
-    return { ok: false, error: photoErrorMessage("unsupported") };
-  }
-  if (file.size > ROUTE_IMAGE_MAX_SIZE_BYTES) {
-    return { ok: false, error: photoErrorMessage("too-large") };
-  }
-
-  const result = await uploadRouteImage(
-    session,
-    new Uint8Array(await file.arrayBuffer()),
-  );
-  return result.ok
-    ? result
-    : { ok: false, error: photoErrorMessage(result.reason) };
+  return uploadPhoto(session, formData);
 }

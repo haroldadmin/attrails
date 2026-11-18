@@ -3,15 +3,31 @@
 import clsx from "clsx";
 import { ImagePlus, Plus } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
-import { ROUTE_IMAGE_TYPES, ROUTE_MAX_IMAGES } from "@/lib/routes/shared";
+import {
+  ROUTE_IMAGE_TYPES,
+  ROUTE_MAX_IMAGES,
+  type RouteImage,
+} from "@/lib/routes/shared";
 import { PhotoAltDialog } from "./photo-alt-dialog";
 import { PhotoTile } from "./photo-tile";
-import { usePhotoUploads } from "./use-photo-uploads";
+import { type UploadPhoto, usePhotoUploads } from "./use-photo-uploads";
 
-export function PhotosInput() {
+export type PhotosInputProps = {
+  upload: UploadPhoto;
+  /** The photos the route already has. */
+  initialPhotos?: readonly RouteImage[];
+  /** Shows saved photos as they are, without `next/image` optimising them. */
+  unoptimized?: boolean;
+};
+
+export function PhotosInput({
+  upload,
+  initialPhotos,
+  unoptimized,
+}: PhotosInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { photos, uploading, announcement, add, remove, setAlt } =
-    usePhotoUploads();
+    usePhotoUploads(upload, initialPhotos);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -80,6 +96,7 @@ export function PhotosInput() {
                 key={photo.id}
                 photo={photo}
                 number={index + 1}
+                unoptimized={unoptimized}
                 onEditAlt={() => setEditingId(photo.id)}
                 onRemove={() => handleRemove(index)}
               />

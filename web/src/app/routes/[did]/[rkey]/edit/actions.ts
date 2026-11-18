@@ -5,11 +5,20 @@ import { assertSession } from "@/auth/session";
 import {
   deleteRoute,
   type DeleteRouteError,
+  routeImageEditsSchema,
   routeSchema,
   saveRoute,
   type SaveRouteError,
 } from "@/lib/routes";
-import { readRouteValues, type RouteValues } from "../../../route-values";
+import {
+  type UploadPhotoResult,
+  uploadPhoto,
+} from "../../../photos/upload-photo";
+import {
+  readJsonValues,
+  readRouteValues,
+  type RouteValues,
+} from "../../../route-values";
 
 export type EditRouteState = {
   values: RouteValues;
@@ -45,14 +54,31 @@ export async function saveRouteAction(
     return { values, error: draft.error.issues[0].message };
   }
 
+  const images = routeImageEditsSchema.safeParse(
+    readJsonValues(formData, "images"),
+  );
+  if (!images.success) {
+    return { values, error: images.error.issues[0].message };
+  }
+
   const result = await saveRoute(session, { did, rkey }, draft.data, {
     swapCid: cid,
+    images: images.data,
   });
   if (!result.ok) {
     return { values, error: SAVE_ERROR_MESSAGES[result.reason] };
   }
 
   redirect(`/routes/${did}/${rkey}?notice=route-updated`);
+}
+
+export async function uploadRoutePhotoAction(
+  did: string,
+  rkey: string,
+  formData: FormData,
+): Promise<UploadPhotoResult> {
+  const session = await assertSession(`/routes/${did}/${rkey}/edit`);
+  return uploadPhoto(session, formData);
 }
 
 export type DeleteRouteState = {

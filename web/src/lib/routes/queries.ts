@@ -216,8 +216,9 @@ function toRouteImage(
 
 /**
  * Loads a route with its full track, or `null` if it doesn't exist, hasn't
- * been processed yet, or `labelled` filters it out. A route with labels comes
- * without its photos, whatever `labelled` is.
+ * been processed yet, or `labelled` filters it out. Only the author can see
+ * the photos of a route with labels, so check `labelled` on the result before
+ * showing them to anyone else.
  */
 export async function loadRoute(
   ref: RouteRef,
@@ -265,11 +266,11 @@ export async function loadRoute(
     return null;
   }
 
-  const { pathGeoJson, images, labelled: hasLabels, ...route } = row;
+  const { pathGeoJson, images, ...route } = row;
   return {
     ...route,
     path: JSON.parse(pathGeoJson),
-    images: hasLabels ? [] : images.map((image) => toRouteImage(ref, image)),
+    images: images.map((image) => toRouteImage(ref, image)),
   };
 }
 
@@ -367,16 +368,17 @@ export type RouteImageCheck =
   | { ok: false; reason: Exclude<RouteImageError, "fetch-failed"> };
 
 /**
- * Checks that `cid` is one of the route's current
- * photos, the route has no moderation labels, and the photo is a format
- * that's safe to serve.
+ * Checks that `cid` is one of the route's current photos, `labelled` doesn't
+ * filter the route out, and the photo is a format that's safe to serve. Only
+ * the author should see the photos of a route with labels.
  */
 export async function checkRouteImage(
   ref: RouteRef,
   cid: string,
   {
+    labelled = "exclude",
     signal = AbortSignal.timeout(CHEAP_QUERY_TIMEOUT_MS),
-  }: { signal?: AbortSignal } = {},
+  }: { labelled?: LabelledFilter; signal?: AbortSignal } = {},
 ): Promise<RouteImageCheck> {
   const db = await getDb();
   const row = await db
@@ -392,7 +394,7 @@ export async function checkRouteImage(
     .where("did", "=", ref.did)
     .where("rkey", "=", ref.rkey)
     .where("tombstoned", "=", false)
-    .where(matchesLabelled("exclude", "routes.uri", "routes.cid"))
+    .where(matchesLabelled(labelled, "routes.uri", "routes.cid"))
     .executeTakeFirst(abortable(signal));
 
   if (!row?.mimeType) {
@@ -408,9 +410,12 @@ export async function checkRouteImage(
 export async function fetchRouteImage(
   ref: RouteRef,
   cid: string,
-  { signal }: { signal?: AbortSignal } = {},
+  {
+    labelled,
+    signal,
+  }: { labelled?: LabelledFilter; signal?: AbortSignal } = {},
 ): Promise<RouteImageResult> {
-  const checked = await checkRouteImage(ref, cid, { signal });
+  const checked = await checkRouteImage(ref, cid, { labelled, signal });
   if (!checked.ok) {
     return checked;
   }
