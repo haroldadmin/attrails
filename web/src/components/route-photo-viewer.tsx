@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Image from "next/image";
 import {
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type Ref,
@@ -11,6 +12,8 @@ import {
   useState,
 } from "react";
 import type { RouteImage } from "@/lib/routes/shared";
+
+const FALLBACK_RATIO = { width: 4, height: 3 };
 
 export type PhotoViewerHandle = {
   show: (index: number) => void;
@@ -94,25 +97,32 @@ export function PhotoViewer({
           )
         }
       >
-        {images.map((image) => (
-          <li
-            key={image.cid}
-            className="carousel-item relative box-border size-full items-center justify-center p-4 sm:p-16"
-            onClick={handleSlideClick}
-          >
-            {opened && (
-              <Image
-                src={image.url}
-                alt={image.alt}
-                {...dimensions(image)}
-                sizes="100vw"
-                unoptimized={unoptimized}
-                className="h-auto max-h-full w-auto max-w-full object-contain"
-                onError={() => onError(image.cid)}
-              />
-            )}
-          </li>
-        ))}
+        {images.map((image) => {
+          const { width, height } = image.aspectRatio ?? FALLBACK_RATIO;
+
+          return (
+            <li
+              key={image.cid}
+              className="carousel-item relative box-border size-full items-center justify-center p-4 @container-size sm:p-16"
+              style={{ "--ratio": width / height } as CSSProperties}
+              onClick={handleSlideClick}
+            >
+              {opened && (
+                <Image
+                  src={image.url}
+                  alt={image.alt}
+                  width={width}
+                  height={height}
+                  sizes="100vw"
+                  unoptimized={unoptimized}
+                  // As large as fits the slide, whatever the file's size.
+                  className="aspect-(--ratio) h-auto w-[min(100cqw,100cqh*var(--ratio))] object-contain"
+                  onError={() => onError(image.cid)}
+                />
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       {images.length > 1 && (
