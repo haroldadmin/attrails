@@ -6,6 +6,7 @@ import "server-only";
 export * from "./shared";
 export * from "./vocabulary";
 export {
+  checkRouteImage,
   fetchRouteGpx,
   fetchRouteImage,
   loadRoute,
@@ -16,6 +17,7 @@ export {
   loadRouteSummary,
   type RouteGpxError,
   type RouteGpxResult,
+  type RouteImageCheck,
   type RouteImageError,
   type RouteImageResult,
 } from "./queries";

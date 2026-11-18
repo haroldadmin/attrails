@@ -16,6 +16,7 @@ import {
 import { Notice } from "@/components/notice";
 import { ReviewRating } from "@/components/review-rating";
 import { RouteMap } from "@/components/route-map";
+import { RoutePhotos } from "@/components/route-photos";
 import { getSession } from "@/auth/session";
 import { ShareButton } from "@/components/share-button";
 import { loadLabelledUris } from "@/lib/moderation";
@@ -222,66 +223,79 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
         </div>
       </header>
 
-      <RouteMap
-        path={route.path}
-        isLoop={route.isLoop}
-        className="h-[60vh] min-h-80 rounded-box"
-      />
-
-      {route.elevationProfile.length > 0 && (
-        <ElevationProfile
-          profile={route.elevationProfile}
-          locale={locale}
-          units={units}
+      {/* With photos, large screens show them in a column beside the map. */}
+      <div className="flex flex-col gap-8 lg:has-[#photos]:grid lg:has-[#photos]:grid-cols-3">
+        <RouteMap
+          path={route.path}
+          isLoop={route.isLoop}
+          className="h-[60vh] min-h-80 rounded-box lg:col-span-2"
         />
-      )}
 
-      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-4">
-        <Detail term="Distance">
-          {format.number(
-            convert(route.distanceM, "meters").to(units.distance),
-            "distance",
+        {route.elevationProfile.length > 0 && (
+          <ElevationProfile
+            profile={route.elevationProfile}
+            locale={locale}
+            units={units}
+            className="lg:col-span-full"
+          />
+        )}
+
+        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-4 lg:col-span-full">
+          <Detail term="Distance">
+            {format.number(
+              convert(route.distanceM, "meters").to(units.distance),
+              "distance",
+            )}
+          </Detail>
+          {route.elevationGainM !== null && (
+            <Detail term="Elevation gain">
+              {format.number(
+                convert(route.elevationGainM, "meters").to(units.elevation),
+                "elevation",
+              )}
+            </Detail>
           )}
-        </Detail>
-        {route.elevationGainM !== null && (
-          <Detail term="Elevation gain">
-            {format.number(
-              convert(route.elevationGainM, "meters").to(units.elevation),
-              "elevation",
-            )}
+          {route.elevationLossM !== null && (
+            <Detail term="Elevation loss">
+              {format.number(
+                convert(route.elevationLossM, "meters").to(units.elevation),
+                "elevation",
+              )}
+            </Detail>
+          )}
+          <Detail term="Shape">
+            {route.isLoop ? "Loop" : "Point to point"}
           </Detail>
+          <Detail term="Activity">{activityLabel(route.activity)}</Detail>
+          {difficulty && <Detail term="Difficulty">{difficulty}</Detail>}
+          {surface && <Detail term="Surface">{surface}</Detail>}
+        </dl>
+
+        {route.description && (
+          <p className="max-w-prose whitespace-pre-line lg:col-span-full">
+            {route.description}
+          </p>
         )}
-        {route.elevationLossM !== null && (
-          <Detail term="Elevation loss">
-            {format.number(
-              convert(route.elevationLossM, "meters").to(units.elevation),
-              "elevation",
-            )}
-          </Detail>
+
+        {route.tags.length > 0 && (
+          <ul
+            aria-label="Tags"
+            className="flex flex-row flex-wrap gap-2 lg:col-span-full"
+          >
+            {route.tags.map((tag) => (
+              <li key={tag} className="badge badge-soft badge-primary">
+                {tag}
+              </li>
+            ))}
+          </ul>
         )}
-        <Detail term="Shape">{route.isLoop ? "Loop" : "Point to point"}</Detail>
-        <Detail term="Activity">{activityLabel(route.activity)}</Detail>
-        {difficulty && <Detail term="Difficulty">{difficulty}</Detail>}
-        {surface && <Detail term="Surface">{surface}</Detail>}
-      </dl>
 
-      {route.description && (
-        <p className="max-w-prose whitespace-pre-line">{route.description}</p>
-      )}
+        <RoutePhotos images={route.images} />
 
-      {route.tags.length > 0 && (
-        <ul aria-label="Tags" className="flex flex-row flex-wrap gap-2">
-          {route.tags.map((tag) => (
-            <li key={tag} className="badge badge-soft badge-primary">
-              {tag}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <Suspense fallback={<RouteReviewsSkeleton />}>
-        <RouteReviews route={route} />
-      </Suspense>
+        <Suspense fallback={<RouteReviewsSkeleton />}>
+          <RouteReviews route={route} />
+        </Suspense>
+      </div>
     </article>
   );
 }
@@ -314,7 +328,7 @@ async function RouteReviews({ route }: { route: Route }) {
     <section
       id="reviews"
       aria-labelledby="reviews-heading"
-      className="flex flex-col gap-6"
+      className="flex flex-col gap-6 lg:col-span-full"
     >
       <div className="flex flex-row flex-wrap items-center justify-between gap-4 max-w-prose">
         <h2 id="reviews-heading" className="font-serif text-3xl">
@@ -387,7 +401,7 @@ function LimitedVisibility({ isAuthor }: { isAuthor: boolean }) {
 
 function RouteReviewsSkeleton() {
   return (
-    <div className="flex flex-col gap-6" aria-hidden="true">
+    <div className="flex flex-col gap-6 lg:col-span-full" aria-hidden="true">
       <div className="skeleton h-9 w-40" />
       <div className="skeleton h-64 w-full max-w-prose" />
     </div>

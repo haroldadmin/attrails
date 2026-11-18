@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   allowedDevOrigins: ["127.0.0.1"],
   images: {
+    minimumCacheTTL: 3600,
+    localPatterns: [
+      { pathname: "/routes/*/*/images/*", search: "" },
+      { pathname: "/users/*/avatar/*", search: "" },
+    ],
     remotePatterns: [
       { protocol: "https", hostname: "cdn.bsky.app", pathname: "/img/**" },
     ],
