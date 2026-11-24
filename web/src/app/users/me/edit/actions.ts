@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { assertSession } from "@/auth/session";
+import { withNotice } from "@/components/notices";
 import {
   profileSchema,
   saveProfile,
@@ -53,7 +54,7 @@ export async function saveProfileAction(
     return { values, error: SAVE_ERROR_MESSAGES[result.reason] };
   }
 
-  redirect("/users/me?notice=profile-updated");
+  redirect(withNotice("/users/me", "profile-updated"));
 }
 
 function text(formData: FormData, key: string): string {

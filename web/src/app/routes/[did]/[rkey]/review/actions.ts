@@ -3,6 +3,7 @@
 import { AtUri } from "@atproto/syntax";
 import { redirect } from "next/navigation";
 import { assertSession } from "@/auth/session";
+import { withNotice } from "@/components/notices";
 import { app } from "@/lexicons";
 import {
   deleteReview,
@@ -62,8 +63,12 @@ export async function saveRouteReview(
     return { values, error: SAVE_ERROR_MESSAGES[result.reason] };
   }
 
-  const notice = result.outcome === "created" ? "posted" : "updated";
-  redirect(`${routePath}?notice=review-${notice}`);
+  redirect(
+    withNotice(
+      routePath,
+      result.outcome === "created" ? "review-posted" : "review-updated",
+    ),
+  );
 }
 
 export type DeleteReviewState = {
@@ -89,7 +94,7 @@ export async function deleteRouteReview(
     return { error: DELETE_ERROR_MESSAGES[result.reason] };
   }
 
-  redirect(`${routePath}?notice=review-deleted`);
+  redirect(withNotice(routePath, "review-deleted"));
 }
 
 function text(formData: FormData, key: string): string {

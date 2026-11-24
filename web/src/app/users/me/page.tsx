@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { logout } from "@/auth/actions";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
-import { Notice } from "@/components/notice";
 import {
   ProfileHeader,
   ProfileHeaderSkeleton,
@@ -40,17 +39,6 @@ async function Profile() {
 
   return (
     <>
-      <Suspense>
-        <Notice
-          messages={{
-            "profile-updated":
-              "Profile updated. It'll show up across ATTrails once it has been processed.",
-            "route-deleted":
-              "Route deleted. It'll disappear from your routes once it has been processed.",
-          }}
-        />
-      </Suspense>
-
       <ProfileHeader profile={profile}>
         <div className="flex flex-row gap-3">
           <Link href="/users/me/edit" className="btn btn-outline btn-sm">

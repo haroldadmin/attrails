@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { assertSession } from "@/auth/session";
+import { withNotice } from "@/components/notices";
 import { GPX_MAX_SIZE_BYTES, GpxError, parseGpx } from "@/lib/gpx";
 import {
   createRoute,
@@ -70,7 +71,7 @@ export async function uploadRoute(
     return { values, error: CREATE_ERROR_MESSAGES[result.reason] };
   }
 
-  redirect("/?notice=route-uploaded");
+  redirect(withNotice("/", "route-uploaded"));
 }
 
 export async function uploadRoutePhoto(

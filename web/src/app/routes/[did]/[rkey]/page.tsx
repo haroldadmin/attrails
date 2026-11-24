@@ -14,7 +14,6 @@ import {
   ModerationNotice,
   ReviewModerationNotice,
 } from "@/components/moderation-notice";
-import { Notice } from "@/components/notice";
 import { ReviewRating } from "@/components/review-rating";
 import { RouteMap } from "@/components/route-map";
 import { RoutePhotos } from "@/components/route-photos";
@@ -119,20 +118,6 @@ function truncate(text: string, length: number): string {
 export default function RoutePage({ params }: RoutePageProps) {
   return (
     <main className="flex flex-col gap-8 px-4 py-8 sm:p-16">
-      <Suspense>
-        <Notice
-          messages={{
-            "route-updated":
-              "Route updated. Your changes will appear once they've been processed.",
-            "review-posted":
-              "Review posted. It'll appear in the reviews once it has been processed.",
-            "review-updated":
-              "Review updated. Your changes will appear in the reviews once they've been processed.",
-            "review-deleted":
-              "Review deleted. It'll disappear from the reviews once that has been processed.",
-          }}
-        />
-      </Suspense>
       <Suspense fallback={<RouteDetailsSkeleton />}>
         <RouteDetails params={params} />
       </Suspense>

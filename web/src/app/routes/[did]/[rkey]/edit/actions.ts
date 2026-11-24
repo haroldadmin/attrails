@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { assertSession } from "@/auth/session";
+import { withNotice } from "@/components/notices";
 import {
   deleteRoute,
   type DeleteRouteError,
@@ -69,7 +70,7 @@ export async function saveRouteAction(
     return { values, error: SAVE_ERROR_MESSAGES[result.reason] };
   }
 
-  redirect(`/routes/${did}/${rkey}?notice=route-updated`);
+  redirect(withNotice(`/routes/${did}/${rkey}`, "route-updated"));
 }
 
 export async function uploadRoutePhotoAction(
@@ -102,5 +103,5 @@ export async function deleteRouteAction(
     return { error: DELETE_ERROR_MESSAGES[result.reason] };
   }
 
-  redirect("/users/me?notice=route-deleted");
+  redirect(withNotice("/users/me", "route-deleted"));
 }

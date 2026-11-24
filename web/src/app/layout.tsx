@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Newsreader, Source_Sans_3 } from "next/font/google";
 import Script from "next/script";
 import { Footer } from "@/components/footer";
+import { NoticeToaster } from "@/components/notice-toaster";
 import { TopNav } from "@/components/top-nav";
 import { openGraphDefaults, SITE_URL } from "./shared-metadata";
 import "./globals.css";
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <div className="grow w-full max-w-7xl mx-auto">{children}</div>
         <Footer />
+        <NoticeToaster />
         <Analytics />
       </body>
     </html>

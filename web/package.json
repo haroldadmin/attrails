@@ -44,6 +44,7 @@
     "react-dom": "19.3.0",
     "server-only": "0.0.1",
     "sharp": "0.35.5",
+    "sonner": "2.0.8",
     "xast-util-to-xml": "4.0.0",
     "xastscript": "4.0.0",
     "zod": "4.6.6"

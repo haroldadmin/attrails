@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { NearbyRoutes } from "@/components/nearby-routes";
 import { RecentRoutes, RecentRoutesSkeleton } from "@/components/recent-routes";
-import { Notice } from "@/components/notice";
 
 export default function Home() {
   return (
@@ -39,14 +38,6 @@ export default function Home() {
             View all routes
           </Link>
         </div>
-        <Suspense>
-          <Notice
-            messages={{
-              "route-uploaded":
-                "Route uploaded. It'll appear here once it has been processed.",
-            }}
-          />
-        </Suspense>
         <Suspense fallback={<RecentRoutesSkeleton />}>
           <RecentRoutes />
         </Suspense>
