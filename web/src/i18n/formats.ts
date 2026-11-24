@@ -4,7 +4,7 @@ import type { Units } from "./units";
 /**
  * Named formats for next-intl's `format.number` and friends.
  *
- * Unit formats expect values already converted to the locale's units, e.g.
+ * Unit formats expect values already converted to the reader's units, e.g.
  * `format.number(convert(meters, "meters").to(units.distance), "distance")`.
  */
 export function createFormats(units: Units) {

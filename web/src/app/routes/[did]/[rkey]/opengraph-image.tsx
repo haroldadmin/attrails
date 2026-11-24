@@ -1,8 +1,8 @@
 import convert from "convert";
 import { ImageResponse } from "next/og";
-import { getFormatter, getLocale } from "next-intl/server";
+import { getFormatter } from "next-intl/server";
 import { OG_SIZE, OgCard, ogColors, ogFonts } from "@/components/og-card";
-import { unitsForLocale } from "@/i18n/units";
+import { getUnits } from "@/i18n/units.server";
 import { fetchProfile, profileName } from "@/lib/profiles";
 import { projectPath } from "@/lib/route-path";
 import {
@@ -36,12 +36,11 @@ export default async function Image({
     return SiteImage();
   }
 
-  const [author, format, locale] = await Promise.all([
+  const [author, format, units] = await Promise.all([
     fetchProfile(route.did),
     getFormatter(),
-    getLocale(),
+    getUnits(),
   ]);
-  const units = unitsForLocale(locale);
 
   const stats = [
     activityLabel(route.activity),

@@ -1,7 +1,7 @@
 import convert from "convert";
 import type { NextRequest } from "next/server";
-import { getFormatter, getLocale } from "next-intl/server";
-import { unitsForLocale } from "@/i18n/units";
+import { getFormatter } from "next-intl/server";
+import { getUnits } from "@/i18n/units.server";
 import {
   activityLabel,
   loadRoutesMatching,
@@ -14,10 +14,10 @@ const RESULTS_LIMIT = 10;
 
 // Lets the browser reuse results as the reader edits their query. Kept short
 // and private so moderation and deletions show up quickly. Distances are
-// formatted for the reader's locale.
+// formatted for the reader's locale and chosen units.
 const CACHE_HEADERS = {
   "Cache-Control": "private, max-age=60",
-  Vary: "Accept-Language",
+  Vary: "Accept-Language, Cookie",
 };
 
 export async function GET(request: NextRequest) {
@@ -28,12 +28,11 @@ export async function GET(request: NextRequest) {
     return Response.json({ items: [] }, { headers: CACHE_HEADERS });
   }
 
-  const [routes, format, locale] = await Promise.all([
+  const [routes, format, units] = await Promise.all([
     loadRoutesMatching(query, { labelled: "exclude", limit: RESULTS_LIMIT }),
     getFormatter(),
-    getLocale(),
+    getUnits(),
   ]);
-  const units = unitsForLocale(locale);
 
   const items: RouteSearchItem[] = routes.map((route) => ({
     did: route.did,

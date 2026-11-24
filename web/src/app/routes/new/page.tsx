@@ -4,7 +4,7 @@ import { getLocale } from "next-intl/server";
 import { Suspense } from "react";
 import { loginHref } from "@/auth/login-href";
 import { getSession } from "@/auth/session";
-import { unitsForLocale } from "@/i18n/units";
+import { getUnits } from "@/i18n/units.server";
 import { ACTIVITIES, DIFFICULTIES, SURFACES } from "@/lib/routes";
 import { UploadRouteForm } from "./upload-route-form";
 
@@ -32,7 +32,7 @@ async function SignedInUploadForm() {
   if (!session) {
     redirect(loginHref("/routes/new"));
   }
-  const locale = await getLocale();
+  const [locale, units] = await Promise.all([getLocale(), getUnits()]);
 
   return (
     <UploadRouteForm
@@ -40,7 +40,7 @@ async function SignedInUploadForm() {
       surfaces={SURFACES}
       difficulties={DIFFICULTIES}
       locale={locale}
-      units={unitsForLocale(locale)}
+      units={units}
     />
   );
 }

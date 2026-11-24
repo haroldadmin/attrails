@@ -65,7 +65,8 @@ export default function PrivacyPage() {
             We store the OAuth session issued by your PDS, which includes your
             DID and access tokens that let ATTrails create, edit and delete
             ATTrails routes and reviews on your behalf. We can&apos;t see your
-            password. We also set one cookie, described below.
+            password. We also set a cookie to keep you signed in, described
+            below.
           </p>
           <h3>When you visit</h3>
           <ul>
@@ -147,11 +148,16 @@ export default function PrivacyPage() {
         <section aria-labelledby="cookies-heading">
           <h2 id="cookies-heading">Cookies</h2>
           <p>
-            We set a single, strictly necessary cookie,{" "}
-            <code>attrails_session</code>, when you sign in. It keeps you signed
-            in for up to 30 days, and is removed when you sign out. We
-            don&apos;t use advertising or tracking cookies.
+            We set a strictly necessary cookie, <code>attrails_session</code>,
+            when you sign in. It keeps you signed in for up to 30 days, and is
+            removed when you sign out.
           </p>
+          <p>
+            If you choose units for distances and elevation, we remember them in
+            a cookie, <code>attrails_units</code>, for up to a year. Choosing
+            your language&apos;s defaults removes it.
+          </p>
+          <p>We don&apos;t use advertising or tracking cookies.</p>
         </section>
 
         <section aria-labelledby="retention-heading">

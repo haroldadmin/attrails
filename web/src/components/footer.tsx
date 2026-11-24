@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { getUnits } from "@/i18n/units.server";
+import { UnitsDialog } from "./units-dialog";
 
 export function Footer() {
   return (
@@ -54,6 +57,18 @@ export function Footer() {
           @attrails.app
         </a>
       </nav>
+      <section aria-labelledby="preferences-heading">
+        <h6 id="preferences-heading" className="footer-title">
+          Preferences
+        </h6>
+        <Suspense fallback={<span>Units</span>}>
+          <UnitsSetting />
+        </Suspense>
+      </section>
     </footer>
   );
+}
+
+async function UnitsSetting() {
+  return <UnitsDialog units={await getUnits()} />;
 }
