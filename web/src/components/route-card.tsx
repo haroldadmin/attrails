@@ -1,7 +1,7 @@
 import convert from "convert";
 import Link from "next/link";
-import { getFormatter, getLocale } from "next-intl/server";
-import { unitsForLocale } from "@/i18n/units";
+import { getFormatter } from "next-intl/server";
+import { getUnits } from "@/i18n/units.server";
 import { activityLabel, type RouteSummary } from "@/lib/routes";
 import { fetchProfile } from "@/lib/profiles";
 import { Author } from "./author";
@@ -14,13 +14,11 @@ export type RouteCardProps = {
 export async function RouteCard({ route }: RouteCardProps) {
   const now = Temporal.Now.instant();
 
-  const [author, format, locale] = await Promise.all([
+  const [author, format, units] = await Promise.all([
     fetchProfile(route.did),
     getFormatter(),
-    getLocale(),
+    getUnits(),
   ]);
-
-  const units = unitsForLocale(locale);
 
   return (
     <article className="card card-border bg-base-100 h-full relative hover:border-primary">

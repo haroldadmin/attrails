@@ -32,7 +32,7 @@ import {
   type Route,
   surfaceLabel,
 } from "@/lib/routes";
-import { unitsForLocale } from "@/i18n/units";
+import { getUnits } from "@/i18n/units.server";
 import { fetchProfile, fetchProfiles, profileName } from "@/lib/profiles";
 import { routeJsonLd } from "@/lib/structured-data";
 import { openGraphDefaults } from "@/app/shared-metadata";
@@ -64,12 +64,11 @@ export async function generateMetadata({
     };
   }
 
-  const [author, format, locale] = await Promise.all([
+  const [author, format, units] = await Promise.all([
     fetchProfile(route.did),
     getFormatter(),
-    getLocale(),
+    getUnits(),
   ]);
-  const units = unitsForLocale(locale);
 
   const summary = [
     activityLabel(route.activity),
@@ -144,14 +143,15 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
   const { did, rkey } = await params;
   const route = await loadPageRoute(did, rkey);
 
-  const [session, author, reviewSummary, format, locale] = await Promise.all([
-    getSession(),
-    fetchProfile(route.did),
-    loadReviewSummary(route, { labelled: "exclude" }),
-    getFormatter(),
-    getLocale(),
-  ]);
-  const units = unitsForLocale(locale);
+  const [session, author, reviewSummary, format, locale, units] =
+    await Promise.all([
+      getSession(),
+      fetchProfile(route.did),
+      loadReviewSummary(route, { labelled: "exclude" }),
+      getFormatter(),
+      getLocale(),
+      getUnits(),
+    ]);
   const isAuthor = session?.did === route.did;
 
   const surface = route.surface && surfaceLabel(route.surface);
