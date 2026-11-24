@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -8,6 +9,7 @@ import type { ReactNode } from "react";
 export function ModerationNotice({ children }: { children: ReactNode }) {
   return (
     <p className="alert alert-warning alert-soft">
+      <TriangleAlert className="size-5" />
       <span>
         {children}{" "}
         <Link className="link" href="/moderation">

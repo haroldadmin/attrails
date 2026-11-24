@@ -1,5 +1,6 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { useActionState, useRef } from "react";
 import type { DeleteRouteState } from "./actions";
 
@@ -18,6 +19,7 @@ export function DeleteRoute({ action }: DeleteRouteProps) {
         className="btn btn-error text-white self-start"
         onClick={() => dialog.current?.showModal()}
       >
+        <Trash2 className="size-4" />
         Delete route
       </button>
 

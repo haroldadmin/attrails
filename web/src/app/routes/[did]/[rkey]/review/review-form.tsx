@@ -33,7 +33,7 @@ export function ReviewForm({
               type="radio"
               name="rating"
               value={rating}
-              className="mask mask-star-2 bg-warning"
+              className="mask mask-star-2 bg-star"
               aria-label={rating === 1 ? "1 star" : `${rating} stars`}
               defaultChecked={values.rating === String(rating)}
               required

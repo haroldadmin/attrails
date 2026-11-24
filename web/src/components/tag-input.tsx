@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { type KeyboardEvent, useRef, useState } from "react";
 import { parseTags, ROUTE_MAX_TAGS } from "@/lib/routes/shared";
 
@@ -88,7 +89,7 @@ export function TagInput({
                   aria-label={`Remove ${tag}`}
                   onClick={() => remove(tag)}
                 >
-                  ×
+                  <X className="size-3" strokeWidth={2.5} />
                 </button>
               </li>
             ))}

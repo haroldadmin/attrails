@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleCheck } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export type NoticeProps = {
@@ -31,6 +32,7 @@ export function Notice({ messages }: NoticeProps) {
 
   return (
     <div role="status" className="alert alert-success alert-soft">
+      <CircleCheck className="size-5" />
       <span>{message}</span>
       <button type="button" className="btn btn-sm btn-ghost" onClick={dismiss}>
         Dismiss

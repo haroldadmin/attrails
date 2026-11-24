@@ -1,4 +1,5 @@
 import convert from "convert";
+import { Download, Pencil, Star } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -179,6 +180,7 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
                 href={`/routes/${route.did}/${route.rkey}/edit`}
                 className="btn btn-ghost rounded-full border-base-300"
               >
+                <Pencil className="size-4" />
                 Edit route
               </Link>
             )}
@@ -188,9 +190,7 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
             >
               {reviewSummary.averageRating !== null && (
                 <>
-                  <span aria-hidden="true" className="text-warning">
-                    ★
-                  </span>
+                  <Star className="size-4 fill-star text-star" />
                   {format.number(reviewSummary.averageRating, {
                     minimumFractionDigits: 1,
                     maximumFractionDigits: 1,
@@ -218,6 +218,7 @@ async function RouteDetails({ params }: Pick<RoutePageProps, "params">) {
               className="btn btn-neutral rounded-full"
               rel="nofollow"
             >
+              <Download className="size-4" />
               Download GPX
             </a>
           </div>

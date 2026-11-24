@@ -14,7 +14,7 @@ export function ReviewRating({ rating }: ReviewRatingProps) {
       {RATINGS.map((value) => (
         <div
           key={value}
-          className="mask mask-star-2 bg-warning"
+          className="mask mask-star-2 bg-star"
           aria-current={value === rating}
         />
       ))}

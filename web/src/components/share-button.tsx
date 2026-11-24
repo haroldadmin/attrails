@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Share2 } from "lucide-react";
 import { useState } from "react";
 
 export type ShareButtonProps = {
@@ -35,6 +36,7 @@ export function ShareButton({ title, className }: ShareButtonProps) {
       onClick={share}
       onBlur={() => setCopied(false)}
     >
+      {copied ? <Check className="size-4" /> : <Share2 className="size-4" />}
       <span aria-live="polite">{copied ? "Link copied" : "Share"}</span>
     </button>
   );

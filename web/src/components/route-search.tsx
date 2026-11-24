@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
@@ -96,7 +97,7 @@ export function RouteSearch({ className }: { className?: string }) {
       }}
     >
       <label className="input w-full h-10 lg:h-8 gap-2 px-3 bg-base-200/50 border-base-300 shadow-none focus-within:bg-base-100 focus-within:border-primary focus-within:outline-primary/25 focus-within:outline-offset-0">
-        <SearchIcon />
+        <Search className="size-4 shrink-0 text-base-content/60" />
         <span className="sr-only">Search routes</span>
         <input
           type="search"
@@ -132,25 +133,6 @@ export function RouteSearch({ className }: { className?: string }) {
         </div>
       )}
     </search>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      className="size-4 shrink-0 text-base-content/60"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.5-3.5" />
-    </svg>
   );
 }
 

@@ -3,6 +3,7 @@
 @theme inline {
   --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
   --font-sans: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+  --color-star: oklch(68% 0.162 75.834);
 }
 
 @plugin "daisyui" {

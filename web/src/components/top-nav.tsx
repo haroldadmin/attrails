@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AtTrailsLogo } from "./logo";
@@ -33,6 +34,7 @@ export function TopNav() {
           <SessionState />
         </Suspense>
         <Link className="btn btn-primary btn-sm shrink-0" href="/routes/new">
+          <Plus className="size-4" />
           <span className="lg:hidden">Share</span>
           <span className="hidden lg:inline">Share a route</span>
         </Link>

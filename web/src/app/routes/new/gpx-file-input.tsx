@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import convert from "convert";
 import type { MultiLineString } from "geojson";
+import { FileUp, Info } from "lucide-react";
 import { type ChangeEvent, Fragment, useRef, useState } from "react";
 import { EXPORT_GUIDES } from "@/app/faq/export-guides";
 import { createFormats } from "@/i18n/formats";
@@ -123,7 +124,7 @@ export function GpxFileInput({ onChange, locale, units }: GpxFileInputProps) {
           "relative rounded-box border-2 border-dashed transition-colors hover:border-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary",
           loaded
             ? "px-4 py-3"
-            : "flex min-h-48 items-center justify-center px-4 py-8 text-center lg:min-h-96",
+            : "flex min-h-48 flex-col items-center justify-center gap-2 px-4 py-8 text-center lg:min-h-96",
           dragging
             ? "border-primary bg-primary/5"
             : error
@@ -131,6 +132,9 @@ export function GpxFileInput({ onChange, locale, units }: GpxFileInputProps) {
               : "border-base-300",
         )}
       >
+        {!loaded && (
+          <FileUp className="size-10 text-base-content/60" strokeWidth={1.5} />
+        )}
         <p aria-hidden="true">
           {loaded ? (
             <span className="flex flex-wrap items-baseline justify-between gap-x-4">
@@ -200,6 +204,7 @@ export function GpxFileInput({ onChange, locale, units }: GpxFileInputProps) {
       )}
       {!loaded && (
         <div role="note" className="alert alert-info mt-2">
+          <Info className="size-5" />
           <p>
             <strong>Is your route in another app?</strong> Export it as a GPX
             file first. Here&apos;s how in{" "}
