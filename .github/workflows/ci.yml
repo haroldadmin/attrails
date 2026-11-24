@@ -23,12 +23,12 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2.9.3
 
       # The lexicons crate is generated, and is not rustfmt formatted.
       - name: Check formatting
@@ -43,11 +43,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2.9.3
       - run: cargo test --workspace --locked
 
   web:
@@ -56,12 +56,12 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       # Reads the pnpm version from packageManager in web/package.json.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4.3.0
         with:
           package_json_file: web/package.json
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6.5.0
         with:
           # Keep in sync with the node version in mise.toml.
           node-version: 26.12.1
@@ -105,24 +105,24 @@ jobs:
               ATTRAILS_UMAMI_SCRIPT_URL=${{ vars.ATTRAILS_UMAMI_SCRIPT_URL }}
               ATTRAILS_UMAMI_WEBSITE_ID=${{ vars.ATTRAILS_UMAMI_WEBSITE_ID }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: docker/setup-buildx-action@v4.4.1
 
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@v6.2.0
         with:
           images: ghcr.io/${{ github.repository }}/${{ matrix.service }}
           tags: |
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@v7.4.0
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
